@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api } from "$lib/api";
+  import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
   import { settings, type Theme } from "$lib/settings.svelte";
   import { updates } from "$lib/updates.svelte";
@@ -13,6 +13,7 @@
 
   let version = $state("");
   let copied = $state(false);
+  let folderError = $state<string | null>(null);
 
   $effect(() => {
     api.appVersion().then((v) => (version = v));
@@ -21,6 +22,15 @@
   function changed() {
     settings.save();
     settings.applyTheme();
+  }
+
+  async function openFolder() {
+    folderError = null;
+    try {
+      await api.libraryOpenFolder();
+    } catch (e) {
+      folderError = errorText(e);
+    }
   }
 
   async function copyFolder() {
@@ -118,10 +128,16 @@
       <div class="text">
         <span class="name">Library folder</span>
         <span class="hint path">{bench.libraryFolder || "—"}</span>
+        {#if folderError}<span class="hint bad"
+            >Could not open the folder: {folderError}</span
+          >{/if}
       </div>
-      <button class="btn" onclick={copyFolder} disabled={!bench.libraryFolder}
-        >{copied ? "Copied" : "Copy path"}</button
-      >
+      <div class="buttons">
+        <button class="btn" onclick={copyFolder} disabled={!bench.libraryFolder}
+          >{copied ? "Copied" : "Copy path"}</button
+        >
+        <button class="btn" onclick={openFolder}>Open folder</button>
+      </div>
     </div>
   </section>
 
@@ -229,5 +245,15 @@
 
   select {
     flex: none;
+  }
+
+  .buttons {
+    display: flex;
+    flex: none;
+    gap: 6px;
+  }
+
+  .bad {
+    color: var(--bad);
   }
 </style>

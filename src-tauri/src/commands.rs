@@ -262,6 +262,21 @@ pub fn library_folder(app: AppHandle) -> Result<String, ModbusError> {
     Ok(library_root(&app)?.display().to_string())
 }
 
+/// Shows the library folder in the system file manager.
+#[tauri::command]
+pub fn library_open_folder(app: AppHandle) -> Result<(), ModbusError> {
+    let root = library_root(&app)?;
+    std::fs::create_dir_all(&root)?;
+    #[cfg(windows)]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let program = "xdg-open";
+    std::process::Command::new(program).arg(&root).spawn()?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn library_list(app: AppHandle) -> Result<Vec<LibraryEntry>, ModbusError> {
     let root = library_root(&app)?;

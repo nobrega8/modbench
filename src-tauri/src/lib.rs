@@ -54,6 +54,7 @@ pub fn run() {
             commands::library_list,
             commands::library_import,
             commands::library_delete,
+            commands::library_open_folder,
             commands::library_online_index,
             commands::library_online_import,
             commands::vendor_icon,
