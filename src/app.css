@@ -17,6 +17,7 @@
   --accent: #0f6cbd;
   --accent-hover: #115ea3;
   --accent-soft: #ebf3fc;
+  --on-accent: #ffffff;
   --cell: #eef5fc;
   --changed: #fff4ce;
   --ok: #107c10;
@@ -53,6 +54,7 @@
     --accent: #4cc2ff;
     --accent-hover: #6fceff;
     --accent-soft: #1d3346;
+    --on-accent: #0b1a26;
     --cell: #273443;
     --changed: #4d4214;
     --ok: #6ccb5f;
@@ -155,7 +157,7 @@ select {
 .btn.accent {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .btn.accent:hover:not(:disabled) {

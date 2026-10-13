@@ -6,6 +6,8 @@ import type {
   ByteOrder,
   ConnectionConfig,
   DeviceMap,
+  ImportResult,
+  LibraryEntry,
   Parsed,
   PollCycle,
   PollRequest,
@@ -38,6 +40,11 @@ export const api = {
     invoke<PollCycle>("poll_map_once", { request }),
   writeMapValue: (register: Register, byteOrder: ByteOrder, value: Value) =>
     invoke<void>("write_map_value", { register, byteOrder, value }),
+  libraryFolder: () => invoke<string>("library_folder"),
+  libraryList: () => invoke<LibraryEntry[]>("library_list"),
+  libraryImport: (paths: string[]) =>
+    invoke<ImportResult[]>("library_import", { paths }),
+  libraryDelete: (path: string) => invoke<void>("library_delete", { path }),
   startupFile: () => invoke<string | null>("startup_file"),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),

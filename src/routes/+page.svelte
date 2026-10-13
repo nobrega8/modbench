@@ -26,6 +26,7 @@
   });
 
   $effect(() => {
+    bench.refreshLibrary();
     api.startupFile().then((path) => {
       if (path) bench.openMap(path);
     });

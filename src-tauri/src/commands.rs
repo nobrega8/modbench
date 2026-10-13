@@ -3,10 +3,11 @@
 use std::sync::Arc;
 
 use tauri::async_runtime::JoinHandle;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::Mutex;
 
 use crate::codec::{self, ByteOrder, DataType, Value};
+use crate::library::{self, ImportResult, LibraryEntry};
 use crate::mbmap::{self, DeviceMap, Parsed, Register};
 use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
 use crate::planner::Area;
@@ -240,6 +241,46 @@ pub async fn open_map(path: String) -> Result<Parsed, ModbusError> {
 pub async fn save_map(path: String, map: DeviceMap) -> Result<(), ModbusError> {
     tokio::fs::write(&path, mbmap::to_string(&map)).await?;
     Ok(())
+}
+
+fn library_root(app: &AppHandle) -> Result<std::path::PathBuf, ModbusError> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| ModbusError::Invalid(format!("no data folder: {e}")))?;
+    Ok(dir.join("library"))
+}
+
+/// Folder where the library keeps its maps.
+#[tauri::command]
+pub fn library_folder(app: AppHandle) -> Result<String, ModbusError> {
+    Ok(library_root(&app)?.display().to_string())
+}
+
+#[tauri::command]
+pub async fn library_list(app: AppHandle) -> Result<Vec<LibraryEntry>, ModbusError> {
+    let root = library_root(&app)?;
+    Ok(tokio::task::spawn_blocking(move || library::list(&root))
+        .await
+        .map_err(|e| ModbusError::Invalid(e.to_string()))??)
+}
+
+/// Copies `.mbmap` files into the library (invalid ones are reported, not copied).
+#[tauri::command]
+pub async fn library_import(
+    app: AppHandle,
+    paths: Vec<String>,
+) -> Result<Vec<ImportResult>, ModbusError> {
+    let root = library_root(&app)?;
+    tokio::task::spawn_blocking(move || library::import(&root, &paths))
+        .await
+        .map_err(|e| ModbusError::Invalid(e.to_string()))
+}
+
+#[tauri::command]
+pub async fn library_delete(app: AppHandle, path: String) -> Result<(), ModbusError> {
+    let root = library_root(&app)?;
+    Ok(library::delete(&root, &path)?)
 }
 
 /// A `.mbmap` passed on the command line (e.g. by double-clicking a file).

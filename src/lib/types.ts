@@ -142,3 +142,19 @@ export interface TypedAddress {
   length: number | null;
   bit: number | null;
 }
+
+export interface LibraryEntry {
+  path: string;
+  vendor: string;
+  model: string;
+  description: string | null;
+  registers: number;
+  warnings: number;
+  error: string | null;
+}
+
+export interface ImportResult {
+  source: string;
+  stored: string | null;
+  error: string | null;
+}

@@ -14,6 +14,11 @@
   );
   const single = $derived(bench.fc === 5 || bench.fc === 6);
   let openError = $state<string | null>(null);
+  const libraryOnly = $derived(
+    bench.library.filter(
+      (e) => !e.error && !bench.maps.some((m) => m.path === e.path),
+    ),
+  );
 
   async function chooseMap() {
     const path = await open({
@@ -32,7 +37,9 @@
 
   function onMapSelect(e: Event) {
     const v = (e.currentTarget as HTMLSelectElement).value;
-    if (v === "open") {
+    if (v.startsWith("lib:")) {
+      bench.openMap(v.slice(4)).catch((err) => (openError = errorText(err)));
+    } else if (v === "open") {
       (e.currentTarget as HTMLSelectElement).value = String(
         bench.activeMap ?? "",
       );
@@ -137,14 +144,27 @@
           onchange={onMapSelect}
           disabled={locked}
         >
-          {#if bench.maps.length === 0}<option value="">No map open</option
+          {#if bench.activeMap === null}<option value="">Choose a map</option
             >{/if}
-          {#each bench.maps as m, i (m.path)}
-            <option value={String(i)}
-              >{m.map.meta.vendor} · {m.map.meta.model} ({m.map.registers
-                .length})</option
-            >
-          {/each}
+          {#if bench.maps.length}
+            <optgroup label="Open">
+              {#each bench.maps as m, i (m.path)}
+                <option value={String(i)}
+                  >{m.map.meta.vendor} · {m.map.meta.model} ({m.map.registers
+                    .length})</option
+                >
+              {/each}
+            </optgroup>
+          {/if}
+          {#if libraryOnly.length}
+            <optgroup label="Library">
+              {#each libraryOnly as e (e.path)}
+                <option value="lib:{e.path}"
+                  >{e.vendor} · {e.model} ({e.registers})</option
+                >
+              {/each}
+            </optgroup>
+          {/if}
           <option value="open">Open map file…</option>
         </select>
       </label>

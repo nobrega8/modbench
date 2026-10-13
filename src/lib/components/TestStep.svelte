@@ -1,6 +1,7 @@
 <script lang="ts">
   import { bench, type Tab } from "$lib/state.svelte";
   import Counter from "./Counter.svelte";
+  import LibraryView from "./LibraryView.svelte";
   import LogView from "./LogView.svelte";
   import MapTable from "./MapTable.svelte";
   import RawView from "./RawView.svelte";
@@ -9,6 +10,10 @@
   import WriteGrid from "./WriteGrid.svelte";
 
   const tabs = $derived([
+    {
+      id: "library",
+      label: `Library${bench.library.length ? ` (${bench.library.length})` : ""}`,
+    },
     { id: "registers", label: "Read registers" },
     ...(bench.source === "map" ? [{ id: "map", label: "Device map" }] : []),
     { id: "write", label: "Write values" },
@@ -115,7 +120,9 @@
   </div>
 
   <div class="panel" role="tabpanel">
-    {#if bench.tab === "registers"}
+    {#if bench.tab === "library"}
+      <LibraryView />
+    {:else if bench.tab === "registers"}
       <RegisterGrid />
     {:else if bench.tab === "map"}
       {#if bench.map}

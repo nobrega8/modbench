@@ -58,7 +58,7 @@
     height: 28px;
     border-radius: 50%;
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 600;
     font-size: 15px;
   }

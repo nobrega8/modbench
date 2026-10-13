@@ -7,6 +7,7 @@ import type {
   ConnectionConfig,
   DeviceMap,
   Diagnostic,
+  LibraryEntry,
   Parity,
   PointResult,
   PollCycle,
@@ -15,7 +16,7 @@ import type {
 } from "./types";
 
 export type TransportKind = "tcp" | "rtuovertcp" | "rtu";
-export type Tab = "registers" | "map" | "write" | "raw" | "log";
+export type Tab = "library" | "registers" | "map" | "write" | "raw" | "log";
 
 export interface OpenMap {
   path: string;
@@ -65,6 +66,8 @@ class Bench {
   activeMap = $state<number | null>(null);
   mapError = $state<{ path: string; diagnostics: Diagnostic[] } | null>(null);
   orderOverride = $state<ByteOrder | null>(null);
+  library = $state.raw<LibraryEntry[]>([]);
+  libraryFolder = $state("");
 
   // Step 3 — test
   running = $state(false);
@@ -106,6 +109,11 @@ class Bench {
   }
 
   // ---- maps
+
+  async refreshLibrary() {
+    this.libraryFolder = await api.libraryFolder();
+    this.library = await api.libraryList();
+  }
 
   async openMap(path: string) {
     const parsed = await api.openMap(path);
