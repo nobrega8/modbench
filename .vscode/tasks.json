@@ -4,9 +4,8 @@
     {
       "label": "Launch app",
       "detail": "Run Modbench in development mode (npm run tauri dev)",
-      "type": "npm",
-      "script": "tauri",
-      "args": ["dev"],
+      "type": "shell",
+      "command": "npm run tauri dev",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
