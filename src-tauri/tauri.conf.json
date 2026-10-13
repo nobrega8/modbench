@@ -28,6 +28,7 @@
   "bundle": {
     "active": true,
     "targets": ["msi", "nsis", "deb", "appimage"],
+    "publisher": "nobrega.me",
     "category": "DeveloperTool",
     "shortDescription": "Modbus TCP/RTU client",
     "longDescription": "Lightweight Modbus TCP/RTU client with device map (.mbmap) files and a device library.",
