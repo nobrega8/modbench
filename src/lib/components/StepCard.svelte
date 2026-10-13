@@ -27,7 +27,7 @@
 <style>
   .step {
     display: grid;
-    grid-template-columns: 92px 1fr;
+    grid-template-columns: 76px 1fr;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -43,9 +43,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 6px;
-    padding: 10px 6px;
+    padding: 14px 6px;
     border-right: 1px solid var(--border);
     background: var(--subtle);
     border-radius: 8px 0 0 8px;

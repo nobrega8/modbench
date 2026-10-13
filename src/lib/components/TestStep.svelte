@@ -6,16 +6,14 @@
   import MapTable from "./MapTable.svelte";
   import RawView from "./RawView.svelte";
   import RegisterGrid from "./RegisterGrid.svelte";
+  import SettingsView from "./SettingsView.svelte";
   import StepCard from "./StepCard.svelte";
   import WriteGrid from "./WriteGrid.svelte";
 
+  // Views of the running test on the left, app-level pages on the right.
   const tabs = $derived([
-    {
-      id: "library",
-      label: `Library${bench.library.length ? ` (${bench.library.length})` : ""}`,
-    },
-    { id: "registers", label: "Read registers" },
     ...(bench.source === "map" ? [{ id: "map", label: "Device map" }] : []),
+    { id: "registers", label: "Read registers" },
     { id: "write", label: "Write values" },
     { id: "raw", label: "Raw data" },
     {
@@ -23,11 +21,22 @@
       label: `Log${bench.log.length ? ` (${bench.log.length})` : ""}`,
     },
   ] as { id: Tab; label: string }[]);
+  const appTabs = $derived([
+    {
+      id: "library",
+      label: `Library${bench.library.length ? ` (${bench.library.length})` : ""}`,
+    },
+    { id: "settings", label: "Settings" },
+  ] as { id: Tab; label: string }[]);
 
-  const canStart = $derived(
-    bench.source === "map"
-      ? bench.map !== null
-      : bench.transport !== "rtu" || bench.serialPort !== "",
+  const noPort = $derived(bench.transport === "rtu" && bench.serialPort === "");
+  const noMap = $derived(bench.source === "map" && bench.map === null);
+  const blocked = $derived(
+    noPort
+      ? "Choose a serial port in step 1, or plug in the adapter and refresh."
+      : noMap
+        ? "Choose a device map in step 2."
+        : null,
   );
 
   const where = $derived(
@@ -41,8 +50,8 @@
   <div class="controls">
     <button
       class="run start"
-      disabled={bench.running || !canStart}
-      title={canStart ? "Start" : "Choose a serial port or a device map first"}
+      disabled={bench.running || blocked !== null}
+      title={blocked ?? "Start"}
       onclick={() => bench.start()}
     >
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"
@@ -99,6 +108,8 @@
             )} ms</span
           >
         {/if}
+      {:else if blocked}
+        <span class="sub">{blocked}</span>
       {:else}
         <span class="sub">Stopped</span>
       {/if}
@@ -110,6 +121,15 @@
 
   <div class="tabs" role="tablist">
     {#each tabs as t (t.id)}
+      <button
+        role="tab"
+        aria-selected={bench.tab === t.id}
+        class:on={bench.tab === t.id}
+        onclick={() => (bench.tab = t.id)}>{t.label}</button
+      >
+    {/each}
+    <span class="tab-gap"></span>
+    {#each appTabs as t (t.id)}
       <button
         role="tab"
         aria-selected={bench.tab === t.id}
@@ -137,6 +157,8 @@
       <WriteGrid />
     {:else if bench.tab === "raw"}
       <RawView />
+    {:else if bench.tab === "settings"}
+      <SettingsView />
     {:else}
       <LogView />
     {/if}
@@ -194,9 +216,19 @@
     flex-direction: column;
     align-items: flex-end;
     gap: 2px;
-    max-width: 360px;
+    flex: 0 1 420px;
+    min-width: 0;
     text-align: right;
     font-size: 13px;
+  }
+
+  /* One line; the full message is in the tooltip */
+  .state .bad,
+  .state .sub {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .live {
@@ -234,6 +266,10 @@
     gap: 2px;
     margin: 12px 0 0;
     border-bottom: 1px solid var(--border);
+  }
+
+  .tab-gap {
+    flex: 1;
   }
 
   .tabs button {

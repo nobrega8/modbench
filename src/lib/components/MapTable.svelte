@@ -74,6 +74,7 @@
       note = { index, ok: false, text: parsed.error };
       return;
     }
+    if (!(await bench.confirmWrite(`Write ${text} to ${reg.name}?`))) return;
     busy = true;
     try {
       await bench.writeMapValue(index, parsed.value);
@@ -348,47 +349,43 @@
     font-size: 13px;
   }
 
+  table {
+    table-layout: fixed;
+  }
+
   .addr {
-    width: 100px;
+    width: 104px;
+  }
+
+  th:nth-child(3) {
+    width: 30%;
+  }
+
+  th:nth-child(4) {
+    width: 150px;
+  }
+
+  th.val {
+    width: 170px;
+  }
+
+  th:nth-child(6) {
+    width: 64px;
+  }
+
+  /* Raw takes whatever width is left, so values sit next to their names */
+  th:nth-child(7) {
+    width: auto;
+  }
+
+  /* Reading is the normal state: keep the switch quiet when on */
+  .read .switch:checked {
+    background: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
   }
 
   .read {
     width: 52px;
     text-align: center;
-  }
-
-  /* Small toggle switch */
-  .switch {
-    appearance: none;
-    position: relative;
-    width: 30px;
-    height: 16px;
-    margin: 0;
-    border-radius: 8px;
-    background: var(--border-strong);
-    cursor: pointer;
-    vertical-align: middle;
-    transition: background 0.15s;
-  }
-
-  .switch::after {
-    content: "";
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #fff;
-    transition: transform 0.15s;
-  }
-
-  .switch:checked {
-    background: var(--accent);
-  }
-
-  .switch:checked::after {
-    transform: translateX(14px);
   }
 
   /* Registers that are not read: greyed out, at the end of the list */
@@ -412,7 +409,6 @@
 
   .name {
     font-weight: 600;
-    max-width: 320px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -421,7 +417,7 @@
     margin-left: 8px;
     font-weight: 400;
     font-size: 12px;
-    color: var(--text-3);
+    color: var(--text-2);
   }
 
   .type {

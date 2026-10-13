@@ -23,9 +23,23 @@
         lead,
       )}</span
     >
-    <button class="reset" title="Reset {label.toLowerCase()}" onclick={onreset}
-      >Reset</button
+    <button
+      class="reset"
+      title="Reset {label.toLowerCase()}"
+      aria-label="Reset {label.toLowerCase()}"
+      onclick={onreset}
     >
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
+        ><path
+          d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        /></svg
+      >
+    </button>
   </div>
 </div>
 
@@ -85,8 +99,11 @@
   }
 
   .reset {
+    display: grid;
+    place-items: center;
+    width: 30px;
     height: 30px;
-    padding: 0 8px;
+    padding: 0;
     border: 1px solid var(--border-strong);
     border-radius: 4px;
     background: var(--card);

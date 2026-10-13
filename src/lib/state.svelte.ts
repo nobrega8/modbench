@@ -1,6 +1,9 @@
 // App state for the three-step workflow: connection, request, test.
 
+import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorText } from "./api";
+import { FUNCTION_NAME } from "./format";
+import { settings } from "./settings.svelte";
 import type {
   Area,
   ByteOrder,
@@ -16,7 +19,8 @@ import type {
 } from "./types";
 
 export type TransportKind = "tcp" | "rtuovertcp" | "rtu";
-export type Tab = "library" | "registers" | "map" | "write" | "raw" | "log";
+export type Tab =
+  "library" | "registers" | "map" | "write" | "raw" | "log" | "settings";
 
 export interface OpenMap {
   path: string;
@@ -36,7 +40,20 @@ const READ_AREA: Record<number, Area> = {
   3: "holding",
   4: "input",
 };
-const LOG_LIMIT = 1000;
+const CONNECTION_KEY = "modbench.connection";
+const CONNECTION_FIELDS = [
+  "transport",
+  "host",
+  "tcpPort",
+  "serialPort",
+  "baudrate",
+  "parity",
+  "dataBits",
+  "stopBits",
+  "delayMs",
+  "timeoutMs",
+  "unitId",
+] as const;
 const RAW_LIMIT = 200;
 
 const SKIPPED_KEY = "modbench.skipped:";
@@ -110,6 +127,47 @@ class Bench {
 
   private pendingLog: TrafficEntry[] = [];
   private flushQueued = false;
+
+  constructor() {
+    if (!settings.rememberConnection) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(CONNECTION_KEY) ?? "{}");
+      for (const field of CONNECTION_FIELDS) {
+        if (field in saved)
+          (this as Record<string, unknown>)[field] = saved[field];
+      }
+    } catch {
+      // Nothing saved yet, or storage unavailable.
+    }
+  }
+
+  /** Remembers the connection settings used for the last test. */
+  private saveConnection() {
+    if (!settings.rememberConnection) return;
+    const data: Record<string, unknown> = {};
+    for (const field of CONNECTION_FIELDS) data[field] = this[field];
+    try {
+      localStorage.setItem(CONNECTION_KEY, JSON.stringify(data));
+    } catch {
+      // Storage unavailable: nothing to remember.
+    }
+  }
+
+  /** Asks before a write when Settings require it; true to go ahead. */
+  async confirmWrite(what: string): Promise<boolean> {
+    if (!settings.confirmWrites) return true;
+    return ask(
+      `${what}
+
+This writes to the device.`,
+      {
+        title: "Write to device",
+        kind: "warning",
+        okLabel: "Write",
+        cancelLabel: "Cancel",
+      },
+    );
+  }
 
   get map(): OpenMap | null {
     return this.activeMap === null ? null : (this.maps[this.activeMap] ?? null);
@@ -216,8 +274,15 @@ class Bench {
 
   async start() {
     if (this.running) return;
+    if (this.source === "manual" && !this.isRead) {
+      const ok = await this.confirmWrite(
+        `Send "${FUNCTION_NAME[this.fc]}" to address ${this.address}?`,
+      );
+      if (!ok) return;
+    }
     this.status = null;
     this.running = true;
+    this.saveConnection();
     if (!(await this.open())) {
       this.running = false;
       return;
@@ -428,7 +493,7 @@ class Bench {
     if (this.flushQueued) return;
     this.flushQueued = true;
     requestAnimationFrame(() => {
-      this.log = [...this.log, ...this.pendingLog].slice(-LOG_LIMIT);
+      this.log = [...this.log, ...this.pendingLog].slice(-settings.logLimit);
       this.pendingLog = [];
       this.flushQueued = false;
     });

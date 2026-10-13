@@ -1,18 +1,16 @@
 <script lang="ts">
   import { relaunch } from "@tauri-apps/plugin-process";
-  import { check, type Update } from "@tauri-apps/plugin-updater";
+  import { settings } from "$lib/settings.svelte";
+  import { updates } from "$lib/updates.svelte";
 
-  let update = $state<Update | null>(null);
+  const update = $derived(updates.available);
   let dismissed = $state(false);
   let downloading = $state(false);
   let progress = $state<number | null>(null);
   let failure = $state<string | null>(null);
 
   $effect(() => {
-    // No release published yet, or offline: stay quiet.
-    check()
-      .then((u) => (update = u))
-      .catch((e) => console.info("Update check skipped:", e));
+    if (settings.checkUpdates) updates.check(true);
   });
 
   async function install() {
