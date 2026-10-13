@@ -1,0 +1,50 @@
+# --- Rust / Tauri ---
+/target/
+src-tauri/target/
+src-tauri/gen/schemas/
+**/*.rs.bk
+
+# --- Node / frontend ---
+node_modules/
+dist/
+build/
+.svelte-kit/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Secrets & local config (NUNCA commitar) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.secret
+secrets/
+# chaves de assinatura do updater Tauri
+*.tauri.key
+tauri.key*
+
+# --- Ferramentas locais ---
+.claude/settings.local.json
+CLAUDE.local.md
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+
+# --- SO ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs / capturas locais ---
+*.log
+captures/
