@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Launch app",
+      "detail": "Run Modbench in development mode (npm run tauri dev)",
+      "type": "npm",
+      "script": "tauri",
+      "args": ["dev"],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ]
+}

@@ -1,3 +1,20 @@
 {
-  "svelte.enable-ts-plugin": true
+  "svelte.enable-ts-plugin": true,
+
+  // Status bar button (needs the "VsCode Action Buttons" extension,
+  // recommended in extensions.json).
+  "actionButtons": {
+    "reloadButton": null,
+    "loadNpmCommands": false,
+    "commands": [
+      {
+        "name": "$(play) Launch app",
+        "tooltip": "Run Modbench in development mode",
+        "color": "#ffffff",
+        "useVsCodeApi": true,
+        "command": "workbench.action.tasks.runTask",
+        "args": ["Launch app"]
+      }
+    ]
+  }
 }
