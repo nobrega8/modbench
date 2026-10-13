@@ -2,7 +2,7 @@
 
 Cliente Modbus (TCP/RTU) leve e moderno para testar e ler devices, para Windows e Linux.
 
-> 🚧 Em desenvolvimento inicial. Ver [PLAN.md](PLAN.md).
+> 🚧 Em desenvolvimento inicial.
 
 ## Ideia
 

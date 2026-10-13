@@ -53,3 +53,7 @@ captures/
 /package
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# --- Notas de planeamento locais (não publicar) ---
+PLAN.md
+idea.md
