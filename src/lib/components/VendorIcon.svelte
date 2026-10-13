@@ -23,7 +23,7 @@
     size?: number;
   }
 
-  let { vendor, website, size = 22 }: Props = $props();
+  let { vendor, website, size = 20 }: Props = $props();
 
   let src = $state<string | null>(null);
   let broken = $state(false);
@@ -72,15 +72,15 @@
     vertical-align: middle;
   }
 
-  /* Favicons are drawn for any background: give them a white tile */
+  /* A favicon stands on its own, with no tile behind it */
   .icon:has(img) {
-    background: #fff;
-    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06);
+    background: none;
+    border-radius: 0;
   }
 
   img {
-    width: 75%;
-    height: 75%;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
   }
 </style>

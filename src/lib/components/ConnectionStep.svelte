@@ -27,24 +27,26 @@
 </script>
 
 <StepCard step={1} title="Connection">
-  <div class="segmented tabs" role="tablist" aria-label="Connection type">
-    <button
-      role="tab"
-      aria-selected={serial}
-      class:on={serial}
-      disabled={locked}
-      onclick={() => setSerial(true)}>Serial</button
-    >
-    <button
-      role="tab"
-      aria-selected={!serial}
-      class:on={!serial}
-      disabled={locked}
-      onclick={() => setSerial(false)}>Ethernet</button
-    >
-  </div>
-
   <div class="row">
+    <div class="field">
+      <span>Interface</span>
+      <div class="segmented" role="tablist" aria-label="Connection type">
+        <button
+          role="tab"
+          aria-selected={serial}
+          class:on={serial}
+          disabled={locked}
+          onclick={() => setSerial(true)}>Serial</button
+        >
+        <button
+          role="tab"
+          aria-selected={!serial}
+          class:on={!serial}
+          disabled={locked}
+          onclick={() => setSerial(false)}>Ethernet</button
+        >
+      </div>
+    </div>
     {#if serial}
       <label class="field port">
         <span>Port</span>
@@ -157,11 +159,6 @@
 </StepCard>
 
 <style>
-  .tabs {
-    align-self: flex-start;
-    margin-bottom: 12px;
-  }
-
   .row {
     display: flex;
     flex-wrap: wrap;

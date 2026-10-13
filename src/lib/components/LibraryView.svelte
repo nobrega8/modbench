@@ -315,9 +315,13 @@
   }
 
   .vendor {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  td {
+    vertical-align: middle;
   }
 
   .msg {

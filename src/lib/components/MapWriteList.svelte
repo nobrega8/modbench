@@ -141,7 +141,7 @@
                   placeholder={reg.type === "string" ? "Text" : "Value"}
                   aria-label="Value for {reg.name}"
                 />
-                {#if reg.unit}<span class="dim">{reg.unit}</span>{/if}
+                <span class="dim unit">{reg.unit}</span>
                 <button
                   class="btn accent"
                   disabled={busy !== null || !drafts[index]}>Write</button
@@ -274,6 +274,12 @@
 
   .num {
     width: 140px;
+  }
+
+  /* A fixed slot keeps every Write button in one column */
+  .unit {
+    width: 44px;
+    margin-left: -2px;
   }
 
   .wide {

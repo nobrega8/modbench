@@ -37,6 +37,7 @@
     0 12px 32px -8px rgb(17 17 17 / 0.16), 0 32px 64px -16px rgb(17 17 17 / 0.2);
   --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.14);
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* Dark (OLED): follows the system unless Settings forces light or dark */
@@ -61,6 +62,7 @@
       inset 0 0 0 1px rgb(255 255 255 / 0.12),
       0 20px 56px -14px rgb(0 0 0 / 0.8);
     --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
+    --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 }
 
@@ -83,6 +85,7 @@
   --e3:
     inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 20px 56px -14px rgb(0 0 0 / 0.8);
   --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
+  --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* ───────────── named colours used by the components ───────────── */
@@ -301,11 +304,55 @@ select.input option {
   user-select: none;
 }
 
-.check input {
+.check input:not(.switch) {
   width: 16px;
   height: 16px;
   margin: 0;
   accent-color: rgb(var(--fg-rgb));
+}
+
+/* Numbers are typed, not spun */
+input[type="number"] {
+  appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* Checkbox: a filled grey square that turns ink with a mark */
+input[type="checkbox"]:not(.switch) {
+  appearance: none;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border-radius: 5px;
+  background: rgb(var(--fg-rgb) / 0.12);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color 0.14s var(--ease);
+}
+
+input[type="checkbox"]:not(.switch):hover {
+  background-color: rgb(var(--fg-rgb) / 0.18);
+}
+
+input[type="checkbox"]:not(.switch):checked {
+  background: rgb(var(--fg-rgb)) var(--check-mark) center / 14px no-repeat;
+}
+
+input[type="checkbox"]:disabled,
+.switch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
 }
 
 /* Toggle switch (iOS style): <input type="checkbox" class="switch" role="switch"> */

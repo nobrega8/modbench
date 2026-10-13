@@ -49,6 +49,12 @@
     }
   }
 
+  function setSource(source: "manual" | "map") {
+    if (bench.source === source) return;
+    bench.source = source;
+    bench.tab = source === "map" ? "map" : "registers";
+  }
+
   function onFunction() {
     if (single) bench.setQuantity(1);
     else if (bench.quantity > maxQuantity) bench.setQuantity(maxQuantity);
@@ -70,27 +76,25 @@
       />
     </label>
 
-    <fieldset class="field source" disabled={locked}>
+    <div class="field">
       <span>Source</span>
-      <div class="radios">
-        <label class="check"
-          ><input
-            type="radio"
-            bind:group={bench.source}
-            value="manual"
-            onchange={() => (bench.tab = "registers")}
-          /> Manual request</label
+      <div class="segmented" role="radiogroup" aria-label="Source">
+        <button
+          role="radio"
+          aria-checked={bench.source === "manual"}
+          class:on={bench.source === "manual"}
+          disabled={locked}
+          onclick={() => setSource("manual")}>Manual request</button
         >
-        <label class="check"
-          ><input
-            type="radio"
-            bind:group={bench.source}
-            value="map"
-            onchange={() => (bench.tab = "map")}
-          /> Device map</label
+        <button
+          role="radio"
+          aria-checked={bench.source === "map"}
+          class:on={bench.source === "map"}
+          disabled={locked}
+          onclick={() => setSource("map")}>Device map</button
         >
       </div>
-    </fieldset>
+    </div>
 
     {#if bench.source === "manual"}
       <label class="field">
@@ -187,9 +191,14 @@
     {/if}
 
     <div class="options">
-      <label class="check"
-        ><input type="checkbox" bind:checked={bench.loop} disabled={locked} /> Loop
-        command</label
+      <label class="check loop"
+        ><input
+          type="checkbox"
+          class="switch"
+          role="switch"
+          bind:checked={bench.loop}
+          disabled={locked}
+        /> Loop command</label
       >
     </div>
   </div>
@@ -204,20 +213,6 @@
     align-items: flex-end;
   }
 
-  .source {
-    border: 0;
-    margin: 0;
-    padding: 0;
-    min-width: 0;
-  }
-
-  .radios {
-    display: flex;
-    gap: 14px;
-    height: 30px;
-    align-items: center;
-  }
-
   .command {
     width: 250px;
   }
@@ -228,9 +223,13 @@
 
   .options {
     margin-left: auto;
-    height: 30px;
+    height: 34px;
     display: flex;
     align-items: center;
+  }
+
+  .loop {
+    gap: 9px;
   }
 
   .error {

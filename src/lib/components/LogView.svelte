@@ -158,12 +158,12 @@
   }
 
   .res {
-    color: var(--ok);
-    font-weight: 500;
+    color: var(--text-3);
   }
 
   .err .res {
     color: var(--bad);
+    font-weight: 600;
   }
 
   .empty {

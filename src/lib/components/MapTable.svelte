@@ -91,9 +91,10 @@
 <div class="toolbar">
   <div class="title">
     <strong>{meta.vendor} {meta.model}</strong>
-    {#if meta.description}<span class="desc">{meta.description}</span>{/if}
+    {#if meta.description}<span class="desc" title={meta.description}
+        >{meta.description}</span
+      >{/if}
   </div>
-  <span class="spacer"></span>
   <span class="count">Reading {readCount} of {open.map.registers.length}</span>
   <button
     class="btn small"
@@ -282,13 +283,25 @@
     align-items: center;
     gap: 10px;
     padding-bottom: 10px;
-    flex-wrap: wrap;
   }
 
+  /* Title and description share the toolbar row; the description gives way */
   .title {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: baseline;
     gap: 10px;
+    white-space: nowrap;
+  }
+
+  .title strong {
+    flex: none;
+  }
+
+  .title .desc {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .title strong {
@@ -298,10 +311,6 @@
   .desc,
   .dim {
     color: var(--text-3);
-  }
-
-  .spacer {
-    flex: 1;
   }
 
   .search {
@@ -422,6 +431,7 @@
   .count {
     color: var(--text-2);
     font-size: 13px;
+    white-space: nowrap;
   }
 
   .area {
@@ -451,7 +461,11 @@
     font-size: 12px;
   }
 
-  .val {
+  th.val {
+    text-align: right;
+  }
+
+  td.val {
     text-align: right;
     font-size: 14px;
     font-weight: 600;

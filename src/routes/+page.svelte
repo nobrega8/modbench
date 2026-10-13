@@ -31,6 +31,9 @@
   });
 
   $effect(() => {
+    // After a page reload the backend may still be polling a device the UI no
+    // longer knows about: start from a clean state.
+    api.disconnect().catch(() => {});
     bench.refreshLibrary();
     api.startupFile().then((path) => {
       if (path) bench.openMap(path);

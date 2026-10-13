@@ -121,7 +121,7 @@
         {@const inLibrary = local.has(key(e.vendor, e.model))}
         {@const busy = pending.has(e.path)}
         <div class="row">
-          <VendorIcon vendor={e.vendor} website={e.vendor_website} size={32} />
+          <VendorIcon vendor={e.vendor} website={e.vendor_website} size={28} />
           <div class="text">
             <div class="title">
               <span class="model">{e.model}</span>
