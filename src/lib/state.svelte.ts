@@ -371,10 +371,24 @@ This writes to the device.`,
     const m = open.map.meta;
     const all = $state.snapshot(open.map.registers);
     const indexes = all.map((_, i) => i).filter((i) => !this.skipped.has(i));
+    const registers = indexes.map((i) => all[i]);
+    // Scale factors of read registers are read too, even when switched off.
+    const names = new Set(registers.map((r) => r.name));
+    const scale_registers = [];
+    for (const r of registers) {
+      const sf = r.scale_factor;
+      if (!sf || names.has(sf)) continue;
+      const target = all.find((x) => x.name === sf);
+      if (target) {
+        scale_registers.push(target);
+        names.add(sf);
+      }
+    }
     return {
       indexes,
       sentinels: $state.snapshot(m.sentinels),
-      registers: indexes.map((i) => all[i]),
+      registers,
+      scale_registers,
       byte_order: m.byte_order ?? "ABCD",
       byte_order_override: this.orderOverride,
       // Like a manual loop: Delay is the pause between every two requests.
@@ -429,10 +443,15 @@ This writes to the device.`,
     const temporary = !this.connected;
     if (temporary && !(await this.open())) throw new Error(this.status?.text);
     try {
+      const register = $state.snapshot(open.map.registers[index]);
+      const sf = register.scale_factor
+        ? open.map.registers.find((r) => r.name === register.scale_factor)
+        : undefined;
       await api.writeMapValue(
-        $state.snapshot(open.map.registers[index]),
+        register,
         open.map.meta.byte_order ?? "ABCD",
         value,
+        sf ? $state.snapshot(sf) : null,
       );
     } finally {
       if (temporary) await this.close();

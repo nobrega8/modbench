@@ -39,8 +39,18 @@ export const api = {
   stopPolling: () => invoke<void>("stop_polling"),
   pollMapOnce: (request: PollRequest) =>
     invoke<PollCycle>("poll_map_once", { request }),
-  writeMapValue: (register: Register, byteOrder: ByteOrder, value: Value) =>
-    invoke<void>("write_map_value", { register, byteOrder, value }),
+  writeMapValue: (
+    register: Register,
+    byteOrder: ByteOrder,
+    value: Value,
+    scaleRegister: Register | null,
+  ) =>
+    invoke<void>("write_map_value", {
+      register,
+      byteOrder,
+      value,
+      scaleRegister,
+    }),
   libraryFolder: () => invoke<string>("library_folder"),
   libraryList: () => invoke<LibraryEntry[]>("library_list"),
   libraryImport: (paths: string[]) =>

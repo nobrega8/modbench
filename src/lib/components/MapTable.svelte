@@ -56,7 +56,8 @@
     const wide = !["bool", "int16", "uint16"].includes(reg.type);
     const order =
       bench.orderOverride ?? reg.byte_order ?? meta.byte_order ?? "ABCD";
-    return wide ? `${reg.type} ${order}` : reg.type;
+    const base = wide ? `${reg.type} ${order}` : reg.type;
+    return reg.scale_factor ? `${base} ×10^SF` : base;
   }
 
   function edit(index: number) {
@@ -182,7 +183,12 @@
                 >{reg.group}</span
               >{/if}</td
           >
-          <td class="type mono">{typeLabel(reg)}</td>
+          <td
+            class="type mono"
+            title={reg.scale_factor
+              ? `Scaled by 10 to the power of ${reg.scale_factor}`
+              : undefined}>{typeLabel(reg)}</td
+          >
           <td class="val mono">
             {#if reg.access === "W"}<span class="dim">write only</span
               >{:else if r?.sentinel}<span

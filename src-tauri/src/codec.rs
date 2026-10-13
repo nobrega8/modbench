@@ -334,6 +334,21 @@ pub fn to_engineering(value: Value, scale: f64, offset: f64) -> Value {
     }
 }
 
+/// Applies a power-of-ten scale factor to an engineering value:
+/// `(value - offset) x 10^exp + offset`.
+pub fn apply_power_of_ten(value: Value, offset: f64, exp: i32) -> Value {
+    if exp == 0 {
+        return value;
+    }
+    let factor = 10f64.powi(exp);
+    match value {
+        Value::Int(v) => Value::Float((v as f64 - offset) * factor + offset),
+        Value::Uint(v) => Value::Float((v as f64 - offset) * factor + offset),
+        Value::Float(v) => Value::Float((v - offset) * factor + offset),
+        other => other,
+    }
+}
+
 /// Engineering value back to raw: `(value - offset) / scale`. Integer types
 /// are rounded later by [`encode`].
 pub fn from_engineering(value: Value, scale: f64, offset: f64) -> Value {

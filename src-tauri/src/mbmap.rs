@@ -132,6 +132,10 @@ pub struct Register {
     /// Register count, only for strings.
     pub length: Option<u16>,
     pub scale: f64,
+    /// Name of the register holding a power-of-ten exponent for this value
+    /// (SunSpec "scale factor"): value = raw x 10^sf x scale + offset.
+    #[serde(default)]
+    pub scale_factor: Option<String>,
     pub offset: f64,
     pub unit: String,
     pub access: Access,
@@ -172,6 +176,25 @@ pub struct DeviceMap {
     pub registers: Vec<Register>,
 }
 
+impl DeviceMap {
+    /// Scale factor registers that the `chosen` registers need but that are
+    /// not among them, each once.
+    pub fn scale_registers(&self, chosen: &[usize]) -> Vec<Register> {
+        let mut out: Vec<Register> = Vec::new();
+        for &i in chosen {
+            let Some(name) = self.registers[i].scale_factor.as_deref() else {
+                continue;
+            };
+            let have = chosen.iter().any(|&j| self.registers[j].name == name)
+                || out.iter().any(|r| r.name == name);
+            if !have && let Some(sf) = self.registers.iter().find(|r| r.name == name) {
+                out.push(sf.clone());
+            }
+        }
+        out
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Parsed {
     /// The map, if the file has no errors.
@@ -189,7 +212,7 @@ impl Parsed {
 
 const REQUIRED_META: [&str; 3] = ["mbmap", "vendor", "model"];
 const REQUIRED_COLUMNS: [&str; 4] = ["name", "area", "address", "type"];
-const KNOWN_COLUMNS: [&str; 15] = [
+const KNOWN_COLUMNS: [&str; 16] = [
     "name",
     "group",
     "area",
@@ -197,6 +220,7 @@ const KNOWN_COLUMNS: [&str; 15] = [
     "type",
     "length",
     "scale",
+    "scale_factor",
     "offset",
     "unit",
     "access",
@@ -758,6 +782,8 @@ pub fn parse(bytes: &[u8]) -> Parsed {
     // (area, start, end, line, name) for the overlap check
     let mut spans: Vec<(&'static str, i64, i64, usize, String)> = Vec::new();
     let mut registers = Vec::new();
+    // (line, register index) of rows that name a scale factor register
+    let mut scaled: Vec<(usize, usize)> = Vec::new();
 
     for (lineno, row, extra) in rows {
         let line = Some(lineno);
@@ -987,6 +1013,10 @@ pub fn parse(bytes: &[u8]) -> Parsed {
         if !register_bool && bits.is_none() {
             spans.push((area_name(area), wire, wire + count, lineno, name.clone()));
         }
+        let scale_factor = Some(cell("scale_factor").to_string()).filter(|s| !s.is_empty());
+        if scale_factor.is_some() {
+            scaled.push((lineno, registers.len()));
+        }
         registers.push(Register {
             name,
             group: cell("group").to_string(),
@@ -995,6 +1025,7 @@ pub fn parse(bytes: &[u8]) -> Parsed {
             ty,
             length,
             scale,
+            scale_factor,
             offset,
             unit: cell("unit").to_string(),
             access,
@@ -1006,6 +1037,41 @@ pub fn parse(bytes: &[u8]) -> Parsed {
             description: cell("description").to_string(),
             extra,
         });
+    }
+
+    // A scale factor names an integer register of the same map that does not
+    // itself depend on a scale factor.
+    for (lineno, i) in scaled {
+        let reg = &registers[i];
+        let target = reg.scale_factor.as_deref().unwrap_or_default();
+        let Some(sf) = registers.iter().find(|r| r.name == target) else {
+            ck.error(
+                Some(lineno),
+                "unknown-scale-factor",
+                format!("no register named {target:?} for the scale factor"),
+            );
+            continue;
+        };
+        let numeric = |t: DataType| !matches!(t, DataType::Bool | DataType::String);
+        let integer =
+            |t: DataType| numeric(t) && !matches!(t, DataType::Float32 | DataType::Float64);
+        let problem = if !numeric(reg.ty) {
+            Some(format!(
+                "{} values cannot have a scale factor",
+                type_name(reg.ty)
+            ))
+        } else if !integer(sf.ty) || sf.bits.is_some() {
+            Some(format!(
+                "scale factor {target:?} must be a whole integer register"
+            ))
+        } else if sf.scale_factor.is_some() {
+            Some(format!("scale factor {target:?} has a scale factor itself"))
+        } else {
+            None
+        };
+        if let Some(message) = problem {
+            ck.error(Some(lineno), "bad-scale-factor", message);
+        }
     }
 
     spans.sort();
@@ -1123,7 +1189,10 @@ pub fn to_string(map: &DeviceMap) -> String {
             }
         }
     }
-    let mut header: Vec<&str> = KNOWN_COLUMNS.to_vec();
+    // The scale_factor column is only written when a register uses it.
+    let with_sf = map.registers.iter().any(|r| r.scale_factor.is_some());
+    let keep = |col: &&str| with_sf || *col != "scale_factor";
+    let mut header: Vec<&str> = KNOWN_COLUMNS.iter().copied().filter(keep).collect();
     header.extend(&extra_cols);
     out.push('\n');
     out.push_str(&header.join(","));
@@ -1147,6 +1216,7 @@ pub fn to_string(map: &DeviceMap) -> String {
             } else {
                 fmt_number(r.scale)
             },
+            r.scale_factor.clone().unwrap_or_default(),
             if r.offset == 0.0 {
                 String::new()
             } else {
@@ -1160,6 +1230,9 @@ pub fn to_string(map: &DeviceMap) -> String {
             enum_text,
             r.description.clone(),
         ];
+        if !with_sf {
+            fields.remove(7);
+        }
         for col in &extra_cols {
             let value = r
                 .extra
@@ -1193,6 +1266,63 @@ mod tests {
             parsed.diagnostics
         );
         parsed.map.unwrap()
+    }
+
+    #[test]
+    fn scale_factors() {
+        let cols = "name,area,address,type,scale_factor
+";
+        let map = ok(&format!(
+            "{HEAD}{cols}W,holding,0,int16,W_SF
+W_SF,holding,1,int16,
+"
+        ));
+        assert_eq!(map.registers[0].scale_factor.as_deref(), Some("W_SF"));
+        assert_eq!(map.scale_registers(&[0]).len(), 1);
+        assert!(map.scale_registers(&[0, 1]).is_empty());
+        let text = to_string(&map);
+        assert!(text.contains("scale_factor"), "{text}");
+        assert_eq!(parse(text.as_bytes()).map.unwrap(), map);
+
+        let codes = |body: &str| {
+            parse(format!("{HEAD}{cols}{body}").as_bytes())
+                .errors()
+                .map(|d| d.code)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            codes(
+                "W,holding,0,int16,Nope
+"
+            ),
+            ["unknown-scale-factor"]
+        );
+        assert_eq!(
+            codes(
+                "W,holding,0,int16,F
+F,holding,1,float32,
+"
+            ),
+            ["bad-scale-factor"]
+        );
+        assert_eq!(
+            codes(
+                "S,coil,0,bool,F
+F,holding,1,int16,
+"
+            )
+            .iter()
+            .filter(|c| **c == "bad-scale-factor")
+            .count(),
+            1
+        );
+        // Without a scale factor the column is not written.
+        let plain = ok(&format!(
+            "{HEAD}name,area,address,type
+A,holding,0,int16
+"
+        ));
+        assert!(!to_string(&plain).contains("scale_factor"));
     }
 
     #[test]

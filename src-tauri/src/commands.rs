@@ -212,6 +212,7 @@ pub async fn write_map_value(
     register: Register,
     byte_order: ByteOrder,
     value: Value,
+    scale_register: Option<Register>,
 ) -> Result<(), ModbusError> {
     if !register.access.writable() {
         return Err(ModbusError::Invalid(format!(
@@ -228,10 +229,49 @@ pub async fn write_map_value(
         bit: register.bit,
         bits: register.bits,
     };
-    let raw = codec::from_engineering(value, register.scale, register.offset);
     let mut slot = state.session.lock().await;
     let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    // A value with a scale factor is converted with the factor the device
+    // reports right now.
+    let mut scale = register.scale;
+    if let Some(name) = &register.scale_factor {
+        let sf = scale_register.filter(|r| &r.name == name).ok_or_else(|| {
+            ModbusError::Invalid(format!("scale factor {name:?} is not in the map"))
+        })?;
+        let exp = read_exponent(session, &sf, byte_order).await?;
+        scale *= 10f64.powi(exp);
+    }
+    let raw = codec::from_engineering(value, scale, register.offset);
     write_typed(session, &target, &raw).await
+}
+
+/// Reads a scale factor register and returns its exponent.
+async fn read_exponent(
+    session: &mut Session,
+    sf: &Register,
+    byte_order: ByteOrder,
+) -> Result<i32, ModbusError> {
+    let RawData::Registers(words) = session.read(sf.area, sf.address, sf.count()).await? else {
+        return Err(ModbusError::Invalid(format!(
+            "{} is not a register",
+            sf.name
+        )));
+    };
+    let order = sf.byte_order.unwrap_or(byte_order);
+    let exp = match codec::decode(&words, sf.ty, order, None)
+        .map_err(|e| ModbusError::Invalid(e.to_string()))?
+    {
+        Value::Int(n) => n as f64,
+        Value::Uint(n) => n as f64,
+        _ => f64::NAN,
+    };
+    if !(-20.0..=20.0).contains(&exp) {
+        return Err(ModbusError::Invalid(format!(
+            "scale factor {:?} reads {exp}, not a usable exponent",
+            sf.name
+        )));
+    }
+    Ok(exp as i32)
 }
 
 /// Reads and checks a `.mbmap` file.

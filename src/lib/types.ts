@@ -70,6 +70,8 @@ export interface Register {
   type: DataType;
   length: number | null;
   scale: number;
+  /** Register holding a power-of-ten exponent for this value (SunSpec). */
+  scale_factor: string | null;
   offset: number;
   unit: string;
   access: Access;
@@ -116,6 +118,8 @@ export interface PollRequest {
   /** Map index of each register, echoed back in results. */
   indexes: number[];
   sentinels: [DataType, [number, string][]][];
+  /** Scale factor registers the request needs but does not report. */
+  scale_registers: Register[];
 }
 
 export interface PointResult {

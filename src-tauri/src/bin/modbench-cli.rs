@@ -369,6 +369,7 @@ async fn read_map(
         },
         indexes: wanted.clone(),
         sentinels: map.meta.sentinels.clone(),
+        scale_registers: map.scale_registers(&wanted),
     };
     let mut session = Session::connect(&cfg, None)
         .await

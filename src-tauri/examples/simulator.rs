@@ -144,7 +144,16 @@ fn refresh(map: &DeviceMap, memory: &Mutex<Memory>, t: f64, first: bool) {
             continue;
         }
         let order = r.byte_order(&map.meta);
-        let value = sample(r.ty, i, t);
+        // Scale factor registers hold a small fixed exponent (-2..0).
+        let is_factor = map
+            .registers
+            .iter()
+            .any(|x| x.scale_factor.as_deref() == Some(r.name.as_str()));
+        let value = if is_factor {
+            Value::Int(-((i % 3) as i64))
+        } else {
+            sample(r.ty, i, t)
+        };
         match (r.area, r.ty) {
             (Area::Coil | Area::Discrete, _) => {
                 if let Value::Bool(b) = value {

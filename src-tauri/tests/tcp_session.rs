@@ -207,6 +207,7 @@ fn register(name: &str, area: Area, address: u16, ty: DataType) -> modbench_lib:
         ty,
         length: None,
         scale: 1.0,
+        scale_factor: None,
         offset: 0.0,
         unit: String::new(),
         access: modbench_lib::mbmap::Access::R,
@@ -257,6 +258,7 @@ async fn poller_decodes_scales_and_retries_failed_blocks() {
         },
         indexes: Vec::new(),
         sentinels: Vec::new(),
+        scale_registers: Vec::new(),
     };
     let (mut results, requests) = poll_once(&mut s, &request).await;
     results.sort_by_key(|r| r.index);
@@ -314,6 +316,7 @@ async fn poller_flags_sentinels_unless_an_enum_names_the_value() {
         limits: PlanLimits::default(),
         indexes: Vec::new(),
         sentinels: vec![(DataType::Uint16, vec![(0xFFFF, "Unimplemented".into())])],
+        scale_registers: Vec::new(),
     };
     let (mut results, _) = poll_once(&mut s, &request).await;
     results.sort_by_key(|r| r.index);
@@ -321,4 +324,50 @@ async fn poller_flags_sentinels_unless_an_enum_names_the_value() {
     assert_eq!(results[1].sentinel, None);
     assert_eq!(results[2].sentinel, None);
     assert_eq!(results[2].value, Some(Value::Uint(230)));
+}
+
+#[tokio::test]
+async fn poller_applies_scale_factors_read_in_the_same_cycle() {
+    use modbench_lib::planner::PlanLimits;
+    use modbench_lib::poller::{PollRequest, poll_once};
+
+    let device = FakeDevice::default();
+    // W = 2345 with W_SF = -1; A = 12 with A_SF = 0x8000 (not implemented)
+    device
+        .holding
+        .lock()
+        .unwrap()
+        .extend([(0, 2345), (1, 0xFFFF), (2, 12), (3, 0x8000)]);
+    let mut s = Session::connect(&config(start_device(device).await), None)
+        .await
+        .unwrap();
+
+    let mut watts = register("W", Area::Holding, 0, DataType::Int16);
+    watts.scale_factor = Some("W_SF".into());
+    let mut amps = register("A", Area::Holding, 2, DataType::Uint16);
+    amps.scale_factor = Some("A_SF".into());
+    let request = PollRequest {
+        registers: vec![watts, amps],
+        byte_order: ByteOrder::ABCD,
+        byte_order_override: None,
+        interval_ms: 0,
+        delay_ms: 0,
+        limits: PlanLimits::default(),
+        indexes: Vec::new(),
+        sentinels: vec![(DataType::Int16, vec![(-32768, "Not implemented".into())])],
+        // The factors are read but not reported.
+        scale_registers: vec![
+            register("W_SF", Area::Holding, 1, DataType::Int16),
+            register("A_SF", Area::Holding, 3, DataType::Int16),
+        ],
+    };
+    let (mut results, _) = poll_once(&mut s, &request).await;
+    results.sort_by_key(|r| r.index);
+    assert_eq!(results.len(), 2);
+    let Some(Value::Float(w)) = results[0].value else {
+        panic!("{:?}", results[0]);
+    };
+    assert!((w - 234.5).abs() < 1e-9);
+    assert_eq!(results[1].value, None);
+    assert!(results[1].error.as_deref().unwrap().contains("A_SF"));
 }

@@ -1,5 +1,6 @@
 //! Reads every register of a map in a loop and reports decoded values.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -29,6 +30,10 @@ pub struct PollRequest {
     /// The map's sentinel tables, to flag reserved raw values.
     #[serde(default)]
     pub sentinels: Vec<(DataType, Vec<(i128, String)>)>,
+    /// Scale factor registers that `registers` need but do not include:
+    /// read to scale the others, never reported.
+    #[serde(default)]
+    pub scale_registers: Vec<Register>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -109,13 +114,16 @@ fn slice(data: &RawData, block: &Block, point: &Point) -> RawData {
 
 /// Runs one polling cycle over all readable registers.
 pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointResult>, usize) {
-    let readable: Vec<usize> = (0..req.registers.len())
-        .filter(|&i| req.registers[i].access.readable())
+    // The registers to report, then the scale factors only read for them.
+    let regs: Vec<&Register> = req.registers.iter().chain(&req.scale_registers).collect();
+    let reported = req.registers.len();
+    let readable: Vec<usize> = (0..regs.len())
+        .filter(|&i| regs[i].access.readable())
         .collect();
     let points: Vec<Point> = readable
         .iter()
         .map(|&i| {
-            let r = &req.registers[i];
+            let r = regs[i];
             Point {
                 area: r.area,
                 address: r.address,
@@ -125,17 +133,14 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
         .collect();
     let blocks = planner::plan(&points, req.limits);
     let delay = Duration::from_millis(req.delay_ms);
-
-    let mut results = Vec::with_capacity(points.len());
-    let mut requests = 0;
-    let mut finish = |pi: usize, mut r: PointResult| {
-        r.index = req
-            .indexes
-            .get(readable[pi])
-            .copied()
-            .unwrap_or(readable[pi]);
-        results.push(r);
+    let order_of = |reg: &Register| {
+        req.byte_order_override
+            .unwrap_or(reg.byte_order.unwrap_or(req.byte_order))
     };
+
+    // (position in `regs`, result)
+    let mut decoded: Vec<(usize, PointResult)> = Vec::with_capacity(points.len());
+    let mut requests = 0;
 
     for block in &blocks {
         if requests > 0 && !delay.is_zero() {
@@ -146,14 +151,14 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
         match outcome {
             Ok(data) => {
                 for &pi in &block.points {
-                    let reg = &req.registers[readable[pi]];
-                    let order = req
-                        .byte_order_override
-                        .unwrap_or(reg.byte_order.unwrap_or(req.byte_order));
-                    finish(
-                        pi,
-                        decode_point(reg, order, slice(&data, block, &points[pi]), &req.sentinels),
+                    let reg = regs[readable[pi]];
+                    let r = decode_point(
+                        reg,
+                        order_of(reg),
+                        slice(&data, block, &points[pi]),
+                        &req.sentinels,
                     );
+                    decoded.push((readable[pi], r));
                 }
             }
             // A merged block can fail because one address in it is not
@@ -165,36 +170,18 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
                         tokio::time::sleep(delay).await;
                     }
                     requests += 1;
-                    let reg = &req.registers[readable[pi]];
-                    let order = req
-                        .byte_order_override
-                        .unwrap_or(reg.byte_order.unwrap_or(req.byte_order));
+                    let reg = regs[readable[pi]];
                     let r = match session.read(p.area, p.address, p.count.max(1)).await {
-                        Ok(data) => decode_point(reg, order, data, &req.sentinels),
-                        Err(e) => PointResult {
-                            index: 0,
-                            value: None,
-                            raw: None,
-                            error: Some(e.to_string()),
-                            sentinel: None,
-                        },
+                        Ok(data) => decode_point(reg, order_of(reg), data, &req.sentinels),
+                        Err(e) => failed(e.to_string()),
                     };
-                    finish(pi, r);
+                    decoded.push((readable[pi], r));
                 }
             }
             Err(e) => {
                 let msg = e.to_string();
                 for &pi in &block.points {
-                    finish(
-                        pi,
-                        PointResult {
-                            index: 0,
-                            value: None,
-                            raw: None,
-                            error: Some(msg.clone()),
-                            sentinel: None,
-                        },
-                    );
+                    decoded.push((readable[pi], failed(msg.clone())));
                 }
                 // A dead link fails every block the same way; stop here.
                 if matches!(e, ModbusError::Io(_)) {
@@ -203,7 +190,81 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
             }
         }
     }
+
+    apply_scale_factors(&regs, &mut decoded);
+    let results = decoded
+        .into_iter()
+        .filter(|(pos, _)| *pos < reported)
+        .map(|(pos, mut r)| {
+            r.index = req.indexes.get(pos).copied().unwrap_or(pos);
+            r
+        })
+        .collect();
     (results, requests)
+}
+
+fn failed(error: String) -> PointResult {
+    PointResult {
+        index: 0,
+        value: None,
+        raw: None,
+        error: Some(error),
+        sentinel: None,
+    }
+}
+
+/// The exponent a scale factor register holds, if it was read and is usable.
+fn exponent(r: &PointResult) -> Option<i32> {
+    if r.error.is_some() || r.sentinel.is_some() {
+        return None;
+    }
+    let n = match r.value.as_ref()? {
+        Value::Int(n) => *n as f64,
+        Value::Uint(n) => *n as f64,
+        Value::Float(f) => f.round(),
+        _ => return None,
+    };
+    // SunSpec exponents stay within -10..10; anything else is not a factor.
+    (-20.0..=20.0).contains(&n).then_some(n as i32)
+}
+
+/// Multiplies each value that names a scale factor by 10^factor, read in the
+/// same cycle. Without a usable factor the value is reported as an error.
+fn apply_scale_factors(regs: &[&Register], decoded: &mut [(usize, PointResult)]) {
+    let wanted: Vec<&str> = regs
+        .iter()
+        .filter_map(|r| r.scale_factor.as_deref())
+        .collect();
+    if wanted.is_empty() {
+        return;
+    }
+    let mut factors: HashMap<&str, Option<i32>> = HashMap::new();
+    for (pos, r) in decoded.iter() {
+        let name = regs[*pos].name.as_str();
+        if wanted.contains(&name) {
+            factors.entry(name).or_insert_with(|| exponent(r));
+        }
+    }
+    for (pos, r) in decoded.iter_mut() {
+        let reg = regs[*pos];
+        let Some(name) = reg.scale_factor.as_deref() else {
+            continue;
+        };
+        if r.error.is_some() || r.sentinel.is_some() {
+            continue;
+        }
+        match factors.get(name).copied().flatten() {
+            Some(exp) => {
+                if let Some(v) = r.value.take() {
+                    r.value = Some(codec::apply_power_of_ten(v, reg.offset, exp));
+                }
+            }
+            None => {
+                r.value = None;
+                r.error = Some(format!("scale factor {name:?} could not be read"));
+            }
+        }
+    }
 }
 
 /// Polls until the task is aborted, calling `report` after every cycle.
