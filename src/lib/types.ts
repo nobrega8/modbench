@@ -74,6 +74,8 @@ export interface Register {
   access: Access;
   byte_order: ByteOrder | null;
   bit: number | null;
+  /** Width of a uint16 bit field starting at `bit`. */
+  bits: number | null;
   enum: [number, string][];
   enum_ref: string | null;
   description: string;

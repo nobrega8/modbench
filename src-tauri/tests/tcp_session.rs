@@ -212,6 +212,7 @@ fn register(name: &str, area: Area, address: u16, ty: DataType) -> modbench_lib:
         access: modbench_lib::mbmap::Access::R,
         byte_order: None,
         bit: None,
+        bits: None,
         enum_labels: Vec::new(),
         enum_ref: None,
         description: String::new(),

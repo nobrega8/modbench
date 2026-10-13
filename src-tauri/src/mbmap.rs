@@ -138,6 +138,8 @@ pub struct Register {
     pub byte_order: Option<ByteOrder>,
     /// Bit index, only for bool in input/holding registers.
     pub bit: Option<u8>,
+    /// Width of a `uint16` bit field starting at `bit`.
+    pub bits: Option<u8>,
     /// Labels for raw values, resolved from inline pairs or a named table.
     #[serde(rename = "enum")]
     pub enum_labels: Vec<(i64, String)>,
@@ -186,7 +188,7 @@ impl Parsed {
 
 const REQUIRED_META: [&str; 3] = ["mbmap", "vendor", "model"];
 const REQUIRED_COLUMNS: [&str; 4] = ["name", "area", "address", "type"];
-const KNOWN_COLUMNS: [&str; 14] = [
+const KNOWN_COLUMNS: [&str; 15] = [
     "name",
     "group",
     "area",
@@ -199,6 +201,7 @@ const KNOWN_COLUMNS: [&str; 14] = [
     "access",
     "byte_order",
     "bit",
+    "bits",
     "enum",
     "description",
 ];
@@ -778,8 +781,29 @@ pub fn parse(bytes: &[u8]) -> Parsed {
 
         let register_bool = ty == DataType::Bool && !area.is_bit();
         let mut bit = None;
+        let mut bits = None;
         let bit_text = cell("bit");
-        if register_bool {
+        let bits_text = cell("bits");
+        if !bits_text.is_empty() {
+            let width = decimal_in(bits_text, 1, 16);
+            if width.is_none() || ty != DataType::Uint16 || area.is_bit() || bit_text.is_empty() {
+                ck.error(
+                    line,
+                    "bad-bits",
+                    format!("invalid bit field: bits={bits_text:?}"),
+                );
+            } else if let Some(b) = decimal_in(bit_text, 0, 15) {
+                let w = width.unwrap_or(0);
+                if b + w > 16 {
+                    ck.error(line, "bad-bits", format!("bit {b} + bits {w} exceeds 16"));
+                } else {
+                    bit = Some(b as u8);
+                    bits = Some(w as u8);
+                }
+            } else {
+                ck.error(line, "bad-bit", format!("invalid bit {bit_text:?}"));
+            }
+        } else if register_bool {
             if bit_text.is_empty() {
                 ck.error(
                     line,
@@ -927,7 +951,8 @@ pub fn parse(bytes: &[u8]) -> Parsed {
         if ck.error_count() != errors_before {
             continue;
         }
-        if !register_bool {
+        // Bits and bit fields share their register with other rows.
+        if !register_bool && bits.is_none() {
             spans.push((area_name(area), wire, wire + count, lineno, name.clone()));
         }
         registers.push(Register {
@@ -943,6 +968,7 @@ pub fn parse(bytes: &[u8]) -> Parsed {
             access,
             byte_order,
             bit,
+            bits,
             enum_labels,
             enum_ref,
             description: cell("description").to_string(),
@@ -1096,6 +1122,7 @@ pub fn to_string(map: &DeviceMap) -> String {
             format!("{:?}", r.access),
             r.byte_order.map(|b| format!("{b:?}")).unwrap_or_default(),
             r.bit.map(|b| b.to_string()).unwrap_or_default(),
+            r.bits.map(|b| b.to_string()).unwrap_or_default(),
             enum_text,
             r.description.clone(),
         ];

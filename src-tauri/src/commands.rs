@@ -55,6 +55,9 @@ pub struct TypedAddress {
     pub length: Option<u16>,
     /// Bit index, only for bool in input/holding registers.
     pub bit: Option<u8>,
+    /// Width of a uint16 bit field starting at `bit`.
+    #[serde(default)]
+    pub bits: Option<u8>,
 }
 
 impl TypedAddress {
@@ -222,6 +225,7 @@ pub async fn write_map_value(
         byte_order: register.byte_order.unwrap_or(byte_order),
         length: register.length,
         bit: register.bit,
+        bits: register.bits,
     };
     let raw = codec::from_engineering(value, register.scale, register.offset);
     let mut slot = state.session.lock().await;
@@ -325,9 +329,12 @@ pub async fn read_typed(session: &mut Session, t: &TypedAddress) -> Result<Value
     let count = t.register_count()?;
     match session.read(t.area, t.address, count).await? {
         RawData::Bits(bits) => Ok(Value::Bool(bits.first().copied().unwrap_or(false))),
-        RawData::Registers(regs) => {
-            codec::decode(&regs, t.ty, t.byte_order, t.bit).map_err(codec_err)
-        }
+        RawData::Registers(regs) => match (t.bit, t.bits) {
+            (Some(bit), Some(width)) => Ok(Value::Uint(
+                codec::extract_field(regs[0], bit, width).into(),
+            )),
+            _ => codec::decode(&regs, t.ty, t.byte_order, t.bit).map_err(codec_err),
+        },
     }
 }
 
@@ -359,6 +366,22 @@ pub async fn write_typed(
             };
             let mask = 1u16 << bit;
             let word = if *on { regs[0] | mask } else { regs[0] & !mask };
+            session.write_registers(t.address, &[word]).await
+        }
+        (Area::Holding, DataType::Uint16) if t.bits.is_some() => {
+            // Change one bit field and keep the rest: read, modify, write.
+            let (bit, width) = (t.bit.unwrap_or(0), t.bits.unwrap_or(16));
+            let field = codec::encode(value, DataType::Uint16, ByteOrder::ABCD, None)
+                .map_err(codec_err)?[0];
+            if u32::from(field) >= 1u32 << width {
+                return Err(ModbusError::Invalid(format!(
+                    "{field} does not fit in {width} bits"
+                )));
+            }
+            let RawData::Registers(regs) = session.read(Area::Holding, t.address, 1).await? else {
+                unreachable!("holding registers return words");
+            };
+            let word = codec::insert_field(regs[0], bit, width, field);
             session.write_registers(t.address, &[word]).await
         }
         (Area::Holding, ty) => {

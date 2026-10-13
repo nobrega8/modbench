@@ -59,9 +59,12 @@ fn decode_point(
     data: RawData,
     sentinels: &[(DataType, Vec<(i128, String)>)],
 ) -> PointResult {
-    let raw_value = match &data {
-        RawData::Bits(bits) => Ok(Value::Bool(bits.first().copied().unwrap_or(false))),
-        RawData::Registers(words) => codec::decode(words, reg.ty, order, reg.bit),
+    let raw_value = match (&data, reg.bit, reg.bits) {
+        (RawData::Bits(bits), _, _) => Ok(Value::Bool(bits.first().copied().unwrap_or(false))),
+        (RawData::Registers(words), Some(bit), Some(width)) => Ok(Value::Uint(
+            codec::extract_field(words.first().copied().unwrap_or(0), bit, width).into(),
+        )),
+        (RawData::Registers(words), _, _) => codec::decode(words, reg.ty, order, reg.bit),
     };
     match raw_value {
         Ok(v) => {

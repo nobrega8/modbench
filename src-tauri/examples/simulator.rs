@@ -151,6 +151,12 @@ fn refresh(map: &DeviceMap, memory: &Mutex<Memory>, t: f64, first: bool) {
                     m.bits.insert((r.area, r.address), b);
                 }
             }
+            (_, DataType::Uint16) if r.bits.is_some() => {
+                let (bit, width) = (r.bit.unwrap_or(0), r.bits.unwrap_or(16));
+                let field = (i as u16 + (t as u16 / 5)) % (1u16 << width.min(15));
+                let w = m.words.entry((r.area, r.address)).or_insert(0);
+                *w = codec::insert_field(*w, bit, width, field);
+            }
             (_, DataType::Bool) => {
                 let (Value::Bool(b), Some(bit)) = (value, r.bit) else {
                     continue;

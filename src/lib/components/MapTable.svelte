@@ -49,6 +49,10 @@
   function typeLabel(reg: Register): string {
     if (reg.type === "string") return `string[${reg.length}]`;
     if (reg.type === "bool" && reg.bit !== null) return `bit ${reg.bit}`;
+    if (reg.bits !== null && reg.bit !== null)
+      return reg.bits === 1
+        ? `bit ${reg.bit}`
+        : `bits ${reg.bit}–${reg.bit + reg.bits - 1}`;
     const wide = !["bool", "int16", "uint16"].includes(reg.type);
     const order =
       bench.orderOverride ?? reg.byte_order ?? meta.byte_order ?? "ABCD";

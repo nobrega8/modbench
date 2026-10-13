@@ -305,6 +305,22 @@ pub fn encode(
     Ok(denormalize(&bytes, order))
 }
 
+/// Mask covering a bit field of `bits` bits starting at `bit`.
+pub fn field_mask(bit: u8, bits: u8) -> u16 {
+    (((1u32 << bits) - 1) << bit) as u16
+}
+
+/// Value of a bit field inside a register.
+pub fn extract_field(word: u16, bit: u8, bits: u8) -> u16 {
+    (word & field_mask(bit, bits)) >> bit
+}
+
+/// `word` with the bit field replaced by `value` (extra high bits dropped).
+pub fn insert_field(word: u16, bit: u8, bits: u8, value: u16) -> u16 {
+    let mask = field_mask(bit, bits);
+    (word & !mask) | ((value << bit) & mask)
+}
+
 /// Raw value to engineering value: `raw * scale + offset`.
 pub fn to_engineering(value: Value, scale: f64, offset: f64) -> Value {
     if scale == 1.0 && offset == 0.0 {
@@ -517,6 +533,16 @@ mod tests {
             encode(&Value::Float(41.6), DataType::Uint16, ABCD, None).unwrap(),
             [42]
         );
+    }
+
+    #[test]
+    fn bit_fields() {
+        assert_eq!(field_mask(12, 4), 0xF000);
+        assert_eq!(field_mask(0, 16), 0xFFFF);
+        assert_eq!(extract_field(0x2A51, 12, 4), 0x2);
+        assert_eq!(extract_field(0x2A51, 4, 4), 0x5);
+        assert_eq!(insert_field(0x2A51, 8, 4, 0x7), 0x2751);
+        assert_eq!(insert_field(0x0000, 0, 2, 0xF), 0x0003);
     }
 
     #[test]
