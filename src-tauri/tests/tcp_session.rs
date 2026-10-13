@@ -116,7 +116,7 @@ async fn reads_and_writes_registers() {
         .lock()
         .unwrap()
         .extend([(10, 0x42F6), (11, 0xE979)]);
-    let mut s = Session::connect(&config(start_device(device).await))
+    let mut s = Session::connect(&config(start_device(device).await), None)
         .await
         .unwrap();
 
@@ -145,7 +145,7 @@ async fn reads_and_writes_registers() {
 
 #[tokio::test]
 async fn coils_are_trimmed_to_the_requested_count() {
-    let mut s = Session::connect(&config(start_device(FakeDevice::default()).await))
+    let mut s = Session::connect(&config(start_device(FakeDevice::default()).await), None)
         .await
         .unwrap();
     s.write_coils(0, &[true, false, true]).await.unwrap();
@@ -158,7 +158,7 @@ async fn coils_are_trimmed_to_the_requested_count() {
 
 #[tokio::test]
 async fn device_exceptions_are_reported() {
-    let mut s = Session::connect(&config(start_device(FakeDevice::default()).await))
+    let mut s = Session::connect(&config(start_device(FakeDevice::default()).await), None)
         .await
         .unwrap();
     let err = s.read(Area::Holding, 99, 2).await.unwrap_err();
@@ -188,7 +188,7 @@ async fn connection_refused_is_an_io_error() {
         .unwrap()
         .local_addr()
         .unwrap();
-    let err = Session::connect(&config(addr))
+    let err = Session::connect(&config(addr), None)
         .await
         .err()
         .expect("should fail");
@@ -196,4 +196,78 @@ async fn connection_refused_is_an_io_error() {
         matches!(err, ModbusError::Io(_) | ModbusError::Timeout(_)),
         "{err}"
     );
+}
+
+fn register(name: &str, area: Area, address: u16, ty: DataType) -> modbench_lib::mbmap::Register {
+    modbench_lib::mbmap::Register {
+        name: name.into(),
+        group: String::new(),
+        area,
+        address,
+        ty,
+        length: None,
+        scale: 1.0,
+        offset: 0.0,
+        unit: String::new(),
+        access: modbench_lib::mbmap::Access::R,
+        byte_order: None,
+        bit: None,
+        enum_labels: Vec::new(),
+        description: String::new(),
+        extra: Vec::new(),
+    }
+}
+
+#[tokio::test]
+async fn poller_decodes_scales_and_retries_failed_blocks() {
+    use modbench_lib::planner::PlanLimits;
+    use modbench_lib::poller::{PollRequest, poll_once};
+
+    let device = FakeDevice::default();
+    device
+        .holding
+        .lock()
+        .unwrap()
+        .extend([(0, 0xE979), (1, 0x42F6), (2, 2305), (98, 7)]);
+    device.coils.lock().unwrap().insert(5, true);
+    let mut s = Session::connect(&config(start_device(device).await), None)
+        .await
+        .unwrap();
+
+    let mut temp = register("Temp", Area::Holding, 2, DataType::Int16);
+    temp.scale = 0.1;
+    let request = PollRequest {
+        registers: vec![
+            register("Power", Area::Holding, 0, DataType::Float32),
+            temp,
+            register("Ok", Area::Holding, 98, DataType::Uint16),
+            // Past the end of the fake device: exception 02.
+            register("Missing", Area::Holding, 100, DataType::Uint16),
+            register("Relay", Area::Coil, 5, DataType::Bool),
+        ],
+        byte_order: ByteOrder::CDAB,
+        byte_order_override: None,
+        interval_ms: 1000,
+        delay_ms: 0,
+        limits: PlanLimits {
+            max_gap: 1,
+            ..Default::default()
+        },
+    };
+    let (mut results, requests) = poll_once(&mut s, &request).await;
+    results.sort_by_key(|r| r.index);
+
+    let Some(Value::Float(power)) = results[0].value else {
+        panic!("{:?}", results[0]);
+    };
+    assert!((power - 123.456).abs() < 1e-4);
+    let Some(Value::Float(t)) = results[1].value else {
+        panic!("{:?}", results[1]);
+    };
+    assert!((t - 230.5).abs() < 1e-9);
+    assert_eq!(results[2].value, Some(Value::Uint(7)));
+    assert!(results[3].error.as_deref().unwrap().contains("0x02"));
+    assert_eq!(results[4].value, Some(Value::Bool(true)));
+    // holding 0-2, holding 98-100 (fails), 98 and 100 alone, coil 5
+    assert_eq!(requests, 5);
 }

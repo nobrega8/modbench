@@ -1,16 +1,44 @@
 //! Tauri commands exposed to the UI.
 
-use tauri::State;
+use std::sync::Arc;
+
+use tauri::async_runtime::JoinHandle;
+use tauri::{AppHandle, Emitter, State};
 use tokio::sync::Mutex;
 
 use crate::codec::{self, ByteOrder, DataType, Value};
-use crate::mbmap::{self, DeviceMap, Parsed};
+use crate::mbmap::{self, DeviceMap, Parsed, Register};
 use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
 use crate::planner::Area;
+use crate::poller::{self, PollCycle, PollRequest};
+use crate::tap::{Direction, RawSink};
+
+/// Bytes seen on the wire, sent to the UI as a `raw` event.
+#[derive(Debug, Clone, serde::Serialize)]
+struct RawChunk {
+    time_ms: u64,
+    direction: Direction,
+    bytes: Vec<u8>,
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64)
+}
 
 #[derive(Default)]
 pub struct AppState {
-    session: Mutex<Option<Session>>,
+    session: Arc<Mutex<Option<Session>>>,
+    poller: std::sync::Mutex<Option<JoinHandle<()>>>,
+}
+
+impl AppState {
+    fn stop_poller(&self) {
+        if let Some(handle) = self.poller.lock().unwrap().take() {
+            handle.abort();
+        }
+    }
 }
 
 /// Where a typed value lives and how it is encoded.
@@ -57,19 +85,37 @@ pub fn list_serial_ports() -> Result<Vec<String>, ModbusError> {
 
 #[tauri::command]
 pub async fn connect(
+    app: AppHandle,
     state: State<'_, AppState>,
     config: ConnectionConfig,
 ) -> Result<(), ModbusError> {
+    state.stop_poller();
     let mut slot = state.session.lock().await;
     if let Some(old) = slot.take() {
         let _ = old.disconnect().await;
     }
-    *slot = Some(Session::connect(&config).await?);
+    let raw_app = app.clone();
+    let raw: RawSink = Arc::new(move |direction, bytes: &[u8]| {
+        let _ = raw_app.emit(
+            "raw",
+            RawChunk {
+                time_ms: now_ms(),
+                direction,
+                bytes: bytes.to_vec(),
+            },
+        );
+    });
+    let mut session = Session::connect(&config, Some(raw)).await?;
+    session.set_logger(Arc::new(move |entry| {
+        let _ = app.emit("traffic", entry);
+    }));
+    *slot = Some(session);
     Ok(())
 }
 
 #[tauri::command]
 pub async fn disconnect(state: State<'_, AppState>) -> Result<(), ModbusError> {
+    state.stop_poller();
     match state.session.lock().await.take() {
         Some(session) => session.disconnect().await,
         None => Ok(()),
@@ -110,6 +156,78 @@ pub async fn write_coils(
     session.write_coils(address, &bits).await
 }
 
+/// Starts polling a map's registers; each cycle is emitted as a `poll`
+/// event. Replaces any polling already running.
+#[tauri::command]
+pub fn start_polling(app: AppHandle, state: State<'_, AppState>, request: PollRequest) {
+    state.stop_poller();
+    let session = state.session.clone();
+    let handle = tauri::async_runtime::spawn(async move {
+        poller::run(session, request, |cycle| match cycle {
+            Ok(c) => {
+                let _ = app.emit("poll", c);
+            }
+            Err(reason) => {
+                let _ = app.emit("poll-stopped", reason);
+            }
+        })
+        .await;
+    });
+    *state.poller.lock().unwrap() = Some(handle);
+}
+
+/// Reads every register of a map once.
+#[tauri::command]
+pub async fn poll_map_once(
+    state: State<'_, AppState>,
+    request: PollRequest,
+) -> Result<PollCycle, ModbusError> {
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    let started = std::time::Instant::now();
+    let (results, requests) = poller::poll_once(session, &request).await;
+    Ok(PollCycle {
+        cycle: 1,
+        duration_ms: started.elapsed().as_secs_f64() * 1000.0,
+        requests,
+        results,
+    })
+}
+
+#[tauri::command]
+pub fn stop_polling(state: State<'_, AppState>) {
+    state.stop_poller();
+}
+
+/// Writes an engineering value to a map register (scale and offset are
+/// undone before encoding).
+#[tauri::command]
+pub async fn write_map_value(
+    state: State<'_, AppState>,
+    register: Register,
+    byte_order: ByteOrder,
+    value: Value,
+) -> Result<(), ModbusError> {
+    if !register.access.writable() {
+        return Err(ModbusError::Invalid(format!(
+            "{} is read-only",
+            register.name
+        )));
+    }
+    let target = TypedAddress {
+        area: register.area,
+        address: register.address,
+        ty: register.ty,
+        byte_order: register.byte_order.unwrap_or(byte_order),
+        length: register.length,
+        bit: register.bit,
+    };
+    let raw = codec::from_engineering(value, register.scale, register.offset);
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    write_typed(session, &target, &raw).await
+}
+
 /// Reads and checks a `.mbmap` file.
 #[tauri::command]
 pub async fn open_map(path: String) -> Result<Parsed, ModbusError> {
@@ -121,6 +239,21 @@ pub async fn open_map(path: String) -> Result<Parsed, ModbusError> {
 #[tauri::command]
 pub async fn save_map(path: String, map: DeviceMap) -> Result<(), ModbusError> {
     tokio::fs::write(&path, mbmap::to_string(&map)).await?;
+    Ok(())
+}
+
+/// A `.mbmap` passed on the command line (e.g. by double-clicking a file).
+#[tauri::command]
+pub fn startup_file() -> Option<String> {
+    std::env::args()
+        .skip(1)
+        .find(|a| a.to_lowercase().ends_with(".mbmap"))
+}
+
+/// Writes text to a file chosen by the user (traffic log export).
+#[tauri::command]
+pub async fn save_text(path: String, text: String) -> Result<(), ModbusError> {
+    tokio::fs::write(&path, text).await?;
     Ok(())
 }
 

@@ -1,7 +1,8 @@
 //! Modbus master session over TCP or RTU.
 
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -11,6 +12,7 @@ use tokio_modbus::{ExceptionCode, Slave};
 use tokio_serial::SerialPortBuilderExt;
 
 use crate::planner::Area;
+use crate::tap::{RawSink, Tap};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Parity {
@@ -23,6 +25,12 @@ pub enum Parity {
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum Transport {
     Tcp {
+        host: String,
+        port: u16,
+    },
+    /// RTU frames over a TCP socket, as used by many serial-to-Ethernet
+    /// gateways ("Modbus over TCP").
+    RtuOverTcp {
         host: String,
         port: u16,
     },
@@ -109,6 +117,14 @@ impl From<tokio_modbus::Error> for ModbusError {
     }
 }
 
+fn resolve(host: &str, port: u16) -> Result<SocketAddr, ModbusError> {
+    (host, port)
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut addrs| addrs.next())
+        .ok_or_else(|| ModbusError::BadAddress(format!("{host}:{port}")))
+}
+
 /// Runs one Modbus call with a deadline and flattens its nested result.
 async fn with_timeout<T>(
     wait: Duration,
@@ -120,25 +136,49 @@ async fn with_timeout<T>(
         .map_err(|_| ModbusError::Timeout(ms))???)
 }
 
+/// One request as seen on the bus, for the traffic log.
+#[derive(Debug, Clone, Serialize)]
+pub struct TrafficEntry {
+    /// Unix time in milliseconds when the request started.
+    pub time_ms: u64,
+    pub function: u8,
+    pub address: u16,
+    pub count: u16,
+    pub duration_ms: f64,
+    pub error: Option<String>,
+}
+
+pub type TrafficLogger = Arc<dyn Fn(TrafficEntry) + Send + Sync>;
+
 pub struct Session {
     ctx: Context,
     timeout: Duration,
+    logger: Option<TrafficLogger>,
 }
 
 impl Session {
-    pub async fn connect(config: &ConnectionConfig) -> Result<Self, ModbusError> {
+    /// Opens the connection. `raw`, when given, receives every byte sent
+    /// and received.
+    pub async fn connect(
+        config: &ConnectionConfig,
+        raw: Option<RawSink>,
+    ) -> Result<Self, ModbusError> {
         let wait = Duration::from_millis(config.timeout_ms.max(1));
         let slave = Slave(config.unit_id);
         let ctx = match &config.transport {
             Transport::Tcp { host, port } => {
-                let addr: SocketAddr = (host.as_str(), *port)
-                    .to_socket_addrs()
-                    .map_err(|_| ModbusError::BadAddress(format!("{host}:{port}")))?
-                    .next()
-                    .ok_or_else(|| ModbusError::BadAddress(format!("{host}:{port}")))?;
-                timeout(wait, tcp::connect_slave(addr, slave))
+                let addr = resolve(host, *port)?;
+                let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
                     .await
-                    .map_err(|_| ModbusError::Timeout(config.timeout_ms))??
+                    .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
+                tcp::attach_slave(Tap::new(stream, raw), slave)
+            }
+            Transport::RtuOverTcp { host, port } => {
+                let addr = resolve(host, *port)?;
+                let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
+                    .await
+                    .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
+                rtu::attach_slave(Tap::new(stream, raw), slave)
             }
             Transport::Rtu {
                 port,
@@ -171,10 +211,41 @@ impl Session {
                             )));
                         }
                     });
-                rtu::attach_slave(builder.open_native_async()?, slave)
+                rtu::attach_slave(Tap::new(builder.open_native_async()?, raw), slave)
             }
         };
-        Ok(Self { ctx, timeout: wait })
+        Ok(Self {
+            ctx,
+            timeout: wait,
+            logger: None,
+        })
+    }
+
+    pub fn set_logger(&mut self, logger: TrafficLogger) {
+        self.logger = Some(logger);
+    }
+
+    fn log<T>(
+        &self,
+        function: u8,
+        address: u16,
+        count: u16,
+        started: (SystemTime, Instant),
+        result: &Result<T, ModbusError>,
+    ) {
+        if let Some(logger) = &self.logger {
+            logger(TrafficEntry {
+                time_ms: started
+                    .0
+                    .duration_since(UNIX_EPOCH)
+                    .map_or(0, |d| d.as_millis() as u64),
+                function,
+                address,
+                count,
+                duration_ms: started.1.elapsed().as_secs_f64() * 1000.0,
+                error: result.as_ref().err().map(ToString::to_string),
+            });
+        }
     }
 
     pub async fn read(
@@ -186,19 +257,30 @@ impl Session {
         if count == 0 {
             return Err(ModbusError::Invalid("count must be at least 1".into()));
         }
+        let started = (SystemTime::now(), Instant::now());
         let (ctx, wait) = (&mut self.ctx, self.timeout);
-        let mut data = match area {
-            Area::Coil => RawData::Bits(with_timeout(wait, ctx.read_coils(address, count)).await?),
-            Area::Discrete => {
-                RawData::Bits(with_timeout(wait, ctx.read_discrete_inputs(address, count)).await?)
-            }
-            Area::Input => RawData::Registers(
-                with_timeout(wait, ctx.read_input_registers(address, count)).await?,
-            ),
-            Area::Holding => RawData::Registers(
-                with_timeout(wait, ctx.read_holding_registers(address, count)).await?,
-            ),
+        let result = match area {
+            Area::Coil => with_timeout(wait, ctx.read_coils(address, count))
+                .await
+                .map(RawData::Bits),
+            Area::Discrete => with_timeout(wait, ctx.read_discrete_inputs(address, count))
+                .await
+                .map(RawData::Bits),
+            Area::Input => with_timeout(wait, ctx.read_input_registers(address, count))
+                .await
+                .map(RawData::Registers),
+            Area::Holding => with_timeout(wait, ctx.read_holding_registers(address, count))
+                .await
+                .map(RawData::Registers),
         };
+        let function = match area {
+            Area::Coil => 1,
+            Area::Discrete => 2,
+            Area::Holding => 3,
+            Area::Input => 4,
+        };
+        self.log(function, address, count, started, &result);
+        let mut data = result?;
         // Coil responses are padded to a whole byte; keep only what was asked.
         if let RawData::Bits(bits) = &mut data {
             bits.truncate(count as usize);
@@ -212,22 +294,40 @@ impl Session {
         address: u16,
         words: &[u16],
     ) -> Result<(), ModbusError> {
+        let started = (SystemTime::now(), Instant::now());
         let (ctx, wait) = (&mut self.ctx, self.timeout);
-        match words {
-            [] => Err(ModbusError::Invalid("nothing to write".into())),
-            [word] => with_timeout(wait, ctx.write_single_register(address, *word)).await,
-            _ => with_timeout(wait, ctx.write_multiple_registers(address, words)).await,
-        }
+        let (function, result) = match words {
+            [] => return Err(ModbusError::Invalid("nothing to write".into())),
+            [word] => (
+                6,
+                with_timeout(wait, ctx.write_single_register(address, *word)).await,
+            ),
+            _ => (
+                16,
+                with_timeout(wait, ctx.write_multiple_registers(address, words)).await,
+            ),
+        };
+        self.log(function, address, words.len() as u16, started, &result);
+        result
     }
 
     /// Writes coils: FC05 for a single coil, FC15 otherwise.
     pub async fn write_coils(&mut self, address: u16, bits: &[bool]) -> Result<(), ModbusError> {
+        let started = (SystemTime::now(), Instant::now());
         let (ctx, wait) = (&mut self.ctx, self.timeout);
-        match bits {
-            [] => Err(ModbusError::Invalid("nothing to write".into())),
-            [bit] => with_timeout(wait, ctx.write_single_coil(address, *bit)).await,
-            _ => with_timeout(wait, ctx.write_multiple_coils(address, bits)).await,
-        }
+        let (function, result) = match bits {
+            [] => return Err(ModbusError::Invalid("nothing to write".into())),
+            [bit] => (
+                5,
+                with_timeout(wait, ctx.write_single_coil(address, *bit)).await,
+            ),
+            _ => (
+                15,
+                with_timeout(wait, ctx.write_multiple_coils(address, bits)).await,
+            ),
+        };
+        self.log(function, address, bits.len() as u16, started, &result);
+        result
     }
 
     pub async fn disconnect(mut self) -> Result<(), ModbusError> {

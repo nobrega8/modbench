@@ -1,102 +1,127 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
+  import { api } from "$lib/api";
+  import ConnectionStep from "$lib/components/ConnectionStep.svelte";
+  import RequestStep from "$lib/components/RequestStep.svelte";
+  import TestStep from "$lib/components/TestStep.svelte";
+  import { bench } from "$lib/state.svelte";
+  import type { PollCycle, TrafficEntry } from "$lib/types";
 
-  let version = $state("");
+  interface RawChunk {
+    time_ms: number;
+    direction: "out" | "in";
+    bytes: number[];
+  }
 
   $effect(() => {
-    invoke<string>("app_version").then((v) => (version = v));
+    const stops = [
+      listen<TrafficEntry>("traffic", (e) => bench.onTraffic(e.payload)),
+      listen<RawChunk>("raw", (e) =>
+        bench.onRaw(e.payload.time_ms, e.payload.direction, e.payload.bytes),
+      ),
+      listen<PollCycle>("poll", (e) => bench.onPoll(e.payload)),
+      listen<string>("poll-stopped", (e) => bench.onPollStopped(e.payload)),
+    ];
+    return () => stops.forEach((p) => p.then((stop) => stop()));
   });
+
+  $effect(() => {
+    api.startupFile().then((path) => {
+      if (path) bench.openMap(path);
+    });
+  });
+
+  function fileName(path: string) {
+    return path.split(/[\\/]/).pop() ?? path;
+  }
 </script>
 
-<main class="shell">
-  <aside class="library">
-    <h2>Biblioteca</h2>
-    <p class="muted">Sem devices ainda.</p>
-  </aside>
-
-  <section class="workspace">
-    <header class="toolbar">
-      <strong>Modbench</strong>
-      {#if version}<span class="muted">v{version}</span>{/if}
-    </header>
-    <div class="empty">
-      <p>
-        Abre um ficheiro <code>.mbmap</code> ou escolhe um device da biblioteca.
-      </p>
-    </div>
-  </section>
-</main>
+<div class="app">
+  <ConnectionStep />
+  <RequestStep />
+  {#if bench.mapError}
+    <section class="map-error" role="alert">
+      <header>
+        <strong
+          >{fileName(bench.mapError.path)} has errors and was not opened.</strong
+        >
+        Fix these lines in the file, then open it again.
+        <button class="btn" onclick={() => (bench.mapError = null)}
+          >Dismiss</button
+        >
+      </header>
+      <ul>
+        {#each bench.mapError.diagnostics as d, i (i)}
+          <li class={d.severity}>
+            <span class="where"
+              >{d.line === null ? "file" : `line ${d.line}`}</span
+            >
+            <span>{d.message}</span>
+            <span class="code">{d.code}</span>
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+  <TestStep />
+</div>
 
 <style>
-  :global(:root) {
-    --bg: #f6f7f9;
-    --panel: #ffffff;
-    --border: #dfe3e8;
-    --text: #1d232b;
-    --muted: #6b7684;
-    font-family: Inter, "Segoe UI", system-ui, sans-serif;
-    font-size: 14px;
-    color: var(--text);
-    background: var(--bg);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :global(:root) {
-      --bg: #14171c;
-      --panel: #1b1f26;
-      --border: #2a303a;
-      --text: #e4e8ee;
-      --muted: #8b95a3;
-    }
-  }
-
-  :global(body) {
-    margin: 0;
-  }
-
-  .shell {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    height: 100vh;
-  }
-
-  .library {
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    padding: 12px 16px;
-  }
-
-  .library h2 {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    margin: 4px 0 12px;
-  }
-
-  .workspace {
+  .app {
     display: flex;
     flex-direction: column;
-    min-width: 0;
-  }
-
-  .toolbar {
-    display: flex;
     gap: 8px;
-    align-items: baseline;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--panel);
+    height: 100vh;
+    padding: 8px;
   }
 
-  .empty {
-    flex: 1;
+  .map-error {
+    border: 1px solid var(--bad);
+    border-radius: 8px;
+    background: var(--card);
+    max-height: 180px;
+    overflow: auto;
+  }
+
+  .map-error header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    color: var(--text-2);
+  }
+
+  .map-error header strong {
+    color: var(--bad);
+  }
+
+  .map-error header .btn {
+    margin-left: auto;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 12px 8px;
+  }
+
+  li {
     display: grid;
-    place-items: center;
-    color: var(--muted);
+    grid-template-columns: 70px 1fr auto;
+    gap: 10px;
+    padding: 3px 0;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
   }
 
-  .muted {
-    color: var(--muted);
+  .where,
+  .code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
+  li.error .where {
+    color: var(--bad);
   }
 </style>

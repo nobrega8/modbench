@@ -25,6 +25,15 @@ npm run tauri dev     # run the app in development mode
 npm run tauri build   # build installers (MSI/NSIS on Windows, deb/AppImage on Linux)
 ```
 
+To try the app without hardware, run the device simulator. It serves any `.mbmap` file over Modbus TCP, with values that change over time:
+
+```sh
+cd src-tauri
+cargo run --example simulator -- ../vendor/mbmap-library/examples/example-corp/em-100.mbmap 5020
+```
+
+Then connect Modbench to `127.0.0.1`, port `5020`. You can also pass a map to the app on start: `npm run tauri dev -- -- -- path/to/map.mbmap`.
+
 Checks (the same ones CI runs):
 
 ```sh
