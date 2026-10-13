@@ -29,7 +29,7 @@
     "targets": ["msi", "nsis", "deb", "appimage"],
     "category": "DeveloperTool",
     "shortDescription": "Modbus TCP/RTU client",
-    "longDescription": "Lightweight Modbus TCP/RTU client with device map (.mbm) files and a device library.",
+    "longDescription": "Lightweight Modbus TCP/RTU client with device map (.mbmap) files and a device library.",
     "licenseFile": "../LICENSE",
     "icon": [
       "icons/32x32.png",

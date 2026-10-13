@@ -1,5 +1,5 @@
 * text=auto eol=lf
-*.mbm text eol=lf
+*.mbmap text eol=lf
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf

@@ -21,7 +21,7 @@
     </header>
     <div class="empty">
       <p>
-        Abre um ficheiro <code>.mbm</code> ou escolhe um device da biblioteca.
+        Abre um ficheiro <code>.mbmap</code> ou escolhe um device da biblioteca.
       </p>
     </div>
   </section>

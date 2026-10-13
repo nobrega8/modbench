@@ -1,7 +1,7 @@
 {
   "name": "modbench",
   "version": "0.1.0",
-  "description": "Lightweight Modbus TCP/RTU client with device map (.mbm) support",
+  "description": "Lightweight Modbus TCP/RTU client with device map (.mbmap) support",
   "type": "module",
   "scripts": {
     "dev": "vite dev",

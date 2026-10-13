@@ -6,8 +6,8 @@ Cliente Modbus (TCP/RTU) leve e moderno para testar e ler devices, para Windows 
 
 ## Ideia
 
-- **Ficheiros `.mbm` (ModBus Map)**: um ficheiro de texto, baseado em CSV, que descreve um device (marca, modelo, parâmetros de ligação) e todos os seus registos. Ao abrir um `.mbm`, a lista de variáveis fica logo pronta a ler.
-- **Biblioteca de devices**: guarda uma coleção de mapas `.mbm` dentro da app.
+- **Ficheiros `.mbmap` (ModBus Map)**: um ficheiro de texto, baseado em CSV, que descreve um device (marca, modelo, parâmetros de ligação) e todos os seus registos. Ao abrir um `.mbmap`, a lista de variáveis fica logo pronta a ler.
+- **Biblioteca de devices**: guarda uma coleção de mapas `.mbmap` dentro da app.
 - **Ultra-leve**: Tauri 2 + Rust no core e Svelte na UI.
 
 ## Stack
