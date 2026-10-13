@@ -19,8 +19,8 @@ import type {
 } from "./types";
 
 export type TransportKind = "tcp" | "rtuovertcp" | "rtu";
-export type Tab =
-  "library" | "registers" | "map" | "write" | "raw" | "log" | "settings";
+export type Page = "main" | "library" | "settings";
+export type Tab = "registers" | "map" | "write" | "raw" | "log";
 
 export interface OpenMap {
   path: string;
@@ -116,6 +116,7 @@ class Bench {
   running = $state(false);
   connected = $state(false);
   status = $state<{ ok: boolean; text: string } | null>(null);
+  page = $state<Page>("main");
   tab = $state<Tab>("registers");
   counters = $state({ valid: 0, errors: 0, timeouts: 0 });
   read = $state.raw<{ address: number; data: RawData } | null>(null);
@@ -219,6 +220,7 @@ This writes to the device.`,
   }
 
   selectMap(index: number) {
+    this.page = "main";
     this.activeMap = index;
     this.skipped = loadSkipped(this.maps[index]?.path);
     this.source = "map";

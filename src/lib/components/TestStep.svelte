@@ -1,16 +1,14 @@
 <script lang="ts">
   import { bench, type Tab } from "$lib/state.svelte";
   import Counter from "./Counter.svelte";
-  import LibraryView from "./LibraryView.svelte";
   import LogView from "./LogView.svelte";
   import MapTable from "./MapTable.svelte";
+  import MapWriteList from "./MapWriteList.svelte";
   import RawView from "./RawView.svelte";
   import RegisterGrid from "./RegisterGrid.svelte";
-  import SettingsView from "./SettingsView.svelte";
   import StepCard from "./StepCard.svelte";
   import WriteGrid from "./WriteGrid.svelte";
 
-  // Views of the running test on the left, app-level pages on the right.
   const tabs = $derived([
     ...(bench.source === "map" ? [{ id: "map", label: "Device map" }] : []),
     { id: "registers", label: "Read registers" },
@@ -20,13 +18,6 @@
       id: "log",
       label: `Log${bench.log.length ? ` (${bench.log.length})` : ""}`,
     },
-  ] as { id: Tab; label: string }[]);
-  const appTabs = $derived([
-    {
-      id: "library",
-      label: `Library${bench.library.length ? ` (${bench.library.length})` : ""}`,
-    },
-    { id: "settings", label: "Settings" },
   ] as { id: Tab; label: string }[]);
 
   const noPort = $derived(bench.transport === "rtu" && bench.serialPort === "");
@@ -128,21 +119,10 @@
         onclick={() => (bench.tab = t.id)}>{t.label}</button
       >
     {/each}
-    <span class="tab-gap"></span>
-    {#each appTabs as t (t.id)}
-      <button
-        role="tab"
-        aria-selected={bench.tab === t.id}
-        class:on={bench.tab === t.id}
-        onclick={() => (bench.tab = t.id)}>{t.label}</button
-      >
-    {/each}
   </div>
 
   <div class="panel" role="tabpanel">
-    {#if bench.tab === "library"}
-      <LibraryView />
-    {:else if bench.tab === "registers"}
+    {#if bench.tab === "registers"}
       <RegisterGrid />
     {:else if bench.tab === "map"}
       {#if bench.map}
@@ -154,11 +134,13 @@
         </p>
       {/if}
     {:else if bench.tab === "write"}
-      <WriteGrid />
+      {#if bench.source === "map" && bench.map}
+        {#key bench.map.path}<MapWriteList open={bench.map} />{/key}
+      {:else}
+        <WriteGrid />
+      {/if}
     {:else if bench.tab === "raw"}
       <RawView />
-    {:else if bench.tab === "settings"}
-      <SettingsView />
     {:else}
       <LogView />
     {/if}
@@ -266,10 +248,6 @@
     gap: 2px;
     margin: 12px 0 0;
     border-bottom: 1px solid var(--border);
-  }
-
-  .tab-gap {
-    flex: 1;
   }
 
   .tabs button {

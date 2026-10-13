@@ -5,7 +5,9 @@
   import RequestStep from "$lib/components/RequestStep.svelte";
   import TestStep from "$lib/components/TestStep.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
-  import { bench } from "$lib/state.svelte";
+  import LibraryView from "$lib/components/LibraryView.svelte";
+  import SettingsView from "$lib/components/SettingsView.svelte";
+  import { bench, type Page } from "$lib/state.svelte";
   import type { PollCycle, TrafficEntry } from "$lib/types";
 
   interface RawChunk {
@@ -34,43 +36,130 @@
     });
   });
 
+  const pages = $derived([
+    { id: "main", label: "Main" },
+    {
+      id: "library",
+      label: `Library${bench.library.length ? ` (${bench.library.length})` : ""}`,
+    },
+    { id: "settings", label: "Settings" },
+  ] as { id: Page; label: string }[]);
+
   function fileName(path: string) {
     return path.split(/[\\/]/).pop() ?? path;
   }
 </script>
 
 <div class="app">
+  <nav class="topbar" aria-label="Pages">
+    <span class="brand"
+      ><img src="/favicon.png" alt="" width="20" height="20" />Modbench</span
+    >
+    {#each pages as p (p.id)}
+      <button
+        class:on={bench.page === p.id}
+        aria-current={bench.page === p.id ? "page" : undefined}
+        onclick={() => (bench.page = p.id)}>{p.label}</button
+      >
+    {/each}
+  </nav>
   <UpdateBanner />
-  <ConnectionStep />
-  <RequestStep />
-  {#if bench.mapError}
-    <section class="map-error" role="alert">
-      <header>
-        <strong
-          >{fileName(bench.mapError.path)} has errors and was not opened.</strong
-        >
-        Fix these lines in the file, then open it again.
-        <button class="btn" onclick={() => (bench.mapError = null)}
-          >Dismiss</button
-        >
-      </header>
-      <ul>
-        {#each bench.mapError.diagnostics as d, i (i)}
-          <li class={d.severity}>
-            <span class="where"
-              >{d.line === null ? "file" : `line ${d.line}`}</span
-            >
-            <span>{d.message}</span>
-            <span class="code">{d.code}</span>
-          </li>
-        {/each}
-      </ul>
-    </section>
+  {#if bench.page === "library"}
+    <section class="page"><LibraryView /></section>
+  {:else if bench.page === "settings"}
+    <section class="page"><SettingsView /></section>
+  {:else}
+    <ConnectionStep />
+    <RequestStep />
+    {#if bench.mapError}
+      <section class="map-error" role="alert">
+        <header>
+          <strong
+            >{fileName(bench.mapError.path)} has errors and was not opened.</strong
+          >
+          Fix these lines in the file, then open it again.
+          <button class="btn" onclick={() => (bench.mapError = null)}
+            >Dismiss</button
+          >
+        </header>
+        <ul>
+          {#each bench.mapError.diagnostics as d, i (i)}
+            <li class={d.severity}>
+              <span class="where"
+                >{d.line === null ? "file" : `line ${d.line}`}</span
+              >
+              <span>{d.message}</span>
+              <span class="code">{d.code}</span>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {/if}
+    <TestStep />
   {/if}
-  <TestStep />
 </div>
 
 <style>
+  .topbar {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    margin: -8px -8px 0;
+    padding: 0 12px;
+    height: 40px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 18px;
+    font-weight: 600;
+  }
+
+  .topbar button {
+    position: relative;
+    border: 0;
+    background: none;
+    padding: 0 14px;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+  }
+
+  .topbar button:hover {
+    color: var(--text);
+  }
+
+  .topbar button.on {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .topbar button.on::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 0;
+    height: 3px;
+    border-radius: 2px 2px 0 0;
+    background: var(--accent);
+  }
+
+  .page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
   .app {
     display: flex;
     flex-direction: column;
