@@ -1,37 +1,37 @@
 # Modbench
 
-Cliente Modbus (TCP/RTU) leve e moderno para testar e ler devices, para Windows e Linux.
+A lightweight, modern Modbus TCP/RTU client for testing and reading devices on Windows and Linux.
 
-> 🚧 Em desenvolvimento inicial.
+> 🚧 Early development.
 
-## Ideia
+## Features
 
-- **Ficheiros `.mbmap` (ModBus Map)**: um ficheiro de texto, baseado em CSV, que descreve um device (marca, modelo, parâmetros de ligação) e todos os seus registos. Ao abrir um `.mbmap`, a lista de variáveis fica logo pronta a ler.
-- **Biblioteca de devices**: guarda uma coleção de mapas `.mbmap` dentro da app.
-- **Ultra-leve**: Tauri 2 + Rust no core e Svelte na UI.
+- **`.mbmap` device maps**: plain-text, CSV-based files that describe a device (vendor, model, connection defaults) and all of its registers. Open a `.mbmap` and the device's variables are ready to read, already named, scaled and typed. The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts community-shared maps.
+- **Device library**: keep a collection of `.mbmap` maps inside the app.
+- **Lightweight**: Tauri 2 with a Rust core and a Svelte UI.
 
 ## Stack
 
 - [Tauri 2](https://tauri.app) · Rust (`tokio-modbus`, `tokio-serial`)
 - Svelte 5 + TypeScript + Vite
 
-## Licença
+## Development
 
-[MIT](LICENSE)
-
-## Desenvolvimento
-
-Requisitos: [Rust](https://rustup.rs) (stable), Node.js 22+ e os [pré-requisitos do Tauri](https://tauri.app/start/prerequisites/) para o teu SO.
+Requirements: [Rust](https://rustup.rs) (stable), Node.js 22+ and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS.
 
 ```sh
 npm install
-npm run tauri dev     # app em modo desenvolvimento
-npm run tauri build   # instaladores (MSI/NSIS no Windows, deb/AppImage no Linux)
+npm run tauri dev     # run the app in development mode
+npm run tauri build   # build installers (MSI/NSIS on Windows, deb/AppImage on Linux)
 ```
 
-Verificações (as mesmas da CI):
+Checks (the same ones CI runs):
 
 ```sh
 npm run format:check && npm run check
 cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
+
+## License
+
+[MIT](LICENSE)

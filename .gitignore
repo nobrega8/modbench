@@ -16,7 +16,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# --- Secrets & local config (NUNCA commitar) ---
+# --- Secrets & local config (never commit) ---
 .env
 .env.*
 !.env.example
@@ -27,11 +27,11 @@ pnpm-debug.log*
 *.keystore
 *.secret
 secrets/
-# chaves de assinatura do updater Tauri
+# Tauri updater signing keys
 *.tauri.key
 tauri.key*
 
-# --- Ferramentas locais ---
+# --- Local tooling ---
 .claude/settings.local.json
 CLAUDE.local.md
 .vscode/*
@@ -40,12 +40,12 @@ CLAUDE.local.md
 .idea/
 *.swp
 
-# --- SO ---
+# --- OS ---
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# --- Logs / capturas locais ---
+# --- Local logs / captures ---
 *.log
 captures/
 
@@ -54,6 +54,6 @@ captures/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# --- Notas de planeamento locais (não publicar) ---
+# --- Local planning notes (not published) ---
 PLAN.md
 idea.md
