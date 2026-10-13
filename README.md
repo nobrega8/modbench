@@ -41,6 +41,25 @@ npm run format:check && npm run check
 cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
+## Command line and MCP
+
+`modbench-cli` reads devices without the UI. It is read-only: it never writes to a device.
+
+```sh
+cd src-tauri
+cargo run --bin modbench-cli -- ports
+cargo run --bin modbench-cli -- read --tcp 192.168.1.10 holding 0x0405 1
+cargo run --bin modbench-cli -- read --rtu COM3 --baud 9600 --stop-bits 2 --unit 18 holding 1029 4
+cargo run --bin modbench-cli -- map --rtu COM3 --unit 18 path/to/device.mbmap --filter voltage
+cargo run --bin modbench-cli -- validate path/to/device.mbmap
+```
+
+Settings not given on the command line come from the map (`@baudrate`, `@parity`, `@unit_id`…), then from defaults. Add `--json` to `read` and `map` for machine-readable output.
+
+`modbench-cli mcp` runs the same operations as an [MCP](https://modelcontextprotocol.io) server over stdio (`list_serial_ports`, `read_registers`, `read_map`, `validate_map`). `.mcp.json` registers it for this project, so MCP clients such as Claude Code can use it.
+
+A serial port can only be open in one program at a time: stop reading in the app before using the CLI on the same port.
+
 ## Releases and updates
 
 Modbench checks GitHub Releases for a newer version when it starts and offers to install it. Updates are signed; the app only installs packages signed with the project's updater key.

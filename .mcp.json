@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "modbench": {
+      "command": "cargo",
+      "args": [
+        "run",
+        "-q",
+        "--manifest-path",
+        "src-tauri/Cargo.toml",
+        "--bin",
+        "modbench-cli",
+        "--",
+        "mcp"
+      ]
+    }
+  }
+}
