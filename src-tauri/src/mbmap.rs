@@ -982,7 +982,8 @@ pub fn parse(bytes: &[u8]) -> Parsed {
         if let Some((_, _, _, first_line, first_name)) = spans[..i]
             .iter()
             .rev()
-            .find(|(a, _, end, _, _)| *a == area && start < *end)
+            // Rows starting at the same address are alternative readings.
+            .find(|(a, s, end, _, _)| *a == area && *s != start && start < *end)
         {
             ck.warn(
                 Some(lineno),

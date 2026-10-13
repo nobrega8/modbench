@@ -121,14 +121,20 @@
 </div>
 
 {#if open.warnings.length}
-  <p class="warnings">
-    The map file has {open.warnings.length} warning{open.warnings.length === 1
-      ? ""
-      : "s"}:
-    {open.warnings
-      .map((w) => (w.line ? `line ${w.line}: ${w.message}` : w.message))
-      .join("; ")}.
-  </p>
+  <details class="warnings">
+    <summary
+      >{open.warnings.length} warning{open.warnings.length === 1 ? "" : "s"} in the
+      map file</summary
+    >
+    <ul>
+      {#each open.warnings as w, k (k)}
+        <li>
+          <span class="where">{w.line ? `line ${w.line}` : "file"}</span>
+          {w.message}
+        </li>
+      {/each}
+    </ul>
+  </details>
 {/if}
 
 <div class="table-wrap">
@@ -304,8 +310,32 @@
 
   .warnings {
     margin: 0 0 8px;
-    color: var(--warn);
     font-size: 13px;
+  }
+
+  .warnings summary {
+    width: fit-content;
+    color: var(--warn);
+    cursor: pointer;
+  }
+
+  .warnings ul {
+    margin: 6px 0 0;
+    padding: 6px 10px;
+    list-style: none;
+    max-height: 120px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-2);
+  }
+
+  .warnings .where {
+    display: inline-block;
+    min-width: 64px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-3);
   }
 
   .table-wrap {
