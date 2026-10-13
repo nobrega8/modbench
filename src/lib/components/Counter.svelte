@@ -77,6 +77,7 @@
     padding: 0 9px;
     border-radius: 4px;
     background: var(--lcd);
+    border: 1px solid var(--border);
     font-family: var(--mono);
     font-size: 17px;
     font-weight: 600;

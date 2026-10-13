@@ -39,54 +39,55 @@
   background: var(--window);
 }
 
-/* Dark theme: follows the system unless Settings forces light or dark */
+/* Dark theme (OLED: true black surfaces): follows the system unless
+   Settings forces light or dark */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --window: #202020;
-    --card: #2b2b2b;
-    --subtle: #262626;
-    --field: #1f1f1f;
-    --border: #3a3a3a;
-    --border-strong: #4a4a4a;
-    --field-line: #9a9a9a;
-    --text: #f3f3f3;
-    --text-2: #c5c5c5;
-    --text-3: #9a9a9a;
+    --window: #000000;
+    --card: #000000;
+    --subtle: #0b0b0c;
+    --field: #0e0e10;
+    --border: #1d1d20;
+    --border-strong: #2c2c31;
+    --field-line: #6b6b73;
+    --text: #f2f2f3;
+    --text-2: #a8a8ae;
+    --text-3: #75757c;
     --accent: #4cc2ff;
-    --accent-hover: #6fceff;
-    --accent-soft: #1d3346;
-    --on-accent: #0b1a26;
-    --cell: #273443;
-    --changed: #4d4214;
-    --ok: #6ccb5f;
+    --accent-hover: #7ad3ff;
+    --accent-soft: #0b2231;
+    --on-accent: #001522;
+    --cell: #0d1620;
+    --changed: #3a3110;
+    --ok: #5fd068;
     --bad: #ff6b5e;
     --warn: #f5c84b;
-    --lcd: #121212;
+    --lcd: #050505;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --window: #202020;
-  --card: #2b2b2b;
-  --subtle: #262626;
-  --field: #1f1f1f;
-  --border: #3a3a3a;
-  --border-strong: #4a4a4a;
-  --field-line: #9a9a9a;
-  --text: #f3f3f3;
-  --text-2: #c5c5c5;
-  --text-3: #9a9a9a;
+  --window: #000000;
+  --card: #000000;
+  --subtle: #0b0b0c;
+  --field: #0e0e10;
+  --border: #1d1d20;
+  --border-strong: #2c2c31;
+  --field-line: #6b6b73;
+  --text: #f2f2f3;
+  --text-2: #a8a8ae;
+  --text-3: #75757c;
   --accent: #4cc2ff;
-  --accent-hover: #6fceff;
-  --accent-soft: #1d3346;
-  --on-accent: #0b1a26;
-  --cell: #273443;
-  --changed: #4d4214;
-  --ok: #6ccb5f;
+  --accent-hover: #7ad3ff;
+  --accent-soft: #0b2231;
+  --on-accent: #001522;
+  --cell: #0d1620;
+  --changed: #3a3110;
+  --ok: #5fd068;
   --bad: #ff6b5e;
   --warn: #f5c84b;
-  --lcd: #121212;
+  --lcd: #050505;
   color-scheme: dark;
 }
 

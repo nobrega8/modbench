@@ -48,7 +48,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Modbench ${{ github.ref_name }}
-          releaseBody: See the changes since the previous release below.
+          releaseBody: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux. Installed copies update themselves from here."
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true

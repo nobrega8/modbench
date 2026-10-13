@@ -1,14 +1,31 @@
+<p align="center"><img src="assets/icon.svg" width="112" alt=""></p>
+
 # Modbench
 
-A lightweight, modern Modbus TCP/RTU client for testing and reading devices on Windows and Linux.
+A lightweight Modbus TCP/RTU client for Windows and Linux. Test any address by hand, like a classic Modbus tester, or open a device map and read every register by name, already scaled, with units and labels.
 
-> 🚧 Early development.
+## Download
+
+Get the latest installer from [Releases](https://github.com/nobrega8/modbench/releases/latest):
+
+| System | File |
+|---|---|
+| Windows 10/11 | `Modbench_x.y.z_x64-setup.exe` (or the `.msi`) |
+| Linux | `Modbench_x.y.z_amd64.AppImage` (or the `.deb`) |
+
+Modbench checks for new versions when it starts and installs them when you choose to. On Linux, in-app updates work for the AppImage.
+
+On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod -aG dialout $USER`, then log in again.
 
 ## Features
 
-- **`.mbmap` device maps**: plain-text, CSV-based files that describe a device (vendor, model, connection defaults) and all of its registers. Open a `.mbmap` and the device's variables are ready to read, already named, scaled and typed. The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts community-shared maps.
-- **Device library**: keep a collection of `.mbmap` maps inside the app.
-- **Lightweight**: Tauri 2 with a Rust core and a Svelte UI.
+- **Three-step workflow**: connection (serial RTU, Modbus TCP or RTU over TCP), request (any function code, or a device map), test (Start/Stop, valid/error/timeout counters).
+- **Device maps (`.mbmap`)**: plain-text, CSV-based files that describe a device and all of its registers: types, byte order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps.
+- **Write from the map**: writable registers and control commands are listed with the right control for each type.
+- **Raw data**: the exact bytes sent and received, plus a request log you can save.
+- **Device library**: keep your maps in the app; double-click a `.mbmap` to open it.
+- **Command line and MCP**: `modbench-cli` reads devices without the UI (see below).
+- **Light and dark (OLED) themes**, small installers (about 2 MB), Rust core.
 
 ## Stack
 
