@@ -25,7 +25,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Raw data**: the exact bytes sent and received, plus a request log you can save.
 - **Device library**: keep your maps in the app; double-click a `.mbmap` to open it.
 - **Command line and MCP**: `modbench-cli` reads devices without the UI (see below).
-- **Light and dark (OLED) themes**, small installers (about 2 MB), Rust core.
+- **Light and dark (OLED) themes**, a Rust core and small installers (about 2 MB on Windows).
 
 ## Stack
 
