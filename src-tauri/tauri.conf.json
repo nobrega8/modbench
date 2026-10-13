@@ -26,7 +26,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis", "deb", "appimage"],
+    "targets": [
+      "msi",
+      "nsis",
+      "deb",
+      "appimage"
+    ],
     "category": "DeveloperTool",
     "shortDescription": "Modbus TCP/RTU client",
     "longDescription": "Lightweight Modbus TCP/RTU client with device map (.mbmap) files and a device library.",
@@ -37,6 +42,29 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": true,
+    "fileAssociations": [
+      {
+        "ext": [
+          "mbmap"
+        ],
+        "name": "Modbus Map",
+        "description": "Modbus device map",
+        "role": "Editor",
+        "mimeType": "text/x-mbmap"
+      }
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc1QTQzNjQyQjY0REQ2MTUKUldRVjFrMjJRamFrZFV2dytkdkdNTEJmbnh3U0tMT1RjWDNjaEFWL3VjUVA4UU13QVV3Z24yazUK",
+      "endpoints": [
+        "https://github.com/nobrega8/modbench/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

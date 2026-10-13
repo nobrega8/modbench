@@ -1,3 +1,5 @@
+use tauri::{Emitter, Manager};
+
 pub mod codec;
 mod commands;
 pub mod library;
@@ -10,7 +12,24 @@ pub mod tap;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Must be registered first: a second launch (e.g. double-clicking a
+        // .mbmap) hands its file to the running window and exits.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(path) = argv
+                .iter()
+                .skip(1)
+                .find(|a| a.to_lowercase().ends_with(".mbmap"))
+            {
+                let _ = app.emit("open-file", path);
+            }
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(commands::AppState::default())
         .invoke_handler(tauri::generate_handler![
             commands::app_version,

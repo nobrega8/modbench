@@ -41,6 +41,18 @@ npm run format:check && npm run check
 cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
+## Releases and updates
+
+Modbench checks GitHub Releases for a newer version when it starts and offers to install it. Updates are signed; the app only installs packages signed with the project's updater key.
+
+To publish a release:
+
+1. Bump `version` in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
+2. Commit, then push a tag: `git tag v0.2.0 && git push origin v0.2.0`.
+3. The `Release` workflow builds the Windows (MSI, NSIS) and Linux (AppImage, deb) installers, signs the update packages with the `TAURI_SIGNING_PRIVATE_KEY` secret and publishes them with `latest.json`.
+
+On Linux, in-app updates work for the AppImage; `.deb` installs are updated through the package manager.
+
 ## License
 
 [MIT](LICENSE)
