@@ -306,6 +306,7 @@ class Bench {
     const indexes = all.map((_, i) => i).filter((i) => !this.skipped.has(i));
     return {
       indexes,
+      sentinels: $state.snapshot(m.sentinels),
       registers: indexes.map((i) => all[i]),
       byte_order: m.byte_order ?? "ABCD",
       byte_order_override: this.orderOverride,

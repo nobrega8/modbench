@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::codec::{ByteOrder, DataType};
+use crate::codec::{ByteOrder, DataType, Value};
 use crate::modbus::Parity;
 use crate::planner::Area;
 
@@ -77,6 +77,8 @@ pub struct Meta {
     pub max_read_bits: Option<u16>,
     /// Named translation tables (`@enum_<name>`), in file order.
     pub enums: Vec<(String, Vec<(i64, String)>)>,
+    /// Sentinel tables (`@sentinel_<type>`): reserved raw values per type.
+    pub sentinels: Vec<(DataType, Vec<(i128, String)>)>,
     /// Keys this version does not know (e.g. `x_...`), kept in file order.
     pub extra: Vec<(String, String)>,
 }
@@ -230,6 +232,62 @@ fn decimal_in(text: &str, lo: i64, hi: i64) -> Option<i64> {
 
 fn parse_number(text: &str) -> Option<f64> {
     text.parse::<f64>().ok().filter(|f| f.is_finite())
+}
+
+/// Integer types that can have a sentinel table, with their raw range.
+fn sentinel_range(ty: DataType) -> Option<(i128, i128)> {
+    Some(match ty {
+        DataType::Int16 => (i16::MIN.into(), i16::MAX.into()),
+        DataType::Uint16 => (0, u16::MAX.into()),
+        DataType::Int32 => (i32::MIN.into(), i32::MAX.into()),
+        DataType::Uint32 => (0, u32::MAX.into()),
+        DataType::Int64 => (i64::MIN.into(), i64::MAX.into()),
+        DataType::Uint64 => (0, u64::MAX.into()),
+        _ => return None,
+    })
+}
+
+/// `value=label|…` pairs whose values fit the type.
+fn parse_sentinels(ty: DataType, text: &str) -> Option<Vec<(i128, String)>> {
+    let (lo, hi) = sentinel_range(ty)?;
+    text.split('|')
+        .map(|pair| {
+            let (value, label) = pair.split_once('=')?;
+            let value = value.trim();
+            let n = match value.get(..2) {
+                Some("0x" | "0X") => i128::from_str_radix(&value[2..], 16).ok()?,
+                _ => {
+                    let digits = value.strip_prefix(['+', '-']).unwrap_or(value);
+                    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                        return None;
+                    }
+                    value.parse().ok()?
+                }
+            };
+            let label = label.trim();
+            ((lo..=hi).contains(&n) && !label.is_empty()).then(|| (n, label.to_string()))
+        })
+        .collect()
+}
+
+/// Label of a sentinel matching a raw (unscaled) value of type `ty`.
+pub fn find_sentinel<'a>(
+    tables: &'a [(DataType, Vec<(i128, String)>)],
+    ty: DataType,
+    raw: &Value,
+) -> Option<&'a str> {
+    let n: i128 = match raw {
+        Value::Int(v) => (*v).into(),
+        Value::Uint(v) => (*v).into(),
+        _ => return None,
+    };
+    tables
+        .iter()
+        .find(|(t, _)| *t == ty)?
+        .1
+        .iter()
+        .find(|(v, _)| *v == n)
+        .map(|(_, l)| l.as_str())
 }
 
 fn parse_enum(text: &str) -> Option<Vec<(i64, String)>> {
@@ -514,7 +572,20 @@ pub fn parse(bytes: &[u8]) -> Parsed {
                         );
                     } else {
                         seen_meta.push(key.to_string());
-                        if let Some(name) = key.strip_prefix("enum_").filter(|n| !n.is_empty()) {
+                        if let Some(type_name) = key.strip_prefix("sentinel_") {
+                            match parse_type(type_name)
+                                .and_then(|ty| parse_sentinels(ty, value).map(|t| (ty, t)))
+                            {
+                                Some(table) => meta.sentinels.push(table),
+                                None => ck.error(
+                                    Some(lineno),
+                                    "bad-sentinel",
+                                    format!("invalid sentinel table @{key}"),
+                                ),
+                            }
+                        } else if let Some(name) =
+                            key.strip_prefix("enum_").filter(|n| !n.is_empty())
+                        {
                             match parse_enum(value) {
                                 Some(labels) => meta.enums.push((name.to_string(), labels)),
                                 None => {
@@ -963,6 +1034,20 @@ pub fn to_string(map: &DeviceMap) -> String {
         m.max_read_registers.map(|v| v.to_string()),
     );
     meta("max_read_bits", m.max_read_bits.map(|v| v.to_string()));
+    for (ty, table) in &m.sentinels {
+        let pairs = table
+            .iter()
+            .map(|(v, l)| {
+                if *v < 0 {
+                    format!("{v}={l}")
+                } else {
+                    format!("0x{v:X}={l}")
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("|");
+        meta(&format!("sentinel_{}", type_name(*ty)), Some(pairs));
+    }
     for (name, labels) in &m.enums {
         meta(&format!("enum_{name}"), Some(enum_pairs(labels)));
     }

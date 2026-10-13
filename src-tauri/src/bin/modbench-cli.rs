@@ -368,6 +368,7 @@ async fn read_map(
             max_gap: 0,
         },
         indexes: wanted.clone(),
+        sentinels: map.meta.sentinels.clone(),
     };
     let mut session = Session::connect(&cfg, None)
         .await
@@ -384,7 +385,10 @@ async fn read_map(
                 group: reg.group.clone(),
                 address: reg.address,
                 ty: format!("{:?}", reg.ty).to_lowercase(),
-                value: r.value.as_ref().map(|v| format_value(reg, v)),
+                value: match &r.sentinel {
+                    Some(label) => Some(format!("n/a ({label})")),
+                    None => r.value.as_ref().map(|v| format_value(reg, v)),
+                },
                 unit: reg.unit.clone(),
                 raw: r.raw.as_ref().map(format_raw),
                 error: r.error,
@@ -405,6 +409,7 @@ fn map_text(where_: &str, path: &str, rows: &[MapRow]) -> String {
     for r in rows {
         let value = match (&r.value, &r.error) {
             (_, Some(e)) => format!("ERROR {e}"),
+            (Some(v), None) if v.starts_with("n/a") => v.clone(),
             (Some(v), None) => format!("{v} {}", r.unit).trim_end().to_string(),
             (None, None) => "-".into(),
         };

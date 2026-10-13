@@ -173,9 +173,13 @@
           <td class="type mono">{typeLabel(reg)}</td>
           <td class="val mono">
             {#if reg.access === "W"}<span class="dim">write only</span
+              >{:else if r?.sentinel}<span
+                class="sentinel"
+                title="The device returned a reserved value: {r.sentinel}"
+                >{r.sentinel}</span
               >{:else}{formatValue(reg, r?.value ?? null)}{/if}
           </td>
-          <td class="unit">{reg.unit}</td>
+          <td class="unit">{r?.sentinel ? "" : reg.unit}</td>
           <td class="raw mono" title={r?.error ?? undefined}>
             {#if r?.error}<span class="bad">{r.error}</span>{:else}{formatRaw(
                 r?.raw ?? null,
@@ -454,6 +458,14 @@
 
   .bad {
     color: var(--bad);
+  }
+
+  .sentinel {
+    font-family: var(--ui);
+    font-size: 13px;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--text-3);
   }
 
   .editor td {

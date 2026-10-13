@@ -255,6 +255,7 @@ async fn poller_decodes_scales_and_retries_failed_blocks() {
             ..Default::default()
         },
         indexes: Vec::new(),
+        sentinels: Vec::new(),
     };
     let (mut results, requests) = poll_once(&mut s, &request).await;
     results.sort_by_key(|r| r.index);
@@ -280,4 +281,43 @@ async fn poller_decodes_scales_and_retries_failed_blocks() {
     let mut got: Vec<usize> = results.iter().map(|r| r.index).collect();
     got.sort();
     assert_eq!(got, [10, 11, 12, 13, 14]);
+}
+
+#[tokio::test]
+async fn poller_flags_sentinels_unless_an_enum_names_the_value() {
+    use modbench_lib::planner::PlanLimits;
+    use modbench_lib::poller::{PollRequest, poll_once};
+
+    let device = FakeDevice::default();
+    device
+        .holding
+        .lock()
+        .unwrap()
+        .extend([(0, 0xFFFF), (1, 0xFFFF), (2, 230)]);
+    let mut s = Session::connect(&config(start_device(device).await), None)
+        .await
+        .unwrap();
+
+    let mut mode = register("Mode", Area::Holding, 1, DataType::Uint16);
+    mode.enum_labels = vec![(65535, "Not fitted".into())];
+    let request = PollRequest {
+        registers: vec![
+            register("Pressure", Area::Holding, 0, DataType::Uint16),
+            mode,
+            register("Voltage", Area::Holding, 2, DataType::Uint16),
+        ],
+        byte_order: ByteOrder::ABCD,
+        byte_order_override: None,
+        interval_ms: 0,
+        delay_ms: 0,
+        limits: PlanLimits::default(),
+        indexes: Vec::new(),
+        sentinels: vec![(DataType::Uint16, vec![(0xFFFF, "Unimplemented".into())])],
+    };
+    let (mut results, _) = poll_once(&mut s, &request).await;
+    results.sort_by_key(|r| r.index);
+    assert_eq!(results[0].sentinel.as_deref(), Some("Unimplemented"));
+    assert_eq!(results[1].sentinel, None);
+    assert_eq!(results[2].sentinel, None);
+    assert_eq!(results[2].value, Some(Value::Uint(230)));
 }

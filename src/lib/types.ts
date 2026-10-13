@@ -56,6 +56,7 @@ export interface Meta {
   max_read_registers: number | null;
   max_read_bits: number | null;
   enums: [string, [number, string][]][];
+  sentinels: [DataType, [number, string][]][];
   extra: [string, string][];
 }
 
@@ -111,6 +112,7 @@ export interface PollRequest {
   limits: PlanLimits;
   /** Map index of each register, echoed back in results. */
   indexes: number[];
+  sentinels: [DataType, [number, string][]][];
 }
 
 export interface PointResult {
@@ -118,6 +120,8 @@ export interface PointResult {
   value: Value | null;
   raw: RawData | null;
   error: string | null;
+  /** Set when the raw value is a reserved one, e.g. "Unimplemented". */
+  sentinel: string | null;
 }
 
 export interface PollCycle {

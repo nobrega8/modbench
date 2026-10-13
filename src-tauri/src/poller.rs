@@ -6,8 +6,8 @@ use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::codec::{self, ByteOrder, Value};
-use crate::mbmap::Register;
+use crate::codec::{self, ByteOrder, DataType, Value};
+use crate::mbmap::{Register, find_sentinel};
 use crate::modbus::{ModbusError, RawData, Session};
 use crate::planner::{self, Block, PlanLimits, Point};
 
@@ -26,6 +26,9 @@ pub struct PollRequest {
     /// Empty means the position in `registers`.
     #[serde(default)]
     pub indexes: Vec<usize>,
+    /// The map's sentinel tables, to flag reserved raw values.
+    #[serde(default)]
+    pub sentinels: Vec<(DataType, Vec<(i128, String)>)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -37,6 +40,9 @@ pub struct PointResult {
     /// Raw words or bits as read, for the hex column.
     pub raw: Option<RawData>,
     pub error: Option<String>,
+    /// Sentinel label when the raw value is a reserved one (e.g.
+    /// "Unimplemented"); `value` is then not a measurement.
+    pub sentinel: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -47,24 +53,45 @@ pub struct PollCycle {
     pub results: Vec<PointResult>,
 }
 
-fn decode_point(reg: &Register, order: ByteOrder, data: RawData) -> PointResult {
-    let value = match &data {
+fn decode_point(
+    reg: &Register,
+    order: ByteOrder,
+    data: RawData,
+    sentinels: &[(DataType, Vec<(i128, String)>)],
+) -> PointResult {
+    let raw_value = match &data {
         RawData::Bits(bits) => Ok(Value::Bool(bits.first().copied().unwrap_or(false))),
-        RawData::Registers(words) => codec::decode(words, reg.ty, order, reg.bit)
-            .map(|v| codec::to_engineering(v, reg.scale, reg.offset)),
+        RawData::Registers(words) => codec::decode(words, reg.ty, order, reg.bit),
     };
-    match value {
-        Ok(v) => PointResult {
-            index: 0,
-            value: Some(v),
-            raw: Some(data),
-            error: None,
-        },
+    match raw_value {
+        Ok(v) => {
+            // An enum label for the same raw value wins over a sentinel.
+            let labelled = match &v {
+                Value::Int(n) => reg.enum_labels.iter().any(|(e, _)| e == n),
+                Value::Uint(n) => reg
+                    .enum_labels
+                    .iter()
+                    .any(|(e, _)| i128::from(*e) == i128::from(*n)),
+                _ => false,
+            };
+            let sentinel = (!labelled)
+                .then(|| find_sentinel(sentinels, reg.ty, &v))
+                .flatten()
+                .map(str::to_string);
+            PointResult {
+                index: 0,
+                value: Some(codec::to_engineering(v, reg.scale, reg.offset)),
+                raw: Some(data),
+                error: None,
+                sentinel,
+            }
+        }
         Err(e) => PointResult {
             index: 0,
             value: None,
             raw: Some(data),
             error: Some(e.to_string()),
+            sentinel: None,
         },
     }
 }
@@ -122,7 +149,7 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
                         .unwrap_or(reg.byte_order.unwrap_or(req.byte_order));
                     finish(
                         pi,
-                        decode_point(reg, order, slice(&data, block, &points[pi])),
+                        decode_point(reg, order, slice(&data, block, &points[pi]), &req.sentinels),
                     );
                 }
             }
@@ -140,12 +167,13 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
                         .byte_order_override
                         .unwrap_or(reg.byte_order.unwrap_or(req.byte_order));
                     let r = match session.read(p.area, p.address, p.count.max(1)).await {
-                        Ok(data) => decode_point(reg, order, data),
+                        Ok(data) => decode_point(reg, order, data, &req.sentinels),
                         Err(e) => PointResult {
                             index: 0,
                             value: None,
                             raw: None,
                             error: Some(e.to_string()),
+                            sentinel: None,
                         },
                     };
                     finish(pi, r);
@@ -161,6 +189,7 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
                             value: None,
                             raw: None,
                             error: Some(msg.clone()),
+                            sentinel: None,
                         },
                     );
                 }
