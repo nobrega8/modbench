@@ -63,7 +63,8 @@ export function parseForRegister(
   const label = reg.enum.find(
     ([, l]) => l.toLowerCase() === text.trim().toLowerCase(),
   );
-  if (label) return { value: label[0] };
+  // Labels name raw values; the backend expects engineering units.
+  if (label) return { value: label[0] * reg.scale + reg.offset };
   const asInt = parseInteger(text);
   if (asInt !== null) return { value: asInt };
   const n = Number(text.trim().replace(",", "."));
