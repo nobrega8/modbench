@@ -8,6 +8,7 @@ import type {
   DeviceMap,
   ImportResult,
   LibraryEntry,
+  OnlineEntry,
   Parsed,
   PollCycle,
   PollRequest,
@@ -45,6 +46,11 @@ export const api = {
   libraryImport: (paths: string[]) =>
     invoke<ImportResult[]>("library_import", { paths }),
   libraryDelete: (path: string) => invoke<void>("library_delete", { path }),
+  libraryOnlineIndex: () => invoke<OnlineEntry[]>("library_online_index"),
+  libraryOnlineImport: (paths: string[]) =>
+    invoke<ImportResult[]>("library_online_import", { paths }),
+  vendorIcon: (website: string) =>
+    invoke<string | null>("vendor_icon", { website }),
   startupFile: () => invoke<string | null>("startup_file"),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),

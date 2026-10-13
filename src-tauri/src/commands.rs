@@ -10,6 +10,7 @@ use crate::codec::{self, ByteOrder, DataType, Value};
 use crate::library::{self, ImportResult, LibraryEntry};
 use crate::mbmap::{self, DeviceMap, Parsed, Register};
 use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
+use crate::online;
 use crate::planner::Area;
 use crate::poller::{self, PollCycle, PollRequest};
 use crate::tap::{Direction, RawSink};
@@ -285,6 +286,37 @@ pub async fn library_import(
 pub async fn library_delete(app: AppHandle, path: String) -> Result<(), ModbusError> {
     let root = library_root(&app)?;
     Ok(library::delete(&root, &path)?)
+}
+
+/// The maps published in the online library (the mbmap-library repository).
+#[tauri::command]
+pub async fn library_online_index() -> Result<Vec<online::OnlineEntry>, ModbusError> {
+    online::index().await.map_err(ModbusError::Invalid)
+}
+
+/// Downloads maps of the online library into the local library.
+#[tauri::command]
+pub async fn library_online_import(
+    app: AppHandle,
+    paths: Vec<String>,
+) -> Result<Vec<ImportResult>, ModbusError> {
+    let root = library_root(&app)?;
+    let mut results = Vec::new();
+    for path in paths {
+        let outcome = match online::download(&path).await {
+            Ok(bytes) => library::store(&root, &bytes),
+            Err(e) => Err(e),
+        };
+        results.push(ImportResult::new(&path, outcome));
+    }
+    Ok(results)
+}
+
+/// The icon of a vendor's website as a `data:` URL (cached on disk).
+#[tauri::command]
+pub async fn vendor_icon(app: AppHandle, website: String) -> Option<String> {
+    let dir = app.path().app_cache_dir().ok()?.join("vendor-icons");
+    online::vendor_icon(&dir, &website).await
 }
 
 /// A `.mbmap` passed on the command line (e.g. by double-clicking a file).

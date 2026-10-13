@@ -13,6 +13,7 @@ pub struct LibraryEntry {
     pub vendor: String,
     pub model: String,
     pub description: Option<String>,
+    pub vendor_website: Option<String>,
     pub registers: usize,
     pub warnings: usize,
     /// Why the file cannot be used, if it has errors.
@@ -100,6 +101,7 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                     vendor: map.meta.vendor.clone(),
                     model: map.meta.model.clone(),
                     description: map.meta.description.clone(),
+                    vendor_website: map.meta.vendor_website.clone(),
                     registers: map.registers.len(),
                     warnings,
                     error: None,
@@ -115,6 +117,7 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                         .map(|n| n.to_string_lossy().into_owned())
                         .unwrap_or_default(),
                     description: None,
+                    vendor_website: None,
                     registers: 0,
                     warnings,
                     error,
@@ -130,35 +133,44 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
     Ok(entries)
 }
 
-/// Copies valid maps into the library. A map with the same vendor and model
-/// replaces the stored one.
+/// Stores the contents of a valid map; returns where it was stored. A map
+/// with the same vendor and model replaces the stored one.
+pub fn store(root: &Path, bytes: &[u8]) -> Result<String, String> {
+    let map = read_valid(bytes)?;
+    let target = path_for(root, &map);
+    if let Some(dir) = target.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&target, bytes).map_err(|e| e.to_string())?;
+    Ok(target.display().to_string())
+}
+
+impl ImportResult {
+    pub fn new(source: &str, outcome: Result<String, String>) -> Self {
+        match outcome {
+            Ok(stored) => ImportResult {
+                source: source.to_string(),
+                stored: Some(stored),
+                error: None,
+            },
+            Err(e) => ImportResult {
+                source: source.to_string(),
+                stored: None,
+                error: Some(e),
+            },
+        }
+    }
+}
+
+/// Copies valid map files into the library.
 pub fn import(root: &Path, sources: &[String]) -> Vec<ImportResult> {
     sources
         .iter()
         .map(|source| {
             let outcome = std::fs::read(source)
                 .map_err(|e| e.to_string())
-                .and_then(|bytes| {
-                    let map = read_valid(&bytes)?;
-                    let target = path_for(root, &map);
-                    if let Some(dir) = target.parent() {
-                        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-                    }
-                    std::fs::write(&target, &bytes).map_err(|e| e.to_string())?;
-                    Ok(target.display().to_string())
-                });
-            match outcome {
-                Ok(stored) => ImportResult {
-                    source: source.clone(),
-                    stored: Some(stored),
-                    error: None,
-                },
-                Err(e) => ImportResult {
-                    source: source.clone(),
-                    stored: None,
-                    error: Some(e),
-                },
-            }
+                .and_then(|bytes| store(root, &bytes));
+            ImportResult::new(source, outcome)
         })
         .collect()
 }

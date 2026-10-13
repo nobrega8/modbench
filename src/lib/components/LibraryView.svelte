@@ -2,11 +2,33 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
+  import OnlineLibrary from "./OnlineLibrary.svelte";
+  import VendorIcon from "./VendorIcon.svelte";
 
   let search = $state("");
   let confirmDelete = $state<string | null>(null);
   let message = $state<{ ok: boolean; text: string } | null>(null);
   let busy = $state(false);
+  let menuOpen = $state(false);
+  let onlineOpen = $state(false);
+  let menu: HTMLDivElement | undefined = $state();
+
+  // Close the import menu on a click outside it or on Esc
+  $effect(() => {
+    if (!menuOpen) return;
+    const click = (e: MouseEvent) => {
+      if (menu && !menu.contains(e.target as Node)) menuOpen = false;
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") menuOpen = false;
+    };
+    window.addEventListener("click", click, true);
+    window.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("click", click, true);
+      window.removeEventListener("keydown", key);
+    };
+  });
 
   const shown = $derived(
     bench.library.filter((e) => {
@@ -53,6 +75,7 @@
   }
 
   async function chooseFiles() {
+    menuOpen = false;
     const picked = await open({
       multiple: true,
       directory: false,
@@ -95,10 +118,42 @@
       >Add {current.map.meta.model} to library</button
     >
   {/if}
-  <button class="btn accent" disabled={busy} onclick={chooseFiles}
-    >Import maps…</button
-  >
+  <div class="menu-wrap" bind:this={menu}>
+    <button
+      class="btn accent"
+      disabled={busy}
+      aria-haspopup="menu"
+      aria-expanded={menuOpen}
+      onclick={() => (menuOpen = !menuOpen)}
+      >Import maps
+      <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg
+      ></button
+    >
+    {#if menuOpen}
+      <div class="menu" role="menu">
+        <button role="menuitem" onclick={chooseFiles}>
+          <span class="item">From a file…</span>
+          <span class="sub">A <code>.mbmap</code> file on this computer</span>
+        </button>
+        <button
+          role="menuitem"
+          onclick={() => {
+            menuOpen = false;
+            onlineOpen = true;
+          }}
+        >
+          <span class="item">From the online library…</span>
+          <span class="sub">Maps shared on GitHub by other users</span>
+        </button>
+      </div>
+    {/if}
+  </div>
 </div>
+
+<OnlineLibrary
+  bind:open={onlineOpen}
+  onadded={(text) => (message = { ok: true, text })}
+/>
 
 {#if message}
   <p class="msg" class:bad={!message.ok} class:good={message.ok} role="status">
@@ -120,7 +175,14 @@
     <tbody>
       {#each shown as e (e.path)}
         <tr class:invalid={!!e.error} class:active={current?.path === e.path}>
-          <td>{e.vendor}</td>
+          <td
+            ><span class="vendor"
+              ><VendorIcon
+                vendor={e.vendor}
+                website={e.vendor_website}
+              />{e.vendor}</span
+            ></td
+          >
           <td class="model">{e.model}</td>
           <td class="desc">
             {#if e.error}
@@ -188,6 +250,74 @@
 
   .spacer {
     flex: 1;
+  }
+
+  .menu-wrap {
+    position: relative;
+  }
+
+  .menu-wrap svg {
+    width: 10px;
+    height: 6px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 10;
+    width: 280px;
+    padding: 5px;
+    border-radius: 12px;
+    background: var(--card);
+    box-shadow: var(--e3);
+    animation: drop 0.16s var(--ease);
+  }
+
+  @keyframes drop {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
+  .menu button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .menu button:hover,
+  .menu button:focus-visible {
+    background: var(--accent-soft);
+  }
+
+  .menu .item {
+    font-weight: 500;
+  }
+
+  .menu .sub {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+
+  .vendor {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
   }
 
   .msg {

@@ -157,9 +157,20 @@ export interface LibraryEntry {
   vendor: string;
   model: string;
   description: string | null;
+  vendor_website: string | null;
   registers: number;
   warnings: number;
   error: string | null;
+}
+
+/** A map published in the online library (the mbmap-library repository). */
+export interface OnlineEntry {
+  path: string;
+  vendor: string;
+  model: string;
+  description: string | null;
+  vendor_website: string | null;
+  registers: number;
 }
 
 export interface ImportResult {

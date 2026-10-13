@@ -23,7 +23,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Device maps (`.mbmap`)**: plain-text, CSV-based files that describe a device and all of its registers: types, byte order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps.
 - **Write from the map**: writable registers and control commands are listed with the right control for each type.
 - **Raw data**: the exact bytes sent and received, plus a request log you can save.
-- **Device library**: keep your maps in the app; double-click a `.mbmap` to open it.
+- **Device library**: keep your maps in the app, import them from a file or browse and download the shared maps of [mbmap-library](https://github.com/nobrega8/mbmap-library); double-click a `.mbmap` to open it.
 - **Command line and MCP**: `modbench-cli` reads devices without the UI (see below).
 - **Light and dark (OLED) themes**, a Rust core and small installers (about 2 MB on Windows).
 

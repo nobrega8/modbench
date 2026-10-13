@@ -5,6 +5,7 @@ mod commands;
 pub mod library;
 pub mod mbmap;
 pub mod modbus;
+pub mod online;
 pub mod planner;
 pub mod poller;
 pub mod tap;
@@ -53,6 +54,9 @@ pub fn run() {
             commands::library_list,
             commands::library_import,
             commands::library_delete,
+            commands::library_online_index,
+            commands::library_online_import,
+            commands::vendor_icon,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

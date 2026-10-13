@@ -2288,6 +2288,8 @@ name = "modbench"
 version = "0.1.1"
 dependencies = [
  "clap",
+ "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "tauri",
