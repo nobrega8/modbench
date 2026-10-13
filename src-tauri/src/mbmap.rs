@@ -61,6 +61,7 @@ impl Access {
 pub struct Meta {
     pub vendor: String,
     pub model: String,
+    pub vendor_website: Option<String>,
     pub description: Option<String>,
     pub firmware: Option<String>,
     pub source: Option<String>,
@@ -231,6 +232,33 @@ fn parse_int(text: &str) -> Option<i64> {
 
 fn decimal_in(text: &str, lo: i64, hi: i64) -> Option<i64> {
     parse_decimal(text).filter(|n| (lo..=hi).contains(n))
+}
+
+/// A domain (`se.com`) or an `http(s)://` URL, optionally with a port and a path.
+fn is_website(text: &str) -> bool {
+    let rest = text
+        .strip_prefix("https://")
+        .or_else(|| text.strip_prefix("http://"))
+        .unwrap_or(text);
+    let (authority, path) = match rest.find('/') {
+        Some(i) => rest.split_at(i),
+        None => (rest, ""),
+    };
+    let host = match authority.split_once(':') {
+        Some((host, port)) => {
+            if port.is_empty() || !port.bytes().all(|b| b.is_ascii_digit()) {
+                return false;
+            }
+            host
+        }
+        None => authority,
+    };
+    let labels: Vec<&str> = host.split('.').collect();
+    labels.len() >= 2
+        && labels
+            .iter()
+            .all(|l| !l.is_empty() && l.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'))
+        && !path.chars().any(char::is_whitespace)
 }
 
 fn parse_number(text: &str) -> Option<f64> {
@@ -474,6 +502,10 @@ fn apply_meta(meta: &mut Meta, key: &str, value: &str) -> bool {
         "model" => {
             meta.model = value.to_string();
             true
+        }
+        "vendor_website" => {
+            meta.vendor_website = Some(value.to_string());
+            is_website(value)
         }
         "description" => {
             meta.description = Some(value.to_string());
@@ -1034,6 +1066,7 @@ pub fn to_string(map: &DeviceMap) -> String {
     };
     meta("vendor", Some(m.vendor.clone()));
     meta("model", Some(m.model.clone()));
+    meta("vendor_website", m.vendor_website.clone());
     meta("description", m.description.clone());
     meta("firmware", m.firmware.clone());
     meta("source", m.source.clone());
@@ -1160,6 +1193,39 @@ mod tests {
             parsed.diagnostics
         );
         parsed.map.unwrap()
+    }
+
+    #[test]
+    fn vendor_website() {
+        for good in [
+            "se.com",
+            "www.se.com",
+            "https://www.se.com/ww/en/",
+            "http://10.0.0.1:8080",
+        ] {
+            assert!(is_website(good), "{good}");
+        }
+        for bad in [
+            "se",
+            "se dot com",
+            "https://",
+            "ftp://se.com",
+            "se..com",
+            "se.com:x",
+        ] {
+            assert!(!is_website(bad), "{bad}");
+        }
+        let map = ok(&format!(
+            "{HEAD}@vendor_website=se.com
+name,area,address,type
+A,holding,0,uint16
+"
+        ));
+        assert_eq!(map.meta.vendor_website.as_deref(), Some("se.com"));
+        assert!(to_string(&map).contains(
+            "@vendor_website=se.com
+"
+        ));
     }
 
     #[test]

@@ -41,6 +41,7 @@ export type RawData =
 export interface Meta {
   vendor: string;
   model: string;
+  vendor_website: string | null;
   description: string | null;
   firmware: string | null;
   source: string | null;
