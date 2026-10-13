@@ -2285,7 +2285,7 @@ dependencies = [
 
 [[package]]
 name = "modbench"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "clap",
  "reqwest",
