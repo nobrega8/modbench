@@ -1,0 +1,3 @@
+[submodule "vendor/mbmap-library"]
+	path = vendor/mbmap-library
+	url = https://github.com/nobrega8/mbmap-library.git

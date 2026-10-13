@@ -1,5 +1,6 @@
 pub mod codec;
 mod commands;
+pub mod mbmap;
 pub mod modbus;
 pub mod planner;
 
@@ -17,6 +18,8 @@ pub fn run() {
             commands::write_coils,
             commands::read_value,
             commands::write_value,
+            commands::open_map,
+            commands::save_map,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

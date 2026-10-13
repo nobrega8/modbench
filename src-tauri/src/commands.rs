@@ -4,6 +4,7 @@ use tauri::State;
 use tokio::sync::Mutex;
 
 use crate::codec::{self, ByteOrder, DataType, Value};
+use crate::mbmap::{self, DeviceMap, Parsed};
 use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
 use crate::planner::Area;
 
@@ -107,6 +108,20 @@ pub async fn write_coils(
     let mut slot = state.session.lock().await;
     let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
     session.write_coils(address, &bits).await
+}
+
+/// Reads and checks a `.mbmap` file.
+#[tauri::command]
+pub async fn open_map(path: String) -> Result<Parsed, ModbusError> {
+    let bytes = tokio::fs::read(&path).await?;
+    Ok(mbmap::parse(&bytes))
+}
+
+/// Writes a map to a `.mbmap` file.
+#[tauri::command]
+pub async fn save_map(path: String, map: DeviceMap) -> Result<(), ModbusError> {
+    tokio::fs::write(&path, mbmap::to_string(&map)).await?;
+    Ok(())
 }
 
 /// Reads one typed value, without a map.

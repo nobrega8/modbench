@@ -6,3 +6,4 @@ src-tauri/gen/
 package-lock.json
 *.md
 *.mbmap
+vendor/
