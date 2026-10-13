@@ -1,0 +1,30 @@
+[package]
+name = "modbench"
+version = "0.1.0"
+description = "Lightweight Modbus TCP/RTU client with device map (.mbm) support"
+authors = ["nobrega8"]
+license = "MIT"
+repository = "https://github.com/nobrega8/modbench"
+edition = "2024"
+
+[lib]
+# The `_lib` suffix avoids a name clash between the lib and the bin on Windows
+# (see https://github.com/rust-lang/cargo/issues/8519)
+name = "modbench_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

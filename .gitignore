@@ -48,3 +48,8 @@ desktop.ini
 # --- Logs / capturas locais ---
 *.log
 captures/
+
+# --- SvelteKit / Vite ---
+/package
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*

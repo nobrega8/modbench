@@ -1,8 +1,8 @@
-# ComTest Lite (nome provisório)
+# Modbench
 
 Cliente Modbus (TCP/RTU) leve e moderno para testar e ler devices, para Windows e Linux.
 
-> 🚧 Em fase de planeamento. Ver [PLAN.md](PLAN.md).
+> 🚧 Em desenvolvimento inicial. Ver [PLAN.md](PLAN.md).
 
 ## Ideia
 
@@ -18,3 +18,20 @@ Cliente Modbus (TCP/RTU) leve e moderno para testar e ler devices, para Windows 
 ## Licença
 
 [MIT](LICENSE)
+
+## Desenvolvimento
+
+Requisitos: [Rust](https://rustup.rs) (stable), Node.js 22+ e os [pré-requisitos do Tauri](https://tauri.app/start/prerequisites/) para o teu SO.
+
+```sh
+npm install
+npm run tauri dev     # app em modo desenvolvimento
+npm run tauri build   # instaladores (MSI/NSIS no Windows, deb/AppImage no Linux)
+```
+
+Verificações (as mesmas da CI):
+
+```sh
+npm run format:check && npm run check
+cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+```
