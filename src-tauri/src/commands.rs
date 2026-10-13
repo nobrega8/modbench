@@ -262,19 +262,43 @@ pub fn library_folder(app: AppHandle) -> Result<String, ModbusError> {
     Ok(library_root(&app)?.display().to_string())
 }
 
+/// Opens a folder or a URL with the system's default app.
+fn open_with_system(target: &std::ffi::OsStr) -> std::io::Result<()> {
+    #[cfg(windows)]
+    let mut command = {
+        let mut c = std::process::Command::new("rundll32");
+        c.arg("url.dll,FileProtocolHandler");
+        c
+    };
+    #[cfg(target_os = "macos")]
+    let mut command = std::process::Command::new("open");
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = std::process::Command::new("xdg-open");
+    command.arg(target).spawn()?;
+    Ok(())
+}
+
 /// Shows the library folder in the system file manager.
 #[tauri::command]
 pub fn library_open_folder(app: AppHandle) -> Result<(), ModbusError> {
     let root = library_root(&app)?;
     std::fs::create_dir_all(&root)?;
-    #[cfg(windows)]
-    let program = "explorer";
-    #[cfg(target_os = "macos")]
-    let program = "open";
-    #[cfg(all(unix, not(target_os = "macos")))]
-    let program = "xdg-open";
-    std::process::Command::new(program).arg(&root).spawn()?;
-    Ok(())
+    Ok(open_with_system(root.as_os_str())?)
+}
+
+/// Opens one of the project's web pages in the browser. Only these fixed
+/// pages can be opened, never a URL from the page.
+#[tauri::command]
+pub fn open_link(link: String) -> Result<(), ModbusError> {
+    let url = match link.as_str() {
+        "repo" => "https://github.com/nobrega8/modbench",
+        "issues" => "https://github.com/nobrega8/modbench/issues/new/choose",
+        "releases" => "https://github.com/nobrega8/modbench/releases",
+        "library" => "https://github.com/nobrega8/mbmap-library",
+        "spec" => "https://github.com/nobrega8/mbmap-library/blob/main/SPEC.md",
+        _ => return Err(ModbusError::Invalid(format!("unknown link: {link}"))),
+    };
+    Ok(open_with_system(std::ffi::OsStr::new(url))?)
 }
 
 #[tauri::command]
