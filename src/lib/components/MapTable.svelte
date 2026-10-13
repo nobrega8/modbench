@@ -325,8 +325,8 @@
     list-style: none;
     max-height: 120px;
     overflow: auto;
-    border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 9px;
+    background: var(--subtle);
     color: var(--text-2);
   }
 
@@ -342,8 +342,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 10px;
   }
 
   table {
@@ -355,11 +354,13 @@
     position: sticky;
     top: 0;
     z-index: 1;
-    background: var(--subtle);
+    background: var(--card);
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
     text-align: left;
     padding: 6px 10px;
   }
@@ -408,11 +409,6 @@
     width: auto;
   }
 
-  /* Reading is the normal state: keep the switch quiet when on */
-  .read .switch:checked {
-    background: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
-  }
-
   .read {
     width: 52px;
     text-align: center;
@@ -434,7 +430,7 @@
     margin-right: 6px;
     font-size: 11px;
     font-weight: 600;
-    color: var(--accent);
+    color: var(--text-3);
   }
 
   .name {

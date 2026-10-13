@@ -27,7 +27,7 @@
 </script>
 
 <StepCard step={1} title="Connection">
-  <div class="tabs" role="tablist" aria-label="Connection type">
+  <div class="segmented tabs" role="tablist" aria-label="Connection type">
     <button
       role="tab"
       aria-selected={serial}
@@ -158,41 +158,8 @@
 
 <style>
   .tabs {
-    display: flex;
-    gap: 2px;
-    margin-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .tabs button {
-    position: relative;
-    border: 0;
-    background: none;
-    padding: 4px 12px 7px;
-    font-weight: 500;
-    color: var(--text-2);
-    cursor: pointer;
-  }
-
-  .tabs button.on {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  .tabs button.on::after {
-    content: "";
-    position: absolute;
-    left: 10px;
-    right: 10px;
-    bottom: -1px;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--accent);
-  }
-
-  .tabs button:disabled:not(.on) {
-    opacity: 0.5;
-    cursor: default;
+    align-self: flex-start;
+    margin-bottom: 12px;
   }
 
   .row {

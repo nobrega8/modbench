@@ -119,8 +119,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 10px;
   }
 
   table {
@@ -132,11 +131,13 @@
   th {
     position: sticky;
     top: 0;
-    background: var(--subtle);
+    background: var(--card);
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
     text-align: left;
     padding: 5px 10px;
   }

@@ -179,14 +179,24 @@
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    padding: 12px 14px;
+    padding: 13px 16px;
     background: var(--subtle);
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 0;
+  }
+
+  /* A grouped list: one rounded block, inset separators between rows */
+  .setting:nth-child(2) {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  .setting:last-child {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
   }
 
   .setting + .setting {
-    margin-top: 4px;
+    box-shadow: inset 0 1px 0 var(--border);
   }
 
   label.setting {
@@ -215,31 +225,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .segmented {
-    display: flex;
-    flex: none;
-    border: 1px solid var(--border-strong);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .segmented button {
-    border: 0;
-    background: var(--card);
-    padding: 5px 12px;
-    cursor: pointer;
-    color: var(--text-2);
-  }
-
-  .segmented button + button {
-    border-left: 1px solid var(--border-strong);
-  }
-
-  .segmented button.on {
-    background: var(--accent);
-    color: var(--on-accent);
   }
 
   select {

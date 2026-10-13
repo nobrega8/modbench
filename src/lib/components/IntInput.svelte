@@ -56,7 +56,6 @@
 
 <style>
   .invalid {
-    border-color: var(--bad);
-    border-bottom-color: var(--bad);
+    box-shadow: 0 0 0 2px rgb(var(--alert-rgb) / 0.55);
   }
 </style>

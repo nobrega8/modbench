@@ -64,9 +64,9 @@
     align-items: center;
     gap: 12px;
     padding: 8px 12px;
-    border: 1px solid var(--accent);
-    border-radius: 8px;
-    background: var(--accent-soft);
+    border-radius: 14px;
+    background: var(--card);
+    box-shadow: var(--e2);
   }
 
   .notes {

@@ -95,8 +95,7 @@
     align-items: baseline;
     gap: 10px;
     padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 10px;
     background: var(--subtle);
   }
 
@@ -108,7 +107,7 @@
   }
 
   .out {
-    color: var(--accent);
+    color: var(--text);
   }
 
   .in {
@@ -125,8 +124,8 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 10px;
+    background: var(--subtle);
     padding: 4px 0;
   }
 

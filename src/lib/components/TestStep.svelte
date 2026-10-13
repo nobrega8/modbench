@@ -110,7 +110,7 @@
     </div>
   </div>
 
-  <div class="tabs" role="tablist">
+  <div class="segmented tabs" role="tablist">
     {#each tabs as t (t.id)}
       <button
         role="tab"
@@ -159,31 +159,45 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    height: 48px;
-    padding: 0 18px;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    background: var(--card);
-    font-size: 16px;
+    height: 44px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 10px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
+    transition:
+      background-color 0.14s var(--ease),
+      transform 0.1s var(--ease);
   }
 
-  .run:hover:not(:disabled) {
-    background: var(--subtle);
+  .run:active:not(:disabled) {
+    transform: scale(0.975);
   }
 
   .run:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: default;
   }
 
-  .start svg {
-    color: var(--ok);
+  /* Start = the ink fill; Stop = a red tint that commits on hover */
+  .start {
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
-  .stop svg {
-    color: var(--bad);
+  .start:hover:not(:disabled) {
+    background: rgb(var(--fg-rgb) / 0.84);
+  }
+
+  .stop {
+    background: rgb(var(--alert-rgb) / 0.12);
+    color: rgb(var(--alert-rgb));
+  }
+
+  .stop:hover:not(:disabled) {
+    background: rgb(var(--alert-rgb));
+    color: rgb(var(--alert-fg-rgb));
   }
 
   .counters {
@@ -216,16 +230,16 @@
   .live {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     font-weight: 600;
-    color: var(--ok);
+    color: var(--text);
   }
 
   .dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--ok);
+    background: var(--text);
     animation: pulse 1.2s ease-in-out infinite;
   }
 
@@ -244,40 +258,8 @@
   }
 
   .tabs {
-    display: flex;
-    gap: 2px;
-    margin: 12px 0 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .tabs button {
-    position: relative;
-    border: 0;
-    background: none;
-    padding: 6px 14px 8px;
-    font-weight: 500;
-    color: var(--text-2);
-    cursor: pointer;
-  }
-
-  .tabs button:hover {
-    color: var(--text);
-  }
-
-  .tabs button.on {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  .tabs button.on::after {
-    content: "";
-    position: absolute;
-    left: 12px;
-    right: 12px;
-    bottom: -1px;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--accent);
+    align-self: flex-start;
+    margin-top: 16px;
   }
 
   .panel {

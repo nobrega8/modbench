@@ -15,7 +15,7 @@
   const lead = $derived(value === 0 ? 6 : 7 - String(value).length);
 </script>
 
-<div class="counter {tone}">
+<div class="counter {tone}" class:hot={tone !== "ok" && value > 0}>
   <span class="label">{label}</span>
   <div class="body">
     <span class="lcd" aria-label="{label}: {value}"
@@ -47,22 +47,15 @@
   .counter {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 5px;
   }
 
   .label {
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .ok .label {
-    color: var(--ok);
-  }
-  .bad .label {
-    color: var(--bad);
-  }
-  .warn .label {
-    color: var(--warn);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
   }
 
   .body {
@@ -70,51 +63,49 @@
     gap: 4px;
   }
 
+  /* A sunken readout; errors and timeouts turn red only when they count */
   .lcd {
     display: inline-flex;
     align-items: center;
-    height: 30px;
-    padding: 0 9px;
-    border-radius: 4px;
+    height: 34px;
+    padding: 0 11px;
+    border-radius: 9px;
     background: var(--lcd);
-    border: 1px solid var(--border);
+    color: var(--text);
     font-family: var(--mono);
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
     font-variant-numeric: tabular-nums;
   }
 
-  .ok .lcd {
-    color: #4ee66a;
-  }
-  .bad .lcd {
-    color: #ff5a4a;
-  }
-  .warn .lcd {
-    color: #ffd23f;
+  .hot .label,
+  .hot .lcd {
+    color: rgb(var(--alert-rgb));
   }
 
   .off {
-    opacity: 0.22;
+    opacity: 0.25;
   }
 
   .reset {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     padding: 0;
-    border: 1px solid var(--border-strong);
-    border-radius: 4px;
-    background: var(--card);
-    font-size: 12px;
-    color: var(--text-2);
+    border: 0;
+    border-radius: 9px;
+    background: rgb(var(--fg-rgb) / 0.06);
+    color: var(--text-3);
     cursor: pointer;
+    transition:
+      background-color 0.14s var(--ease),
+      color 0.14s var(--ease);
   }
 
   .reset:hover {
     color: var(--text);
-    background: var(--subtle);
+    background: rgb(var(--fg-rgb) / 0.11);
   }
 </style>

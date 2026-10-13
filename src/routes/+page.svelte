@@ -100,53 +100,50 @@
 </div>
 
 <style>
+  /* Top bar on the grey ground: wordmark + pill navigation */
   .topbar {
     display: flex;
-    align-items: stretch;
-    gap: 2px;
-    margin: -8px -8px 0;
-    padding: 0 12px;
-    height: 40px;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px 2px;
   }
 
   .brand {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-right: 18px;
+    gap: 9px;
+    margin-right: 16px;
     font-weight: 600;
+    letter-spacing: -0.011em;
+  }
+
+  .brand img {
+    border-radius: 5px;
   }
 
   .topbar button {
-    position: relative;
-    border: 0;
-    background: none;
+    height: 30px;
     padding: 0 14px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
     font-weight: 500;
     color: var(--text-2);
     cursor: pointer;
+    transition:
+      background-color 0.14s var(--ease),
+      color 0.14s var(--ease);
   }
 
   .topbar button:hover {
     color: var(--text);
+    background: rgb(var(--fg-rgb) / 0.05);
   }
 
   .topbar button.on {
     color: var(--text);
-    font-weight: 600;
-  }
-
-  .topbar button.on::after {
-    content: "";
-    position: absolute;
-    left: 12px;
-    right: 12px;
-    bottom: 0;
-    height: 3px;
-    border-radius: 2px 2px 0 0;
-    background: var(--accent);
+    background: var(--card);
+    box-shadow: var(--e1);
   }
 
   .page {
@@ -154,24 +151,23 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding: 16px;
+    padding: 20px 22px;
     background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 14px;
+    box-shadow: var(--e2);
   }
 
   .app {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     height: 100vh;
-    padding: 8px;
+    padding: 10px 12px 12px;
   }
 
   .map-error {
-    border: 1px solid var(--bad);
-    border-radius: 8px;
-    background: var(--card);
+    border-radius: 14px;
+    background: rgb(var(--alert-rgb) / 0.08);
     max-height: 180px;
     overflow: auto;
   }

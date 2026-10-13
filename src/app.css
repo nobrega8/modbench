@@ -1,94 +1,126 @@
 /*
- * Modbench: a light, native-feeling Windows 11 look. System fonts, white
- * cards on a soft grey window, one blue accent, and green / red / amber
- * reserved for the response counters and their meaning.
+ * Modbench — "STUDIO" visual spec (shared with Cherubyte).
+ * A calm, near-monochrome instrument: near-black ink on a soft grey ground,
+ * cards that float by elevation (no strokes), filled grey controls, generous
+ * rhythm. No accent hue: weight and space carry the hierarchy, and red is
+ * held back for errors and destructive actions. Dark = true black (OLED).
+ * Faces: Inter (UI, self-hosted) · system monospace (data only).
  */
-:root {
-  --window: #f3f3f3;
-  --card: #ffffff;
-  --subtle: #f7f7f7;
-  --field: #ffffff;
-  --border: #e1e1e1;
-  --border-strong: #c7c7c7;
-  --field-line: #8a8a8a;
-  --text: #1b1b1b;
-  --text-2: #5f5f5f;
-  --text-3: #8a8a8a;
-  --accent: #0f6cbd;
-  --accent-hover: #115ea3;
-  --accent-soft: #ebf3fc;
-  --on-accent: #ffffff;
-  --cell: #eef5fc;
-  --changed: #fff4ce;
-  --ok: #107c10;
-  --bad: #c42b1c;
-  --warn: #c28a00;
-  --lcd: #1c1c1c;
 
-  --ui:
-    "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Ubuntu,
-    Cantarell, "Noto Sans", sans-serif;
-  --mono:
-    "Cascadia Mono", Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
-
-  color-scheme: light;
-  font-family: var(--ui);
-  font-size: 14px;
-  line-height: 1.4;
-  color: var(--text);
-  background: var(--window);
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Inter-Variable.woff2") format("woff2");
 }
 
-/* Dark theme (OLED: true black surfaces): follows the system unless
-   Settings forces light or dark */
+/* ───────────── tokens: rgb triplets, used as rgb(var(--x) / a) ───────────── */
+:root {
+  color-scheme: light;
+
+  --bg-rgb: 242 242 245; /* the ground */
+  --surface-rgb: 255 255 255; /* a card */
+  --surface-2-rgb: 240 240 243; /* sunken cell · chip track */
+  --surface-3-rgb: 230 230 234; /* hover */
+  --fg-rgb: 23 23 23; /* ink */
+  --fg-2-rgb: 92 92 96;
+  --fg-3-rgb: 142 142 147;
+  --edge-rgb: 226 226 230; /* the one hairline: inset separators */
+  --edge-2-rgb: 210 210 215;
+  --alert-rgb: 200 38 38;
+  --alert-fg-rgb: 255 255 255;
+
+  --e1: 0 1px 2px rgb(17 17 17 / 0.05);
+  --e2: 0 1px 2px rgb(17 17 17 / 0.04), 0 4px 12px -2px rgb(17 17 17 / 0.06);
+  --e3:
+    0 12px 32px -8px rgb(17 17 17 / 0.16), 0 32px 64px -16px rgb(17 17 17 / 0.2);
+  --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.14);
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Dark (OLED): follows the system unless Settings forces light or dark */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --window: #000000;
-    --card: #000000;
-    --subtle: #0b0b0c;
-    --field: #0e0e10;
-    --border: #1d1d20;
-    --border-strong: #2c2c31;
-    --field-line: #6b6b73;
-    --text: #f2f2f3;
-    --text-2: #a8a8ae;
-    --text-3: #75757c;
-    --accent: #4cc2ff;
-    --accent-hover: #7ad3ff;
-    --accent-soft: #0b2231;
-    --on-accent: #001522;
-    --cell: #0d1620;
-    --changed: #3a3110;
-    --ok: #5fd068;
-    --bad: #ff6b5e;
-    --warn: #f5c84b;
-    --lcd: #050505;
     color-scheme: dark;
+    --bg-rgb: 0 0 0;
+    --surface-rgb: 32 32 35;
+    --surface-2-rgb: 48 48 51;
+    --surface-3-rgb: 62 62 66;
+    --fg-rgb: 245 245 245;
+    --fg-2-rgb: 174 174 178;
+    --fg-3-rgb: 122 122 128;
+    --edge-rgb: 56 56 58;
+    --edge-2-rgb: 72 72 74;
+    --alert-rgb: 248 113 113;
+    --alert-fg-rgb: 17 17 17;
+    --e1: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+    --e2:
+      inset 0 0 0 1px rgb(255 255 255 / 0.09), 0 6px 20px -6px rgb(0 0 0 / 0.6);
+    --e3:
+      inset 0 0 0 1px rgb(255 255 255 / 0.12),
+      0 20px 56px -14px rgb(0 0 0 / 0.8);
+    --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
   }
 }
 
 :root[data-theme="dark"] {
-  --window: #000000;
-  --card: #000000;
-  --subtle: #0b0b0c;
-  --field: #0e0e10;
-  --border: #1d1d20;
-  --border-strong: #2c2c31;
-  --field-line: #6b6b73;
-  --text: #f2f2f3;
-  --text-2: #a8a8ae;
-  --text-3: #75757c;
-  --accent: #4cc2ff;
-  --accent-hover: #7ad3ff;
-  --accent-soft: #0b2231;
-  --on-accent: #001522;
-  --cell: #0d1620;
-  --changed: #3a3110;
-  --ok: #5fd068;
-  --bad: #ff6b5e;
-  --warn: #f5c84b;
-  --lcd: #050505;
   color-scheme: dark;
+  --bg-rgb: 0 0 0;
+  --surface-rgb: 32 32 35;
+  --surface-2-rgb: 48 48 51;
+  --surface-3-rgb: 62 62 66;
+  --fg-rgb: 245 245 245;
+  --fg-2-rgb: 174 174 178;
+  --fg-3-rgb: 122 122 128;
+  --edge-rgb: 56 56 58;
+  --edge-2-rgb: 72 72 74;
+  --alert-rgb: 248 113 113;
+  --alert-fg-rgb: 17 17 17;
+  --e1: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  --e2:
+    inset 0 0 0 1px rgb(255 255 255 / 0.09), 0 6px 20px -6px rgb(0 0 0 / 0.6);
+  --e3:
+    inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 20px 56px -14px rgb(0 0 0 / 0.8);
+  --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
+}
+
+/* ───────────── named colours used by the components ───────────── */
+:root {
+  --window: rgb(var(--bg-rgb));
+  --card: rgb(var(--surface-rgb));
+  --subtle: rgb(var(--surface-2-rgb));
+  --hover: rgb(var(--surface-3-rgb));
+  --field: rgb(var(--fg-rgb) / 0.06); /* filled control, no stroke */
+  --border: rgb(var(--edge-rgb));
+  --border-strong: rgb(var(--edge-2-rgb));
+  --text: rgb(var(--fg-rgb));
+  --text-2: rgb(var(--fg-2-rgb));
+  --text-3: rgb(var(--fg-3-rgb));
+  /* monochrome: "active / selected / on" is ink, not a colour */
+  --accent: rgb(var(--fg-rgb));
+  --on-accent: rgb(var(--surface-rgb));
+  --accent-soft: rgb(var(--fg-rgb) / 0.06);
+  --cell: rgb(var(--surface-2-rgb));
+  --changed: rgb(var(--fg-rgb) / 0.12);
+  --ok: rgb(var(--fg-rgb));
+  --bad: rgb(var(--alert-rgb));
+  --warn: rgb(var(--alert-rgb));
+  --lcd: rgb(var(--surface-2-rgb));
+
+  --ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  font-family: var(--ui);
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings:
+    "cv05" 1,
+    "cv08" 1,
+    "ss03" 1;
+  color: var(--text);
+  background: var(--window);
+  -webkit-font-smoothing: antialiased;
 }
 
 *,
@@ -102,6 +134,7 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  background: var(--window);
 }
 
 button,
@@ -111,89 +144,159 @@ select {
   color: inherit;
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+::selection {
+  background: rgb(var(--fg-rgb) / 0.12);
 }
 
-/* Form controls (Fluent-like: white, thin border, darker bottom line) */
+:where(a, button, summary, [role="tab"], [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+  border-radius: 8px;
+}
+
+/* ───────────── controls ───────────── */
+
+/* A filled control: translucent grey, no stroke, ink ring on focus */
 .input {
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--border-strong);
-  border-bottom-color: var(--field-line);
-  border-radius: 4px;
+  height: 34px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
   background: var(--field);
+  color: var(--text);
   min-width: 0;
+  transition:
+    box-shadow 0.14s var(--ease),
+    background-color 0.14s var(--ease);
+}
+
+.input::placeholder {
+  color: var(--text-3);
 }
 
 .input:focus {
   outline: none;
-  border-bottom: 2px solid var(--accent);
-  padding-bottom: 1px;
+  background: var(--card);
+  box-shadow: var(--ring-focus);
 }
 
 .input:disabled {
   color: var(--text-3);
-  background: var(--subtle);
-  border-bottom-color: var(--border-strong);
+  opacity: 0.7;
+}
+
+select.input {
+  appearance: none;
+  padding-right: 30px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-3) 50%),
+    linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 15px,
+    calc(100% - 11px) 15px;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+
+select.input:focus {
+  background-color: var(--card);
+}
+
+select.input option {
+  background: var(--card);
+  color: var(--text);
 }
 
 .num {
   font-family: var(--mono);
   font-size: 13px;
+  letter-spacing: -0.01em;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .field > span {
   font-size: 12px;
-  font-weight: 600;
-  color: var(--text-2);
+  font-weight: 500;
+  color: var(--text-3);
 }
 
+/* Buttons: secondary = grey fill; .accent / .primary = the ink fill */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  background: var(--card);
+  gap: 7px;
+  height: 34px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 8px;
+  background: rgb(var(--fg-rgb) / 0.07);
+  color: var(--text);
+  font-size: 13px;
   font-weight: 500;
+  line-height: 1;
   cursor: pointer;
   white-space: nowrap;
+  user-select: none;
+  transition:
+    background-color 0.14s var(--ease),
+    transform 0.1s var(--ease);
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--subtle);
+  background: rgb(var(--fg-rgb) / 0.11);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.975);
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: default;
 }
 
-.btn.accent {
+.btn.accent,
+.btn.primary {
   background: var(--accent);
-  border-color: var(--accent);
   color: var(--on-accent);
 }
 
-.btn.accent:hover:not(:disabled) {
-  background: var(--accent-hover);
+.btn.accent:hover:not(:disabled),
+.btn.primary:hover:not(:disabled) {
+  background: rgb(var(--fg-rgb) / 0.84);
+}
+
+.btn.danger {
+  background: rgb(var(--alert-rgb) / 0.12);
+  color: rgb(var(--alert-rgb));
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: rgb(var(--alert-rgb));
+  color: rgb(var(--alert-fg-rgb));
+}
+
+.btn.ghost {
+  background: transparent;
+  color: var(--text-2);
+  padding: 0 10px;
+}
+
+.btn.ghost:hover:not(:disabled) {
+  background: rgb(var(--fg-rgb) / 0.06);
+  color: var(--text);
 }
 
 .check {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   cursor: pointer;
   user-select: none;
 }
@@ -202,21 +305,22 @@ select {
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: var(--accent);
+  accent-color: rgb(var(--fg-rgb));
 }
 
-/* Toggle switch: <input type="checkbox" class="switch" role="switch"> */
+/* Toggle switch (iOS style): <input type="checkbox" class="switch" role="switch"> */
 .switch {
   appearance: none;
   position: relative;
-  width: 30px;
-  height: 16px;
+  flex: none;
+  width: 34px;
+  height: 20px;
   margin: 0;
-  border-radius: 8px;
-  background: var(--border-strong);
+  border-radius: 999px;
+  background: rgb(var(--fg-rgb) / 0.16);
   cursor: pointer;
   vertical-align: middle;
-  transition: background 0.15s;
+  transition: background-color 0.2s var(--ease);
 }
 
 .switch::after {
@@ -224,19 +328,94 @@ select {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #fff;
-  transition: transform 0.15s;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  transition: transform 0.2s var(--ease);
 }
 
 .switch:checked {
-  background: var(--accent);
+  background: rgb(var(--fg-rgb));
 }
 
 .switch:checked::after {
   transform: translateX(14px);
+  background: rgb(var(--surface-rgb));
+}
+
+/* Segmented control: filled pills on a translucent-grey track */
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgb(var(--fg-rgb) / 0.06);
+}
+
+.segmented button {
+  border: 0;
+  background: none;
+  padding: 0 12px;
+  height: 28px;
+  border-radius: 7px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition:
+    background-color 0.14s var(--ease),
+    color 0.14s var(--ease);
+}
+
+.segmented button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.segmented button.on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--e1);
+}
+
+.segmented button:disabled:not(.on) {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Small-caps register for column headers and section eyebrows */
+.key {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbars: a slim pill */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3.5px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-3);
 }
 
 @media (prefers-reduced-motion: reduce) {

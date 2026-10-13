@@ -125,7 +125,7 @@
     min-width: 0;
     height: 28px;
     padding: 0 6px;
-    border: 1px solid transparent;
+    border: 0;
     border-radius: 3px;
     background: var(--changed);
     font-family: var(--mono);
@@ -135,11 +135,11 @@
 
   .cell:focus {
     outline: none;
-    border-color: var(--accent);
+    box-shadow: var(--ring-focus);
   }
 
   .cell.invalid {
-    border-color: var(--bad);
+    box-shadow: 0 0 0 2px rgb(var(--alert-rgb) / 0.55);
   }
 
   .bit {
@@ -149,6 +149,6 @@
   }
 
   .bit input {
-    accent-color: var(--accent);
+    accent-color: rgb(var(--fg-rgb));
   }
 </style>

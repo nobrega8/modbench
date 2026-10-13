@@ -27,11 +27,10 @@
 <style>
   .step {
     display: grid;
-    grid-template-columns: 76px 1fr;
+    grid-template-columns: 92px 1fr;
     background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+    border-radius: 14px;
+    box-shadow: var(--e2);
     min-height: 0;
   }
 
@@ -45,33 +44,33 @@
     align-items: center;
     justify-content: flex-start;
     gap: 6px;
-    padding: 14px 6px;
-    border-right: 1px solid var(--border);
-    background: var(--subtle);
-    border-radius: 8px 0 0 8px;
+    padding: 16px 6px;
   }
 
   .num {
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     background: var(--accent);
     color: var(--on-accent);
     font-weight: 600;
-    font-size: 15px;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
   }
 
   .title {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-2);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
     text-align: center;
   }
 
   .body {
-    padding: 12px 14px;
+    padding: 14px 18px 16px 4px;
     min-width: 0;
     min-height: 0;
     display: flex;
