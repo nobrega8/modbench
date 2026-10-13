@@ -75,6 +75,8 @@ pub struct Meta {
     pub address_base: Option<u8>,
     pub max_read_registers: Option<u16>,
     pub max_read_bits: Option<u16>,
+    /// Named translation tables (`@enum_<name>`), in file order.
+    pub enums: Vec<(String, Vec<(i64, String)>)>,
     /// Keys this version does not know (e.g. `x_...`), kept in file order.
     pub extra: Vec<(String, String)>,
 }
@@ -134,8 +136,11 @@ pub struct Register {
     pub byte_order: Option<ByteOrder>,
     /// Bit index, only for bool in input/holding registers.
     pub bit: Option<u8>,
+    /// Labels for raw values, resolved from inline pairs or a named table.
     #[serde(rename = "enum")]
     pub enum_labels: Vec<(i64, String)>,
+    /// Name of the table the labels come from, when the file used `@name`.
+    pub enum_ref: Option<String>,
     pub description: String,
     /// Columns this version does not know (e.g. `x_...`), by column name.
     pub extra: Vec<(String, String)>,
@@ -509,7 +514,21 @@ pub fn parse(bytes: &[u8]) -> Parsed {
                         );
                     } else {
                         seen_meta.push(key.to_string());
-                        if !apply_meta(&mut meta, key, value) {
+                        if let Some(name) = key.strip_prefix("enum_").filter(|n| !n.is_empty()) {
+                            match parse_enum(value) {
+                                Some(labels) => meta.enums.push((name.to_string(), labels)),
+                                None => {
+                                    ck.error(
+                                        Some(lineno),
+                                        "bad-enum",
+                                        format!("malformed table @{key} (expected 0=Off|1=On)"),
+                                    );
+                                    // Still defined, so rows using it are not
+                                    // reported a second time.
+                                    meta.enums.push((name.to_string(), Vec::new()));
+                                }
+                            }
+                        } else if !apply_meta(&mut meta, key, value) {
                             ck.error(
                                 Some(lineno),
                                 "bad-meta-value",
@@ -805,8 +824,24 @@ pub fn parse(bytes: &[u8]) -> Parsed {
         let offset = number("offset", 0.0);
 
         let enum_text = cell("enum");
+        let mut enum_ref = None;
         let enum_labels = if enum_text.is_empty() {
             Vec::new()
+        } else if let Some(name) = enum_text.strip_prefix('@') {
+            match meta.enums.iter().find(|(n, _)| n == name) {
+                Some((_, labels)) => {
+                    enum_ref = Some(name.to_string());
+                    labels.clone()
+                }
+                None => {
+                    ck.error(
+                        line,
+                        "unknown-enum",
+                        format!("no table @enum_{name} for {enum_text:?}"),
+                    );
+                    Vec::new()
+                }
+            }
         } else {
             parse_enum(enum_text).unwrap_or_else(|| {
                 ck.error(
@@ -838,6 +873,7 @@ pub fn parse(bytes: &[u8]) -> Parsed {
             byte_order,
             bit,
             enum_labels,
+            enum_ref,
             description: cell("description").to_string(),
             extra,
         });
@@ -875,6 +911,14 @@ fn quote(field: &str, sep: char, first: bool) -> String {
     } else {
         field.to_string()
     }
+}
+
+fn enum_pairs(labels: &[(i64, String)]) -> String {
+    labels
+        .iter()
+        .map(|(v, l)| format!("{v}={l}"))
+        .collect::<Vec<_>>()
+        .join("|")
 }
 
 fn fmt_number(n: f64) -> String {
@@ -919,6 +963,9 @@ pub fn to_string(map: &DeviceMap) -> String {
         m.max_read_registers.map(|v| v.to_string()),
     );
     meta("max_read_bits", m.max_read_bits.map(|v| v.to_string()));
+    for (name, labels) in &m.enums {
+        meta(&format!("enum_{name}"), Some(enum_pairs(labels)));
+    }
     for (k, v) in &m.extra {
         meta(k, Some(v.clone()));
     }
@@ -939,12 +986,10 @@ pub fn to_string(map: &DeviceMap) -> String {
 
     let base = u32::from(m.address_base());
     for r in &map.registers {
-        let enum_text = r
-            .enum_labels
-            .iter()
-            .map(|(v, l)| format!("{v}={l}"))
-            .collect::<Vec<_>>()
-            .join("|");
+        let enum_text = match &r.enum_ref {
+            Some(name) => format!("@{name}"),
+            None => enum_pairs(&r.enum_labels),
+        };
         let mut fields = vec![
             r.name.clone(),
             r.group.clone(),

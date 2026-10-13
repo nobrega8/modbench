@@ -55,6 +55,7 @@ export interface Meta {
   address_base: number | null;
   max_read_registers: number | null;
   max_read_bits: number | null;
+  enums: [string, [number, string][]][];
   extra: [string, string][];
 }
 
@@ -73,6 +74,7 @@ export interface Register {
   byte_order: ByteOrder | null;
   bit: number | null;
   enum: [number, string][];
+  enum_ref: string | null;
   description: string;
   extra: [string, string][];
 }

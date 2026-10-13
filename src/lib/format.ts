@@ -78,7 +78,9 @@ export function formatValue(reg: Register, value: Value | null): string {
     return label ? label[1] : value ? "ON" : "OFF";
   }
   if (typeof value === "string") return value;
-  const label = reg.enum.find(([v]) => v === value);
+  // Labels match the raw value, before scale and offset.
+  const raw = Math.round((value - reg.offset) / reg.scale);
+  const label = reg.enum.find(([v]) => v === raw);
   if (label) return label[1];
   if (Number.isInteger(value)) return value.toString();
   // Enough digits for the scale, without float noise.
