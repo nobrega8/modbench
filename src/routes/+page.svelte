@@ -7,6 +7,7 @@
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import LibraryView from "$lib/components/LibraryView.svelte";
   import SettingsView from "$lib/components/SettingsView.svelte";
+  import WindowControls from "$lib/components/WindowControls.svelte";
   import { bench, type Page } from "$lib/state.svelte";
   import type { PollCycle, TrafficEntry } from "$lib/types";
 
@@ -51,18 +52,23 @@
 </script>
 
 <div class="app">
-  <nav class="topbar" aria-label="Pages">
-    <span class="brand"
+  <!-- The title bar: drag to move, double-click to maximize -->
+  <header class="topbar" data-tauri-drag-region>
+    <span class="brand" data-tauri-drag-region
       ><img src="/favicon.png" alt="" width="20" height="20" />Modbench</span
     >
-    {#each pages as p (p.id)}
-      <button
-        class:on={bench.page === p.id}
-        aria-current={bench.page === p.id ? "page" : undefined}
-        onclick={() => (bench.page = p.id)}>{p.label}</button
-      >
-    {/each}
-  </nav>
+    <nav aria-label="Pages">
+      {#each pages as p (p.id)}
+        <button
+          class:on={bench.page === p.id}
+          aria-current={bench.page === p.id ? "page" : undefined}
+          onclick={() => (bench.page = p.id)}>{p.label}</button
+        >
+      {/each}
+    </nav>
+    <div class="drag" data-tauri-drag-region></div>
+    <WindowControls />
+  </header>
   <UpdateBanner />
   {#if bench.page === "library"}
     <section class="page"><LibraryView /></section>
@@ -104,8 +110,22 @@
   .topbar {
     display: flex;
     align-items: center;
+    flex: none;
+    height: 44px;
+    /* reach the window edges so the controls sit in the corner */
+    margin: -10px -12px 0;
+    padding-left: 16px;
+    user-select: none;
+  }
+
+  .topbar nav {
+    display: flex;
     gap: 4px;
-    padding: 2px 4px 2px;
+  }
+
+  .drag {
+    flex: 1;
+    align-self: stretch;
   }
 
   .brand {
@@ -119,9 +139,10 @@
 
   .brand img {
     border-radius: 5px;
+    pointer-events: none;
   }
 
-  .topbar button {
+  .topbar nav button {
     height: 30px;
     padding: 0 14px;
     border: 0;
@@ -135,12 +156,12 @@
       color 0.14s var(--ease);
   }
 
-  .topbar button:hover {
+  .topbar nav button:hover {
     color: var(--text);
     background: rgb(var(--fg-rgb) / 0.05);
   }
 
-  .topbar button.on {
+  .topbar nav button.on {
     color: var(--text);
     background: var(--card);
     box-shadow: var(--e1);
