@@ -254,6 +254,7 @@ async fn poller_decodes_scales_and_retries_failed_blocks() {
             max_gap: 1,
             ..Default::default()
         },
+        indexes: Vec::new(),
     };
     let (mut results, requests) = poll_once(&mut s, &request).await;
     results.sort_by_key(|r| r.index);
@@ -271,4 +272,12 @@ async fn poller_decodes_scales_and_retries_failed_blocks() {
     assert_eq!(results[4].value, Some(Value::Bool(true)));
     // holding 0-2, holding 98-100 (fails), 98 and 100 alone, coil 5
     assert_eq!(requests, 5);
+
+    // Results carry the caller's map indexes when given.
+    let mut request = request;
+    request.indexes = vec![10, 11, 12, 13, 14];
+    let (results, _) = poll_once(&mut s, &request).await;
+    let mut got: Vec<usize> = results.iter().map(|r| r.index).collect();
+    got.sort();
+    assert_eq!(got, [10, 11, 12, 13, 14]);
 }

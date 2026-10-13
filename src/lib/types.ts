@@ -109,6 +109,8 @@ export interface PollRequest {
   interval_ms: number;
   delay_ms: number;
   limits: PlanLimits;
+  /** Map index of each register, echoed back in results. */
+  indexes: number[];
 }
 
 export interface PointResult {

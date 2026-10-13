@@ -36,8 +36,15 @@
           reg.description.toLowerCase().includes(q) ||
           String(reg.address).includes(q)
         );
-      }),
+      })
+      // Registers that are not read go to the end, in map order.
+      .sort(
+        (a, b) =>
+          Number(bench.skipped.has(a.index)) -
+            Number(bench.skipped.has(b.index)) || a.index - b.index,
+      ),
   );
+  const readCount = $derived(open.map.registers.length - bench.skipped.size);
 
   function typeLabel(reg: Register): string {
     if (reg.type === "string") return `string[${reg.length}]`;
@@ -82,6 +89,17 @@
     {#if meta.description}<span class="desc">{meta.description}</span>{/if}
   </div>
   <span class="spacer"></span>
+  <span class="count">Reading {readCount} of {open.map.registers.length}</span>
+  <button
+    class="btn small"
+    disabled={readCount === open.map.registers.length}
+    onclick={() => bench.setAllRead(true)}>Read all</button
+  >
+  <button
+    class="btn small"
+    disabled={readCount === 0}
+    onclick={() => bench.setAllRead(false)}>Read none</button
+  >
   <input
     class="input search"
     type="search"
@@ -112,6 +130,7 @@
   <table>
     <thead>
       <tr>
+        <th class="read">Read</th>
         <th class="addr">Address</th>
         <th>Name</th>
         <th>Type</th>
@@ -124,7 +143,21 @@
     <tbody>
       {#each rows as { reg, index } (index)}
         {@const r = bench.mapResults.get(index)}
-        <tr class:err={!!r?.error}>
+        {@const off = bench.skipped.has(index)}
+        <tr class:err={!!r?.error} class:off>
+          <td class="read">
+            {#if reg.access !== "W"}
+              <input
+                type="checkbox"
+                class="switch"
+                role="switch"
+                checked={!off}
+                aria-label="Read {reg.name}"
+                title={off ? "Not read. Switch on to read it." : "Read"}
+                onchange={() => bench.toggleRead(index)}
+              />
+            {/if}
+          </td>
           <td
             class="addr mono"
             title="{AREA_NAME[reg.area]} {reg.address}{base
@@ -158,7 +191,7 @@
         </tr>
         {#if editing === index}
           <tr class="editor">
-            <td></td>
+            <td colspan="2"></td>
             <td colspan="6">
               <form
                 onsubmit={(e) => {
@@ -211,11 +244,13 @@
             </td>
           </tr>
         {:else if note?.index === index && note.ok}
-          <tr class="done"><td></td><td colspan="6">{note.text}</td></tr>
+          <tr class="done"
+            ><td colspan="2"></td><td colspan="6">{note.text}</td></tr
+          >
         {/if}
       {:else}
         <tr>
-          <td colspan="7" class="empty"
+          <td colspan="8" class="empty"
             >{open.map.registers.length
               ? "No registers match this search."
               : "This map has no registers."}</td
@@ -307,6 +342,55 @@
 
   .addr {
     width: 100px;
+  }
+
+  .read {
+    width: 52px;
+    text-align: center;
+  }
+
+  /* Small toggle switch */
+  .switch {
+    appearance: none;
+    position: relative;
+    width: 30px;
+    height: 16px;
+    margin: 0;
+    border-radius: 8px;
+    background: var(--border-strong);
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background 0.15s;
+  }
+
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.15s;
+  }
+
+  .switch:checked {
+    background: var(--accent);
+  }
+
+  .switch:checked::after {
+    transform: translateX(14px);
+  }
+
+  /* Registers that are not read: greyed out, at the end of the list */
+  tr.off td:not(.read) {
+    opacity: 0.4;
+  }
+
+  .count {
+    color: var(--text-2);
+    font-size: 13px;
   }
 
   .area {

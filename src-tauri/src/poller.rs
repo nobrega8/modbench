@@ -19,14 +19,18 @@ pub struct PollRequest {
     /// Replaces every register's byte order, to try orders live.
     pub byte_order_override: Option<ByteOrder>,
     pub interval_ms: u64,
-    /// Pause between two requests inside a cycle (slow RTU devices).
+    /// Pause between two requests, also between cycles (slow RTU devices).
     pub delay_ms: u64,
     pub limits: PlanLimits,
+    /// Map index of each register, reported back in `PointResult::index`.
+    /// Empty means the position in `registers`.
+    #[serde(default)]
+    pub indexes: Vec<usize>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PointResult {
-    /// Index into `PollRequest::registers`.
+    /// `PollRequest::indexes` entry of the register (or its position).
     pub index: usize,
     /// Engineering value (scale and offset applied).
     pub value: Option<Value>,
@@ -95,7 +99,11 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
     let mut results = Vec::with_capacity(points.len());
     let mut requests = 0;
     let mut finish = |pi: usize, mut r: PointResult| {
-        r.index = readable[pi];
+        r.index = req
+            .indexes
+            .get(readable[pi])
+            .copied()
+            .unwrap_or(readable[pi]);
         results.push(r);
     };
 
@@ -173,7 +181,8 @@ pub async fn run(
     req: PollRequest,
     report: impl Fn(Result<PollCycle, String>),
 ) {
-    let interval = Duration::from_millis(req.interval_ms.max(50));
+    let interval = Duration::from_millis(req.interval_ms);
+    let delay = Duration::from_millis(req.delay_ms);
     let mut cycle = 0;
     loop {
         let started = Instant::now();
@@ -195,6 +204,12 @@ pub async fn run(
             requests,
             results,
         }));
-        tokio::time::sleep(interval.saturating_sub(started.elapsed())).await;
+        // The pause between requests also separates the last request of a
+        // cycle from the first of the next; never spin without a pause.
+        let pause = interval
+            .saturating_sub(started.elapsed())
+            .max(delay)
+            .max(Duration::from_millis(10));
+        tokio::time::sleep(pause).await;
     }
 }

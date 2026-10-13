@@ -39,6 +39,30 @@ const READ_AREA: Record<number, Area> = {
 const LOG_LIMIT = 1000;
 const RAW_LIMIT = 200;
 
+const SKIPPED_KEY = "modbench.skipped:";
+
+/** Registers switched off for a map, remembered per map file. */
+function loadSkipped(path: string | undefined): Set<number> {
+  if (!path) return new Set();
+  try {
+    const raw = localStorage.getItem(SKIPPED_KEY + path);
+    return new Set(raw ? (JSON.parse(raw) as number[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSkipped(path: string | undefined, skipped: Set<number>) {
+  if (!path) return;
+  try {
+    if (skipped.size)
+      localStorage.setItem(SKIPPED_KEY + path, JSON.stringify([...skipped]));
+    else localStorage.removeItem(SKIPPED_KEY + path);
+  } catch {
+    // Storage unavailable: the choice lasts for this session only.
+  }
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 class Bench {
@@ -66,6 +90,8 @@ class Bench {
   activeMap = $state<number | null>(null);
   mapError = $state<{ path: string; diagnostics: Diagnostic[] } | null>(null);
   orderOverride = $state<ByteOrder | null>(null);
+  /** Registers of the active map that are not read (by index). */
+  skipped = $state.raw<Set<number>>(new Set());
   library = $state.raw<LibraryEntry[]>([]);
   libraryFolder = $state("");
 
@@ -136,6 +162,7 @@ class Bench {
 
   selectMap(index: number) {
     this.activeMap = index;
+    this.skipped = loadSkipped(this.maps[index]?.path);
     this.source = "map";
     this.tab = "map";
     this.mapResults = new Map();
@@ -251,15 +278,40 @@ class Bench {
     }
   }
 
+  /** Turns reading of one map register on or off. */
+  toggleRead(index: number) {
+    const next = new Set(this.skipped);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    this.setSkipped(next);
+  }
+
+  setAllRead(on: boolean) {
+    const count = this.map?.map.registers.length ?? 0;
+    this.setSkipped(
+      on ? new Set() : new Set(Array.from({ length: count }, (_, i) => i)),
+    );
+  }
+
+  private setSkipped(next: Set<number>) {
+    this.skipped = next;
+    saveSkipped(this.map?.path, next);
+    this.refreshPolling();
+  }
+
   private pollRequest() {
     const open = this.map!;
     const m = open.map.meta;
+    const all = $state.snapshot(open.map.registers);
+    const indexes = all.map((_, i) => i).filter((i) => !this.skipped.has(i));
     return {
-      registers: $state.snapshot(open.map.registers),
+      indexes,
+      registers: indexes.map((i) => all[i]),
       byte_order: m.byte_order ?? "ABCD",
       byte_order_override: this.orderOverride,
-      interval_ms: Math.max(this.delayMs, 20),
-      delay_ms: 0,
+      // Like a manual loop: Delay is the pause between every two requests.
+      interval_ms: 0,
+      delay_ms: this.delayMs,
       limits: {
         max_registers: m.max_read_registers ?? 125,
         max_bits: m.max_read_bits ?? 2000,
@@ -271,6 +323,14 @@ class Bench {
   private async runMap() {
     if (!this.map) {
       this.status = { ok: false, text: "Choose a device map first." };
+      await this.stop();
+      return;
+    }
+    if (this.skipped.size >= this.map.map.registers.length) {
+      this.status = {
+        ok: false,
+        text: "Every register is switched off. Turn on Read for at least one.",
+      };
       await this.stop();
       return;
     }
