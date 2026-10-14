@@ -1,7 +1,7 @@
 <script lang="ts">
   import { relaunch } from "@tauri-apps/plugin-process";
   import { settings } from "$lib/settings.svelte";
-  import { updates } from "$lib/updates.svelte";
+  import { APT_UPGRADE, updates } from "$lib/updates.svelte";
 
   const update = $derived(updates.available);
   let dismissed = $state(false);
@@ -39,7 +39,9 @@
 {#if update && !dismissed}
   <div class="banner" role="status">
     <strong>Modbench {update.version} is available.</strong>
-    {#if failure}
+    {#if updates.viaApt}
+      <span>Update with <span class="mono">{APT_UPGRADE}</span></span>
+    {:else if failure}
       <span class="bad">The update failed: {failure}</span>
     {:else if downloading}
       <span>Downloading…{progress === null ? "" : ` ${progress}%`}</span>
@@ -47,14 +49,18 @@
       <span class="notes" title={update.body}>{update.body}</span>
     {/if}
     <span class="spacer"></span>
-    <button class="btn accent" disabled={downloading} onclick={install}
-      >Install and restart</button
-    >
-    <button
-      class="btn"
-      disabled={downloading}
-      onclick={() => (dismissed = true)}>Later</button
-    >
+    {#if updates.viaApt}
+      <button class="btn" onclick={() => (dismissed = true)}>Dismiss</button>
+    {:else}
+      <button class="btn accent" disabled={downloading} onclick={install}
+        >Install and restart</button
+      >
+      <button
+        class="btn"
+        disabled={downloading}
+        onclick={() => (dismissed = true)}>Later</button
+      >
+    {/if}
   </div>
 {/if}
 

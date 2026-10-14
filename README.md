@@ -20,7 +20,7 @@ Get the latest installer from [Releases](https://github.com/nobrega8/modbench/re
 | Windows 10/11 | `Modbench_x.y.z_x64-setup.exe` (or the `.msi`) |
 | Linux | `Modbench_x.y.z_amd64.AppImage` (or the `.deb`) |
 
-Modbench checks for new versions when it starts and installs them when you choose to. On Linux, in-app updates work for the AppImage.
+Modbench checks for new versions when it starts and installs them when you choose to. On Linux, in-app updates work for the AppImage; the `.deb` updates through apt (below).
 
 ### Debian and Ubuntu (APT)
 

@@ -85,6 +85,16 @@ pub fn app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+/// True when Modbench was installed from the .deb package, so dpkg/apt owns the
+/// files and updates come from the APT repository rather than the in-app updater.
+/// An AppImage sets `APPIMAGE` and updates itself, even on a system with the .deb.
+#[tauri::command]
+pub fn installed_with_apt() -> bool {
+    cfg!(target_os = "linux")
+        && std::env::var_os("APPIMAGE").is_none()
+        && std::path::Path::new("/var/lib/dpkg/info/modbench.list").exists()
+}
+
 #[tauri::command]
 pub fn list_serial_ports() -> Result<Vec<String>, ModbusError> {
     modbus::list_serial_ports()

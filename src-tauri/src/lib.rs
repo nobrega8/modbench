@@ -34,6 +34,7 @@ pub fn run() {
         .manage(commands::AppState::default())
         .invoke_handler(tauri::generate_handler![
             commands::app_version,
+            commands::installed_with_apt,
             commands::list_serial_ports,
             commands::connect,
             commands::disconnect,

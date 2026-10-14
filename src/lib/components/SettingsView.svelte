@@ -3,7 +3,7 @@
   import { bench } from "$lib/state.svelte";
   import { settings, type Theme } from "$lib/settings.svelte";
   import { forgetAll } from "$lib/profiles";
-  import { updates } from "$lib/updates.svelte";
+  import { APT_UPGRADE, updates } from "$lib/updates.svelte";
 
   const themes: { id: Theme; label: string }[] = [
     { id: "system", label: "Same as system" },
@@ -259,7 +259,11 @@
         <label class="setting">
           <div class="text">
             <span class="name">Check for updates when Modbench starts</span>
-            <span class="hint">You choose when to install.</span>
+            <span class="hint"
+              >{#if updates.viaApt}Installed with apt: updates install with
+                <span class="mono">{APT_UPGRADE}</span>{:else}You choose when
+                to install.{/if}</span
+            >
           </div>
           <input
             type="checkbox"
