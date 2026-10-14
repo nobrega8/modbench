@@ -1,5 +1,7 @@
 // User preferences, kept in this machine's webview storage.
 
+import type { AddressFormat } from "./format";
+
 export type Theme = "system" | "light" | "dark";
 export type CsvSeparator = "," | ";";
 
@@ -11,6 +13,7 @@ interface Stored {
   readOnly: boolean;
   logLimit: number;
   csvSeparator: CsvSeparator;
+  addressFormat: AddressFormat;
   checkUpdates: boolean;
 }
 
@@ -23,6 +26,7 @@ const DEFAULTS: Stored = {
   readOnly: false,
   logLimit: 1000,
   csvSeparator: ",",
+  addressFormat: "base0",
   checkUpdates: true,
 };
 
@@ -48,6 +52,8 @@ class Settings {
   logLimit = $state(1000);
   /** Comma, or semicolon for spreadsheets set up for a decimal comma. */
   csvSeparator = $state<CsvSeparator>(",");
+  /** How the register grid, the map and the log show addresses. */
+  addressFormat = $state<AddressFormat>("base0");
   checkUpdates = $state(true);
 
   constructor() {
@@ -63,6 +69,7 @@ class Settings {
       readOnly: this.readOnly,
       logLimit: this.logLimit,
       csvSeparator: this.csvSeparator,
+      addressFormat: this.addressFormat,
       checkUpdates: this.checkUpdates,
     };
     try {

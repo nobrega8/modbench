@@ -6,6 +6,7 @@
   import {
     AREA_TAG,
     AREA_NAME,
+    formatAddress,
     formatRaw,
     formatValue,
     parseForRegister,
@@ -13,6 +14,7 @@
   } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
   import type { Register } from "$lib/types";
+  import AddressFormat from "./AddressFormat.svelte";
 
   let { open }: { open: OpenMap } = $props();
 
@@ -38,7 +40,10 @@
           !q ||
           reg.name.toLowerCase().includes(q) ||
           reg.description.toLowerCase().includes(q) ||
-          String(reg.address).includes(q)
+          String(reg.address).includes(q) ||
+          formatAddress(reg.address, settings.addressFormat)
+            .toLowerCase()
+            .includes(q)
         );
       })
       // Registers that are not read go to the end, in map order.
@@ -223,6 +228,7 @@
     bind:value={search}
     aria-label="Search registers"
   />
+  <AddressFormat />
   {#if groups.length}
     <select class="input" bind:value={group} aria-label="Group">
       <option value="">All groups</option>
@@ -282,10 +288,13 @@
           </td>
           <td
             class="addr mono"
-            title="{AREA_NAME[reg.area]} {reg.address}{base
+            title="{AREA_NAME[reg.area]} {reg.address} on the wire{base
               ? ` (${reg.address + base} in the manual)`
               : ''}"
-            ><span class="area">{AREA_TAG[reg.area]}</span>{reg.address}</td
+            ><span class="area">{AREA_TAG[reg.area]}</span>{formatAddress(
+              reg.address,
+              settings.addressFormat,
+            )}</td
           >
           <td class="name" title={reg.description || undefined}
             >{reg.name}{#if reg.group && !group}<span class="grp"
@@ -404,8 +413,9 @@
 <style>
   .toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 8px 10px;
     padding-bottom: 10px;
   }
 

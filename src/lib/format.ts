@@ -32,6 +32,29 @@ export function hex(n: number, digits = 4): string {
 }
 
 /**
+ * How addresses are shown: as sent on the wire (0-based), as most manuals
+ * number them (1-based), or in hexadecimal (wire address).
+ */
+export type AddressFormat = "base0" | "base1" | "hex";
+
+export const ADDRESS_FORMATS: { id: AddressFormat; label: string }[] = [
+  { id: "base0", label: "0-based" },
+  { id: "base1", label: "1-based" },
+  { id: "hex", label: "Hexadecimal" },
+];
+
+/** A wire address for display. `pad` zero-pads decimal forms to 5 digits. */
+export function formatAddress(
+  n: number,
+  format: AddressFormat,
+  pad = false,
+): string {
+  if (format === "hex") return `${hex(n)}h`;
+  const s = String(format === "base1" ? n + 1 : n);
+  return pad ? s.padStart(5, "0") : s;
+}
+
+/**
  * Integer typed by a person: decimal, `0x1F` or `1Fh` (the suffix form is
  * common in device manuals). Returns null if it is not a whole number.
  */

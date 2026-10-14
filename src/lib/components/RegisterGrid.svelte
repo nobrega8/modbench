@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { hex } from "$lib/format";
+  import { formatAddress, hex } from "$lib/format";
+  import { settings } from "$lib/settings.svelte";
+  import AddressFormat from "./AddressFormat.svelte";
   import { bench } from "$lib/state.svelte";
   import type { ByteOrder } from "$lib/types";
 
@@ -27,7 +29,6 @@
 
   let format = $state<Format>("unsigned");
   let order = $state<ByteOrder>("ABCD");
-  let hexAddresses = $state(false);
 
   const wide = $derived(
     format === "int32" || format === "uint32" || format === "float32",
@@ -35,7 +36,7 @@
   const read = $derived(bench.read);
 
   function addr(n: number) {
-    return hexAddresses ? hex(n) : String(n).padStart(5, "0");
+    return formatAddress(n, settings.addressFormat, true);
   }
 
   function word(w: number): string {
@@ -144,9 +145,7 @@
       </label>
     {/if}
   {/if}
-  <label class="check"
-    ><input type="checkbox" bind:checked={hexAddresses} /> Hexadecimal addresses</label
-  >
+  <AddressFormat />
   <span class="spacer"></span>
   <button class="btn" disabled={!read} onclick={() => bench.copyReadToWrite()}
     >Copy data to write values</button
@@ -171,7 +170,7 @@
             class="cell"
             class:changed={c.changed}
             style:grid-column="span {c.span}"
-            title="Address {r.address + c.offset}">{c.text}</span
+            title="Address {addr(r.address + c.offset)}">{c.text}</span
           >
         {/each}
         {#if row.length * row[0].span < PER_ROW}
