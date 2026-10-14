@@ -5,19 +5,21 @@
 [![CI](https://github.com/nobrega8/modbench/actions/workflows/ci.yml/badge.svg)](https://github.com/nobrega8/modbench/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/nobrega8/modbench)](https://github.com/nobrega8/modbench/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/nobrega8/modbench/total)](https://github.com/nobrega8/modbench/releases)
-[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-informational)](#download)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)](#download)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri-24C8DB?logo=tauri&logoColor=white)](https://tauri.app)
 [![Supports .mbmap](https://img.shields.io/badge/supports-.mbmap-0A7EA4)](https://github.com/nobrega8/mbmap-library)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/nobrega)
 
-A lightweight Modbus TCP/RTU client for Windows and Linux. Test any address by hand, or open a device map and read every register by name, already scaled, with units and labels.
+A lightweight Modbus TCP/RTU/ASCII client for Windows, Linux and macOS. Test any address by hand, or open a device map and read every register by name, already scaled, with units and labels.
 
 ![Modbench reading an energy meter through its device map](assets/screenshots/device-map.png)
 
 ## Download
 
-Get the installer from [Releases](https://github.com/nobrega8/modbench/releases/latest): `Modbench_x.y.z_x64-setup.exe` (or `.msi`) for Windows 10/11, `Modbench_x.y.z_amd64.AppImage` (or `.deb`) for Linux. Modbench offers new versions when it starts.
+Get the installer from [Releases](https://github.com/nobrega8/modbench/releases/latest): `Modbench_x.y.z_x64-setup.exe` (or `.msi`) for Windows 10/11, `Modbench_x.y.z_amd64.AppImage` (or `.deb`) for Linux, `Modbench_x.y.z_universal.dmg` for macOS 10.15+ (Apple Silicon and Intel). Modbench offers new versions when it starts.
+
+On macOS the app is not notarized by Apple, so the first time, right-click Modbench in Applications and choose **Open** (or allow it under System Settings › Privacy & Security). Serial adapters appear as `/dev/cu.*`.
 
 On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod -aG dialout $USER`, then log in again.
 
@@ -35,12 +37,21 @@ Updates then arrive with `sudo apt upgrade`.
 
 ## Features
 
-- **Manual requests**: any function code, address and quantity, over serial RTU, Modbus TCP or RTU over TCP.
+- **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or RTU over TCP.
 - **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
 - **Checks the device**: reference values catch a wrong address or byte order, and a map can declare which models and firmware versions it fits.
 - **Write safely**: typed controls for writable registers, limits from the map, optional confirmation, and a read-only mode that blocks every write.
 - **Chart, raw bytes and log**: plot registers over time, see the exact frames, export values or record every cycle to CSV.
 - **Find devices**: scan for unit IDs, or for the baud rate, parity and stop bits of a serial device.
+- **Tools**:
+  - **Simulator**: a Modbus TCP device inside Modbench, optionally shaped after a map (its reference values and addresses), to try maps and other programs without hardware.
+  - **Identify**: read the device's vendor, product code and revision (FC43).
+  - **Find addresses**: discover which registers answer on a device without a manual.
+  - **Data decoder** and **frame decoder**: hex as every type in every byte order, and frames field by field with CRC/LRC checks (also on the Raw data tab).
+  - **Statistics**: failures by cause (timeouts, each exception, bad frames) and response times per function code.
+  - **Alarms**: low/high limits on map registers, shown in red on the Device map tab.
+  - **Trend player**: play back a CSV recording with a scrub bar and up to 60× speed.
+- **Bit view**: see the 16 bits of each register and switch a single bit of a holding register.
 - **Value templates**: copy the settings of one device to another of the same model.
 - **Reconnects by itself** when a link drops during a test.
 - Light and dark themes, adjustable text size, and small installers (about 2 MB on Windows).
@@ -63,6 +74,8 @@ Everything stays on this computer. The last connection is filled in again on sta
 modbench-cli read --tcp 192.168.1.10 holding 0x0405 1
 modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
 modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
+modbench-cli id --tcp 192.168.1.10               # FC43 device identification
+modbench-cli simulate device.mbmap.json --strict  # a simulated device on port 5020
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap          # version 1 map -> old-device.mbmap.json
 ```

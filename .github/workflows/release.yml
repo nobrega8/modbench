@@ -1,7 +1,9 @@
 name: Release
 
-# Push a tag like v0.2.0 to build signed installers for Windows and Linux and
-# publish them, with the updater's latest.json, as a GitHub release.
+# Push a tag like v0.2.0 to build signed installers for Windows, Linux and
+# macOS and publish them, with the updater's latest.json, as a GitHub release.
+# The macOS app is one universal build (Apple Silicon and Intel), signed
+# ad hoc: it has no Apple Developer ID, so Gatekeeper asks once on first open.
 on:
   push:
     tags: ["v*"]
@@ -14,7 +16,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-22.04]
+        include:
+          - os: windows-latest
+          - os: ubuntu-22.04
+          - os: macos-latest
+            args: --target universal-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +39,8 @@ jobs:
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -48,7 +56,8 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Modbench ${{ github.ref_name }}
-          releaseBody: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux. Installed copies update themselves from here."
+          releaseBody: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux, `.dmg` for macOS (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
+          args: ${{ matrix.args }}

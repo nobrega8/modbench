@@ -14,7 +14,8 @@
     | "ascii"
     | "int32"
     | "uint32"
-    | "float32";
+    | "float32"
+    | "bits";
   const formats: { id: Format; label: string }[] = [
     { id: "unsigned", label: "Unsigned" },
     { id: "signed", label: "Signed" },
@@ -24,6 +25,7 @@
     { id: "int32", label: "32-bit signed" },
     { id: "uint32", label: "32-bit unsigned" },
     { id: "float32", label: "32-bit float" },
+    { id: "bits", label: "Bits" },
   ];
   const orders: ByteOrder[] = ["ABCD", "CDAB", "BADC", "DCBA"];
   const PER_ROW = 10;
@@ -35,6 +37,25 @@
     format === "int32" || format === "uint32" || format === "float32",
   );
   const read = $derived(bench.read);
+  const bitView = $derived(
+    format === "bits" && read?.data.kind === "registers",
+  );
+  /** Bits of holding registers can be switched one at a time. */
+  const writable = $derived(read?.area === "holding" && !settings.readOnly);
+  let bitError = $state<string | null>(null);
+  let writing = $state<string | null>(null);
+
+  async function flip(address: number, bit: number, on: boolean) {
+    bitError = null;
+    writing = `${address}:${bit}`;
+    try {
+      await bench.writeBit(address, bit, on);
+    } catch (e) {
+      bitError = e instanceof Error ? e.message : String(e);
+    } finally {
+      writing = null;
+    }
+  }
 
   function addr(n: number) {
     return formatAddress(n, settings.addressFormat, true);
@@ -154,7 +175,44 @@
   >
 </div>
 
-{#if !read}
+{#if bitView && read?.data.kind === "registers"}
+  {@const r = read}
+  <p class="bit-hint">
+    {writable
+      ? "Click a bit to switch it: the register is read, the bit changed and the register written back."
+      : read.area === "holding"
+        ? "Read-only mode is on: bits cannot be switched."
+        : "Input registers cannot be written."}
+    {#if bitError}<span class="bad">{bitError}</span>{/if}
+  </p>
+  <div class="grid-wrap">
+    <div class="bits">
+      <span></span>
+      {#each Array(16) as _, k (k)}<span class="colhead">{15 - k}</span>{/each}
+      <span class="colhead">Hex</span>
+      {#each read.data.values as w, i (i)}
+        <span class="rowhead">{addr(r.address + i)}</span>
+        {#each Array(16) as _, k (k)}
+          {@const bit = 15 - k}
+          {@const on = ((w >> bit) & 1) === 1}
+          <button
+            class="bit"
+            class:on
+            class:nibble={bit % 4 === 0 && bit > 0}
+            class:busy={writing === `${r.address + i}:${bit}`}
+            disabled={!writable || writing !== null}
+            title="Bit {bit} of {addr(r.address + i)}: {on ? 1 : 0}"
+            aria-label="Bit {bit} of address {addr(r.address + i)}, {on
+              ? 'on'
+              : 'off'}"
+            onclick={() => flip(r.address + i, bit, !on)}>{on ? 1 : 0}</button
+          >
+        {/each}
+        <span class="cell hexcell">{hex(w)}</span>
+      {/each}
+    </div>
+  </div>
+{:else if !read}
   <p class="empty">
     Values read from the device appear here. Choose a read command in step 2 and
     press Start.
@@ -253,6 +311,61 @@
   /* Lit at once when the value changes, then fades back */
   .cell {
     transition: background-color 0.6s var(--ease);
+  }
+
+  .bit-hint {
+    margin: 0 0 8px;
+    color: var(--text-2);
+    font-size: 12px;
+  }
+
+  .bit-hint .bad {
+    margin-left: 8px;
+    color: var(--bad);
+  }
+
+  .bits {
+    display: grid;
+    grid-template-columns: 58px repeat(16, 26px) 64px;
+    gap: 3px;
+    align-items: center;
+  }
+
+  .bit {
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: var(--cell);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-3);
+    cursor: pointer;
+  }
+
+  .bit.nibble {
+    margin-right: 5px;
+  }
+
+  .bit.on {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .bit:disabled {
+    cursor: default;
+  }
+
+  .bit.busy {
+    opacity: 0.5;
+  }
+
+  .bit:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 1px var(--text-3);
+  }
+
+  .hexcell {
+    margin-left: 6px;
   }
 
   .cell.changed {

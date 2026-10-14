@@ -85,6 +85,22 @@
           </button>
         </span>
       </label>
+      <label
+        in:fieldIn
+        class="field"
+        title="RTU sends binary frames with a CRC; ASCII sends hex text with an LRC, used by some older devices"
+      >
+        <span>Framing</span>
+        <Select
+          bind:value={bench.framing}
+          disabled={locked}
+          label="Framing"
+          options={[
+            { value: "rtu", label: "RTU" },
+            { value: "ascii", label: "ASCII" },
+          ]}
+        />
+      </label>
       <label in:fieldIn class="field">
         <span>Baud rate</span>
         <Select

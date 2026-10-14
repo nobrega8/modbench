@@ -1,5 +1,6 @@
 use tauri::{Emitter, Manager};
 
+pub mod ascii;
 pub mod codec;
 mod commands;
 pub mod firmware;
@@ -10,6 +11,7 @@ pub mod modbus;
 pub mod online;
 pub mod planner;
 pub mod poller;
+pub mod simulator;
 pub mod tap;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -67,6 +69,14 @@ pub fn run() {
             commands::library_online_index,
             commands::library_online_import,
             commands::vendor_icon,
+            commands::read_device_id,
+            commands::scan_addresses,
+            commands::sim_start,
+            commands::sim_stop,
+            commands::sim_status,
+            commands::sim_load,
+            commands::sim_read,
+            commands::sim_write,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -49,12 +49,13 @@ export function registerId(r: Register): string {
 /** Where a device is reached, without the unit ID. */
 export function endpointOf(c: {
   transport: "tcp" | "rtuovertcp" | "rtu";
+  framing?: "rtu" | "ascii";
   host: string;
   tcpPort: number;
   serialPort: string;
 }): string {
   return c.transport === "rtu"
-    ? `rtu:${c.serialPort}`
+    ? `${c.framing === "ascii" ? "ascii" : "rtu"}:${c.serialPort}`
     : `${c.transport}:${c.host.trim().toLowerCase()}:${c.tcpPort}`;
 }
 

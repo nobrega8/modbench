@@ -1,7 +1,8 @@
 //! Command-line and MCP access to the Modbench core, without the UI.
 //!
 //! Read-only on purpose: it lists ports, reads registers, reads every
-//! register of a `.mbmap` once, and validates map files.
+//! register of a `.mbmap` once, and validates map files. `simulate` runs a
+//! simulated device that others can write to; it never writes to a device.
 
 use std::path::Path;
 use std::time::Duration;
@@ -110,6 +111,34 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Read what a device says about itself (FC43 device identification)
+    Id {
+        #[command(flatten)]
+        conn: Conn,
+        /// 1 basic, 2 regular or 3 extended
+        #[arg(long, default_value_t = 1)]
+        level: u8,
+        /// Print JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Run a simulated Modbus TCP device, optionally shaped after a map
+    Simulate {
+        /// Map whose reference values and identity the device takes
+        map: Option<String>,
+        /// TCP port to listen on
+        #[arg(long, default_value_t = 5020)]
+        port: u16,
+        /// Answer only addresses the map defines (others get exception 2)
+        #[arg(long)]
+        strict: bool,
+        /// Answer only this unit ID (default: all)
+        #[arg(long, short)]
+        unit: Option<u8>,
+        /// Listen on every network interface, not only this computer
+        #[arg(long)]
+        public: bool,
+    },
     /// Check a map file (.mbmap.json, or a deprecated version 1 .mbmap) against the spec
     Validate { map: String },
     /// Convert a version 1 .mbmap file to version 2 (.mbmap.json)
@@ -134,6 +163,9 @@ struct Conn {
     /// Serial port for Modbus RTU, e.g. COM3 or /dev/ttyUSB0
     #[arg(long)]
     rtu: Option<String>,
+    /// Serial port for Modbus ASCII
+    #[arg(long)]
+    ascii: Option<String>,
     /// Baud rate (default 9600, or the map's)
     #[arg(long)]
     baud: Option<u32>,
@@ -188,7 +220,7 @@ impl Conn {
         } else if let Some(t) = &self.rtu_over_tcp {
             let (host, port) = host_port(t);
             Transport::RtuOverTcp { host, port }
-        } else if let Some(port) = &self.rtu {
+        } else if let Some(port) = self.rtu.as_ref().or(self.ascii.as_ref()) {
             let parity = match self.parity.as_deref().map(str::to_uppercase).as_deref() {
                 None => meta.and_then(|m| m.parity).unwrap_or(Parity::N),
                 Some("N") => Parity::N,
@@ -196,22 +228,36 @@ impl Conn {
                 Some("O") => Parity::O,
                 Some(p) => return Err(format!("parity must be N, E or O, not {p}")),
             };
-            Transport::Rtu {
-                port: port.clone(),
-                baudrate: self.baud.or(meta.and_then(|m| m.baudrate)).unwrap_or(9600),
-                parity,
-                data_bits: self
-                    .data_bits
-                    .or(meta.and_then(|m| m.data_bits))
-                    .unwrap_or(8),
-                stop_bits: self
-                    .stop_bits
-                    .or(meta.and_then(|m| m.stop_bits))
-                    .unwrap_or(1),
+            let port = port.clone();
+            let baudrate = self.baud.or(meta.and_then(|m| m.baudrate)).unwrap_or(9600);
+            let data_bits = self
+                .data_bits
+                .or(meta.and_then(|m| m.data_bits))
+                .unwrap_or(8);
+            let stop_bits = self
+                .stop_bits
+                .or(meta.and_then(|m| m.stop_bits))
+                .unwrap_or(1);
+            if self.rtu.is_some() {
+                Transport::Rtu {
+                    port,
+                    baudrate,
+                    parity,
+                    data_bits,
+                    stop_bits,
+                }
+            } else {
+                Transport::Ascii {
+                    port,
+                    baudrate,
+                    parity,
+                    data_bits,
+                    stop_bits,
+                }
             }
         } else {
             return Err(
-                "choose a connection: --tcp HOST[:PORT], --rtu PORT or --rtu-over-tcp HOST[:PORT]"
+                "choose a connection: --tcp HOST[:PORT], --rtu PORT, --ascii PORT or --rtu-over-tcp HOST[:PORT]"
                     .into(),
             );
         };
@@ -233,6 +279,13 @@ impl Conn {
                 data_bits,
                 stop_bits,
             } => format!("RTU {port} {baudrate} {data_bits}{parity:?}{stop_bits}"),
+            Transport::Ascii {
+                port,
+                baudrate,
+                parity,
+                data_bits,
+                stop_bits,
+            } => format!("ASCII {port} {baudrate} {data_bits}{parity:?}{stop_bits}"),
         };
         format!("{t}, unit {}", cfg.unit_id)
     }
@@ -559,6 +612,7 @@ fn conn_schema() -> Json {
         "tcp": {"type": "string", "description": "Modbus TCP device, host[:port]"},
         "rtu_over_tcp": {"type": "string", "description": "RTU over TCP gateway, host[:port]"},
         "rtu": {"type": "string", "description": "Serial port for Modbus RTU, e.g. COM3"},
+        "ascii": {"type": "string", "description": "Serial port for Modbus ASCII"},
         "baud": {"type": "integer"},
         "parity": {"type": "string", "enum": ["N", "E", "O"]},
         "data_bits": {"type": "integer"},
@@ -576,6 +630,8 @@ fn tools() -> Json {
         json!({"type": "string", "enum": ["coil", "discrete", "input", "holding"]});
     read_props["address"] = json!({"type": "integer", "minimum": 0, "maximum": 65535});
     read_props["count"] = json!({"type": "integer", "minimum": 1, "maximum": 125});
+    let mut id_props = conn_schema();
+    id_props["level"] = json!({"type": "integer", "enum": [1, 2, 3], "description": "1 basic (default), 2 regular, 3 extended"});
     let mut map_props = conn_schema();
     map_props["map_path"] = json!({"type": "string", "description": "Path to a .mbmap.json (or version 1 .mbmap) file"});
     map_props["filter"] = json!({"type": "string", "description": "Only registers whose name or group contains this text"});
@@ -594,6 +650,11 @@ fn tools() -> Json {
             "name": "read_map",
             "description": "Read every register of a .mbmap device map once (read-only) and return decoded, scaled values. Connection settings not given come from the map.",
             "inputSchema": {"type": "object", "properties": map_props, "required": ["map_path"]}
+        },
+        {
+            "name": "read_device_id",
+            "description": "Ask a device to identify itself (FC43 Read Device Identification): vendor, product code, revision and more. Read-only; many devices do not support it.",
+            "inputSchema": {"type": "object", "properties": id_props}
         },
         {
             "name": "validate_map",
@@ -627,6 +688,11 @@ async fn call_tool(name: &str, args: &Json) -> Result<String, String> {
             let path = str_arg("map_path").ok_or("map_path is required")?;
             let (where_, rows) = read_map(&conn, &path, str_arg("filter").as_deref()).await?;
             Ok(map_text(&where_, &path, &rows))
+        }
+        "read_device_id" => {
+            let level = args.get("level").and_then(Json::as_u64).unwrap_or(1) as u8;
+            let (where_, id) = read_id(&conn, level).await?;
+            Ok(id_text(&where_, &id))
         }
         "validate_map" => validate_text(&str_arg("map_path").ok_or("map_path is required")?),
         _ => Err(format!("unknown tool {name}")),
@@ -682,6 +748,70 @@ async fn serve_mcp() {
             let _ = stdout.flush().await;
         }
     }
+}
+
+async fn read_id(conn: &Conn, level: u8) -> Result<(String, modbus::DeviceIdentity), String> {
+    let cfg = conn.config(None)?;
+    let mut session = Session::connect(&cfg, None)
+        .await
+        .map_err(|e| format!("could not connect ({}): {e}", Conn::describe(&cfg)))?;
+    let id = session
+        .read_device_id(level)
+        .await
+        .map_err(|e| e.to_string());
+    let _ = session.disconnect().await;
+    Ok((Conn::describe(&cfg), id?))
+}
+
+fn id_text(where_: &str, id: &modbus::DeviceIdentity) -> String {
+    let mut out = format!("{where_} (conformity 0x{:02X})\n", id.conformity);
+    for o in &id.objects {
+        out.push_str(&format!("  0x{:02X}  {:<22}  {}\n", o.id, o.name, o.value));
+    }
+    out
+}
+
+async fn simulate(
+    map: Option<String>,
+    port: u16,
+    strict: bool,
+    unit: Option<u8>,
+    public: bool,
+) -> Result<(), String> {
+    use modbench_lib::simulator::{self, Memory, SimLogger};
+    let memory = match &map {
+        Some(path) => Memory::from_map(&load_map(path)?, strict),
+        None => Memory::default(),
+    };
+    let ip = if public { [0, 0, 0, 0] } else { [127, 0, 0, 1] };
+    let logger: SimLogger = std::sync::Arc::new(|e| {
+        let what = match (e.address, e.count) {
+            (Some(a), Some(n)) => format!(" {a} x{n}"),
+            _ => String::new(),
+        };
+        let result = e.error.unwrap_or_else(|| "ok".into());
+        println!(
+            "{}  unit {:>3}  FC{:02}{what}  {result}",
+            e.peer, e.unit, e.function
+        );
+    });
+    let running = simulator::start(
+        (ip, port).into(),
+        std::sync::Arc::new(std::sync::Mutex::new(memory)),
+        unit,
+        Some(logger),
+    )
+    .await
+    .map_err(|e| format!("port {port}: {e}"))?;
+    println!(
+        "Simulating {} on {} (Ctrl+C to stop)",
+        map.as_deref().unwrap_or("an empty device"),
+        running.addr
+    );
+    // Runs until the process is stopped (Ctrl+C ends it).
+    std::future::pending::<()>().await;
+    running.stop();
+    Ok(())
 }
 
 async fn scan(cfg: &ConnectionConfig, from: u8, to: u8) -> Result<Vec<modbus::ScanHit>, String> {
@@ -847,6 +977,21 @@ async fn run(cli: Cli) -> Result<(), String> {
                 }
             }
         }
+        Command::Id { conn, level, json } => {
+            let (where_, id) = read_id(&conn, level).await?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&id).unwrap());
+            } else {
+                print!("{}", id_text(&where_, &id));
+            }
+        }
+        Command::Simulate {
+            map,
+            port,
+            strict,
+            unit,
+            public,
+        } => simulate(map, port, strict, unit, public).await?,
         Command::Mcp => serve_mcp().await,
     }
     Ok(())

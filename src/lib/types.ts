@@ -21,7 +21,7 @@ export type Transport =
   | { kind: "tcp"; host: string; port: number }
   | { kind: "rtuovertcp"; host: string; port: number }
   | {
-      kind: "rtu";
+      kind: "rtu" | "ascii";
       port: string;
       baudrate: number;
       parity: Parity;
@@ -215,6 +215,60 @@ export interface TypedAddress {
   byte_order: ByteOrder;
   length: number | null;
   bit: number | null;
+}
+
+/** One identification object of a device (FC43). */
+export interface DeviceIdItem {
+  id: number;
+  name: string;
+  value: string;
+}
+
+export interface DeviceIdentity {
+  /** Conformity level byte: which objects and access the device supports. */
+  conformity: number;
+  objects: DeviceIdItem[];
+}
+
+/** What an address scan looks at. */
+export interface AddressScan {
+  area: Area;
+  from: number;
+  to: number;
+  /** Addresses read at once before splitting. */
+  block: number;
+  timeout_ms: number;
+}
+
+/** A run of addresses that answered during an address scan. */
+export interface AddressRange {
+  start: number;
+  count: number;
+}
+
+export interface AddressProgress {
+  address: number;
+  done: number;
+  total: number;
+  found: number;
+}
+
+/** One request a client sent to the simulator. */
+export interface SimEvent {
+  time_ms: number;
+  peer: string;
+  unit: number;
+  function: number;
+  address: number | null;
+  count: number | null;
+  error: string | null;
+  wrote: boolean;
+}
+
+/** Values held by the simulator, and which of those addresses exist. */
+export interface SimView {
+  data: RawData;
+  defined: boolean[];
 }
 
 export interface LibraryEntry {

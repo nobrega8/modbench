@@ -8,15 +8,19 @@
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import LibraryView from "$lib/components/LibraryView.svelte";
   import SettingsView from "$lib/components/SettingsView.svelte";
+  import ToolsView from "$lib/components/ToolsView.svelte";
   import WindowControls from "$lib/components/WindowControls.svelte";
   import { slidePill, viewIn } from "$lib/motion";
   import { bench, type Page } from "$lib/state.svelte";
   import { settings } from "$lib/settings.svelte";
+  import { sim } from "$lib/simulator.svelte";
   import {
     diagnosticWhere,
+    type AddressProgress,
     type LinkEvent,
     type PollCycle,
     type SerialProgress,
+    type SimEvent,
     type TrafficEntry,
   } from "$lib/types";
 
@@ -39,6 +43,10 @@
       listen<SerialProgress>("serial-scan-progress", (e) =>
         bench.onSerialProgress(e.payload),
       ),
+      listen<AddressProgress>("address-scan-progress", (e) =>
+        bench.onAddressProgress(e.payload),
+      ),
+      listen<SimEvent>("sim", (e) => sim.onEvent(e.payload)),
       listen<string>("open-file", (e) => bench.openMap(e.payload)),
     ];
     return () => stops.forEach((p) => p.then((stop) => stop()));
@@ -60,6 +68,7 @@
     // After a page reload the backend may still be polling a device the UI no
     // longer knows about: start from a clean state.
     api.disconnect().catch(() => {});
+    api.simStatus().then((port) => (sim.running = port));
     bench.refreshLibrary();
     api.startupFile().then((path) => {
       if (path) bench.openMap(path);
@@ -68,12 +77,16 @@
 
   const pages = $derived([
     { id: "main", label: "Main" },
+    { id: "tools", label: "Tools" },
     {
       id: "library",
       label: `Library${bench.library.length ? ` (${bench.library.length})` : ""}`,
     },
     { id: "settings", label: "Settings" },
   ] as { id: Page; label: string }[]);
+
+  /** macOS draws its own window buttons at the top left of the title bar. */
+  const mac = navigator.userAgent.includes("Mac OS X");
 
   function fileName(path: string) {
     return path.split(/[\\/]/).pop() ?? path;
@@ -82,7 +95,7 @@
 
 <div class="app">
   <!-- The title bar: drag to move, double-click to maximize -->
-  <header class="topbar" data-tauri-drag-region>
+  <header class="topbar" class:mac data-tauri-drag-region>
     <span class="brand" data-tauri-drag-region
       ><img src="/favicon.png" alt="" width="20" height="20" />Modbench</span
     >
@@ -96,10 +109,12 @@
       {/each}
     </nav>
     <div class="drag" data-tauri-drag-region></div>
-    <WindowControls />
+    {#if !mac}<WindowControls />{/if}
   </header>
   <UpdateBanner />
-  {#if bench.page === "library"}
+  {#if bench.page === "tools"}
+    <section class="page" in:viewIn><ToolsView /></section>
+  {:else if bench.page === "library"}
     <section class="page" in:viewIn><LibraryView /></section>
   {:else if bench.page === "settings"}
     <section class="page" in:viewIn><SettingsView /></section>
@@ -145,6 +160,11 @@
     margin: -10px -12px 0;
     padding-left: 16px;
     user-select: none;
+  }
+
+  /* Room for the traffic lights, which sit over the title bar */
+  .topbar.mac {
+    padding-left: 84px;
   }
 
   .topbar nav {

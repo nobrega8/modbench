@@ -44,7 +44,7 @@
 
   const where = $derived(
     bench.transport === "rtu"
-      ? `${bench.serialPort} · ${bench.baudrate} ${bench.dataBits}${bench.parity}${bench.stopBits}`
+      ? `${bench.serialPort} · ${bench.framing === "ascii" ? "ASCII " : ""}${bench.baudrate} ${bench.dataBits}${bench.parity}${bench.stopBits}`
       : `${bench.host}:${bench.tcpPort}`,
   );
 </script>
