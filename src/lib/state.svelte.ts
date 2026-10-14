@@ -37,6 +37,7 @@ import type {
   DeviceMap,
   Diagnostic,
   LibraryEntry,
+  LinkEvent,
   Parity,
   PointResult,
   PollCycle,
@@ -91,6 +92,9 @@ const LAST_MAP_KEY = "modbench.lastMap";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Pauses between attempts to open a lost link (same as the backend's). */
+const BACKOFF_MS = [500, 1000, 2000, 5000, 10000];
+
 class Bench {
   // Step 1 — connection
   transport = $state<TransportKind>("tcp");
@@ -141,6 +145,12 @@ class Bench {
   running = $state(false);
   connected = $state(false);
   status = $state<{ ok: boolean; text: string } | null>(null);
+  /** Set while a lost link is being opened again. */
+  link = $state<{
+    attempt: number;
+    retry_ms: number;
+    error: string | null;
+  } | null>(null);
   page = $state<Page>("main");
   tab = $state<Tab>("registers");
   counters = $state({ valid: 0, errors: 0, timeouts: 0 });
@@ -434,6 +444,7 @@ This writes to the device.`,
 
   async stop() {
     this.running = false;
+    this.link = null;
     if (this.source === "map") await api.stopPolling();
     await this.close();
   }
@@ -447,6 +458,10 @@ This writes to the device.`,
     do {
       await this.sendOnce();
       if (!this.loop || !this.running) break;
+      if (this.status && !this.status.ok && (await this.lost())) {
+        await this.reopen();
+        continue;
+      }
       await sleep(Math.max(this.delayMs, 10));
     } while (this.running);
     if (this.running) await this.stop();
@@ -490,6 +505,36 @@ This writes to the device.`,
     } catch (e) {
       this.status = { ok: false, text: errorText(e) };
     }
+  }
+
+  /** Whether the link is lost and should be opened again. */
+  private async lost(): Promise<boolean> {
+    if (!settings.autoReconnect) return false;
+    try {
+      return await api.linkLost();
+    } catch {
+      return false;
+    }
+  }
+
+  /** Opens a lost link again, waiting longer between attempts. */
+  private async reopen() {
+    let error: string | null = null;
+    for (let attempt = 1; this.running; attempt++) {
+      const retry_ms = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length) - 1];
+      this.link = { attempt, retry_ms, error };
+      await sleep(retry_ms);
+      if (!this.running) break;
+      try {
+        await api.reconnect();
+        this.link = null;
+        this.status = null;
+        return;
+      } catch (e) {
+        error = errorText(e);
+      }
+    }
+    this.link = null;
   }
 
   /** Turns reading of one map register on or off. */
@@ -541,6 +586,7 @@ This writes to the device.`,
       // Like a manual loop: Delay is the pause between every two requests.
       interval_ms: 0,
       delay_ms: this.delayMs,
+      reconnect: settings.autoReconnect,
       limits: {
         max_registers: Math.min(m.max_read_registers ?? 125, this.maxRegisters),
         max_bits: m.max_read_bits ?? 2000,
@@ -801,7 +847,18 @@ This writes to the device.`,
     );
   }
 
+  onLink(event: LinkEvent) {
+    if (event.state === "restored") {
+      this.link = null;
+      if (this.status && !this.status.ok) this.status = null;
+    } else if (this.running) {
+      const { attempt, retry_ms, error } = event;
+      this.link = { attempt, retry_ms, error };
+    }
+  }
+
   onPollStopped(reason: string) {
+    this.link = null;
     this.status = { ok: false, text: `Reading stopped: ${reason}` };
     this.running = false;
     this.connected = false;

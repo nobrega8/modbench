@@ -212,6 +212,56 @@ async fn long_reads_are_split_into_smaller_requests() {
     assert!(s.read_chunked(Area::Holding, 90, 20, 8).await.is_err());
 }
 
+/// A server that accepts connections and drops the first `drops` of them
+/// at once, then serves `device` on the rest.
+async fn start_flaky_device(device: FakeDevice, drops: usize) -> SocketAddr {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        for _ in 0..drops {
+            let (stream, _) = listener.accept().await.unwrap();
+            drop(stream);
+        }
+        let server = Server::new(listener);
+        let new_service = move |_| Ok(Some(device.clone()));
+        let on_connected = move |stream, socket_addr| {
+            let new_service = new_service.clone();
+            async move { accept_tcp_connection(stream, socket_addr, new_service) }
+        };
+        let _ = server.serve(&on_connected, |_| {}).await;
+    });
+    addr
+}
+
+#[tokio::test]
+async fn a_lost_link_is_detected_and_opened_again() {
+    let device = FakeDevice::default();
+    device.holding.lock().unwrap().insert(2, 42);
+    let addr = start_flaky_device(device, 1).await;
+    let mut s = Session::connect(&config(addr), None).await.unwrap();
+    assert!(!s.link_lost());
+
+    // The server hung up: the read fails and the link counts as lost.
+    assert!(s.read(Area::Holding, 2, 1).await.is_err());
+    assert!(s.link_lost());
+
+    s.reconnect().await.unwrap();
+    assert!(!s.link_lost());
+    assert_eq!(
+        s.read(Area::Holding, 2, 1).await.unwrap(),
+        RawData::Registers(vec![42])
+    );
+}
+
+#[tokio::test]
+async fn an_exception_is_not_a_lost_link() {
+    let mut s = Session::connect(&config(start_device(FakeDevice::default()).await), None)
+        .await
+        .unwrap();
+    assert!(s.read(Area::Holding, 500, 1).await.is_err());
+    assert!(!s.link_lost());
+}
+
 #[tokio::test]
 async fn device_exceptions_are_reported() {
     let mut s = Session::connect(&config(start_device(FakeDevice::default()).await), None)
@@ -318,6 +368,7 @@ async fn poller_decodes_scales_and_retries_failed_blocks() {
         indexes: Vec::new(),
         sentinels: Vec::new(),
         scale_registers: Vec::new(),
+        reconnect: false,
     };
     let (mut results, requests) = poll_once(&mut s, &request).await;
     results.sort_by_key(|r| r.index);
@@ -376,6 +427,7 @@ async fn poller_flags_sentinels_unless_an_enum_names_the_value() {
         indexes: Vec::new(),
         sentinels: vec![(DataType::Uint16, vec![(0xFFFF, "Unimplemented".into())])],
         scale_registers: Vec::new(),
+        reconnect: false,
     };
     let (mut results, _) = poll_once(&mut s, &request).await;
     results.sort_by_key(|r| r.index);
@@ -417,6 +469,7 @@ async fn poller_reports_reference_checks() {
         indexes: Vec::new(),
         sentinels: Vec::new(),
         scale_registers: Vec::new(),
+        reconnect: false,
     };
     let (mut results, _) = poll_once(&mut s, &request).await;
     results.sort_by_key(|r| r.index);
@@ -462,6 +515,7 @@ async fn poller_applies_scale_factors_read_in_the_same_cycle() {
             register("W_SF", Area::Holding, 1, DataType::Int16),
             register("A_SF", Area::Holding, 3, DataType::Int16),
         ],
+        reconnect: false,
     };
     let (mut results, _) = poll_once(&mut s, &request).await;
     results.sort_by_key(|r| r.index);

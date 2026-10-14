@@ -11,7 +11,12 @@
   import WindowControls from "$lib/components/WindowControls.svelte";
   import { bench, type Page } from "$lib/state.svelte";
   import { settings } from "$lib/settings.svelte";
-  import type { PollCycle, SerialProgress, TrafficEntry } from "$lib/types";
+  import type {
+    LinkEvent,
+    PollCycle,
+    SerialProgress,
+    TrafficEntry,
+  } from "$lib/types";
 
   interface RawChunk {
     time_ms: number;
@@ -27,6 +32,7 @@
       ),
       listen<PollCycle>("poll", (e) => bench.onPoll(e.payload)),
       listen<string>("poll-stopped", (e) => bench.onPollStopped(e.payload)),
+      listen<LinkEvent>("link", (e) => bench.onLink(e.payload)),
       listen<number>("scan-progress", (e) => bench.onScanProgress(e.payload)),
       listen<SerialProgress>("serial-scan-progress", (e) =>
         bench.onSerialProgress(e.payload),

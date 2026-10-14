@@ -134,6 +134,23 @@ pub async fn connect(
     Ok(())
 }
 
+/// Whether the open connection looks lost (see `Session::link_lost`).
+#[tauri::command]
+pub async fn link_lost(state: State<'_, AppState>) -> Result<bool, ModbusError> {
+    let slot = state.session.lock().await;
+    Ok(slot.as_ref().ok_or(ModbusError::NotConnected)?.link_lost())
+}
+
+/// Opens the connection again with the same settings.
+#[tauri::command]
+pub async fn reconnect(state: State<'_, AppState>) -> Result<(), ModbusError> {
+    let mut slot = state.session.lock().await;
+    slot.as_mut()
+        .ok_or(ModbusError::NotConnected)?
+        .reconnect()
+        .await
+}
+
 /// Turns read-only mode on or off. Applies at once, also to a connection
 /// that is already open.
 #[tauri::command]
@@ -197,14 +214,21 @@ pub fn start_polling(app: AppHandle, state: State<'_, AppState>, request: PollRe
     state.stop_poller();
     let session = state.session.clone();
     let handle = tauri::async_runtime::spawn(async move {
-        poller::run(session, request, |cycle| match cycle {
-            Ok(c) => {
-                let _ = app.emit("poll", c);
-            }
-            Err(reason) => {
-                let _ = app.emit("poll-stopped", reason);
-            }
-        })
+        poller::run(
+            session,
+            request,
+            |cycle| match cycle {
+                Ok(c) => {
+                    let _ = app.emit("poll", c);
+                }
+                Err(reason) => {
+                    let _ = app.emit("poll-stopped", reason);
+                }
+            },
+            |event| {
+                let _ = app.emit("link", event);
+            },
+        )
         .await;
     });
     *state.poller.lock().unwrap() = Some(handle);

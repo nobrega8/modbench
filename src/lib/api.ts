@@ -28,6 +28,8 @@ export const api = {
   connect: (config: ConnectionConfig) => invoke<void>("connect", { config }),
   disconnect: () => invoke<void>("disconnect"),
   setReadOnly: (on: boolean) => invoke<void>("set_read_only", { on }),
+  linkLost: () => invoke<boolean>("link_lost"),
+  reconnect: () => invoke<void>("reconnect"),
   readRaw: (
     area: Area,
     address: number,

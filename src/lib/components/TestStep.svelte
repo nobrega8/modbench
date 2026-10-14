@@ -109,7 +109,18 @@
           onclick={() => (bench.page = "settings")}>Read-only</button
         >
       {/if}
-      {#if bench.running}
+      {#if bench.running && bench.link}
+        <span class="live warn"
+          ><span class="dot"></span>Reconnecting · {where}</span
+        >
+        <span class="sub" title={bench.link.error ?? undefined}
+          >Connection lost. Attempt {bench.link.attempt} in {(
+            bench.link.retry_ms / 1000
+          ).toFixed(1)} s{bench.link.error
+            ? ` · last error: ${bench.link.error}`
+            : ""}</span
+        >
+      {:else if bench.running}
         <span class="live"><span class="dot"></span>Running · {where}</span>
         {#if bench.source === "map" && bench.lastCycle}
           <span class="sub"
@@ -267,6 +278,14 @@
     gap: 7px;
     font-weight: 600;
     color: var(--text);
+  }
+
+  .live.warn {
+    color: rgb(var(--alert-rgb));
+  }
+
+  .live.warn .dot {
+    background: rgb(var(--alert-rgb));
   }
 
   .dot {
