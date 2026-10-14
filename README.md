@@ -45,7 +45,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 
 ## Features
 
-- **Three-step workflow**: connection (serial RTU, Modbus TCP or RTU over TCP), request (any function code, or a device map), test (Start/Stop, valid/error/timeout counters).
+- **Three-step workflow**: connection (serial RTU, Modbus TCP or RTU over TCP), request (any function code, or a device map), test (Start/Stop, valid/error/timeout counters, last/min/average/max response time).
 - **Device maps (`.mbmap`)**: plain-text, CSV-based files that describe a device and all of its registers: types, byte order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps.
 - **Write from the map**: writable registers and control commands are listed with the right control for each type. A register can declare the values it accepts (`write_min`, `write_max`) and Modbench refuses anything outside them.
 - **Find unit IDs**: *Find…* next to Device asks each unit ID for one register and lists the ones that answer. Read-only.
