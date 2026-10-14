@@ -133,6 +133,11 @@
               <div class="desc" title={e.description}>{e.description}</div>
             {/if}
           </div>
+          {#if e.status === "unverified"}<span
+              class="tag"
+              title="Converted from another catalogue. Not checked against the manufacturer's documentation yet."
+              >Unverified</span
+            >{/if}
           <span class="count">{e.registers} registers</span>
           {#if inLibrary}
             <button
@@ -231,7 +236,7 @@
 
   .row {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto auto auto;
     align-items: center;
     gap: 14px;
     padding: 10px;
@@ -269,6 +274,18 @@
     font-size: 13px;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tag {
+    padding: 1px 7px;
+    border-radius: 5px;
+    background: var(--field);
+    color: var(--text-2);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     white-space: nowrap;
   }
 

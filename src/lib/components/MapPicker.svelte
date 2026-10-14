@@ -21,6 +21,7 @@
     registers: number;
     warnings: number;
     error: string | null;
+    status: string | null;
     current: boolean;
     last: boolean;
   }
@@ -46,6 +47,7 @@
       registers: m.map.registers.length,
       warnings: m.warnings.length,
       error: null,
+      status: m.map.meta.extra.find(([k]) => k === "x_status")?.[1] ?? null,
       current: i === bench.activeMap,
       last: false,
     })),
@@ -65,6 +67,7 @@
         registers: e.registers,
         warnings: e.warnings,
         error: e.error,
+        status: e.status,
         current: false,
         last: e.path === bench.lastMap,
       })),
@@ -243,6 +246,11 @@
         {/if}
       </span>
     </span>
+    {#if it.status === "unverified"}<span
+        class="tag soft"
+        title="Converted from another catalogue; not checked against the manual yet"
+        >Unverified</span
+      >{/if}
     {#if it.current}<span class="tag">Current</span>{/if}
     {#if it.last && !it.current}<span class="tag soft">Last used</span>{/if}
     {#if !it.error}<span class="count"

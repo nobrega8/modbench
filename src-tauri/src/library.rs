@@ -14,6 +14,8 @@ pub struct LibraryEntry {
     pub model: String,
     pub description: Option<String>,
     pub vendor_website: Option<String>,
+    /// `x_status` of the map, e.g. "unverified" for converted maps.
+    pub status: Option<String>,
     pub registers: usize,
     pub warnings: usize,
     /// Why the file cannot be used, if it has errors.
@@ -102,6 +104,12 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                     model: map.meta.model.clone(),
                     description: map.meta.description.clone(),
                     vendor_website: map.meta.vendor_website.clone(),
+                    status: map
+                        .meta
+                        .extra
+                        .iter()
+                        .find(|(k, _)| k == "x_status")
+                        .map(|(_, v)| v.clone()),
                     registers: map.registers.len(),
                     warnings,
                     error: None,
@@ -118,6 +126,7 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                         .unwrap_or_default(),
                     description: None,
                     vendor_website: None,
+                    status: None,
                     registers: 0,
                     warnings,
                     error,

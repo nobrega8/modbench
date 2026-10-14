@@ -171,6 +171,8 @@ export interface LibraryEntry {
   model: string;
   description: string | null;
   vendor_website: string | null;
+  /** x_status of the map: "unverified" until checked against the manual. */
+  status: string | null;
   registers: number;
   warnings: number;
   error: string | null;
@@ -183,6 +185,7 @@ export interface OnlineEntry {
   model: string;
   description: string | null;
   vendor_website: string | null;
+  status?: string | null;
   registers: number;
 }
 

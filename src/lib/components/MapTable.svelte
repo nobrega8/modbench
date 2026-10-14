@@ -117,6 +117,13 @@
         >{meta.description}</span
       >{/if}
   </div>
+  {#if meta.extra.some(([k, v]) => k === "x_status" && v === "unverified")}
+    <span
+      class="refs bad"
+      title="This map was converted from another catalogue and has not been checked against the manufacturer's documentation. Check a value on the device before relying on the rest."
+      >Unverified</span
+    >
+  {/if}
   {#if refs.total}
     <span
       class="refs"
