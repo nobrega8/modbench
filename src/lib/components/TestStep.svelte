@@ -7,6 +7,7 @@
   import RawView from "./RawView.svelte";
   import RegisterGrid from "./RegisterGrid.svelte";
   import StepCard from "./StepCard.svelte";
+  import TimeStat from "./TimeStat.svelte";
   import WriteGrid from "./WriteGrid.svelte";
 
   const tabs = $derived([
@@ -87,6 +88,7 @@
         tone="warn"
         onreset={() => (bench.counters.timeouts = 0)}
       />
+      <TimeStat times={bench.times} onreset={() => bench.resetTimes()} />
     </div>
 
     <div class="state" aria-live="polite">
@@ -202,7 +204,8 @@
 
   .counters {
     display: flex;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 10px 16px;
     margin-left: 14px;
   }
 

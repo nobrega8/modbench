@@ -4,6 +4,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorText } from "./api";
 import { FUNCTION_NAME } from "./format";
 import { settings } from "./settings.svelte";
+import { NO_TIMES, addTime, type ResponseTimes } from "./stats";
 import {
   endpointOf,
   idsOf,
@@ -119,6 +120,8 @@ class Bench {
   page = $state<Page>("main");
   tab = $state<Tab>("registers");
   counters = $state({ valid: 0, errors: 0, timeouts: 0 });
+  /** How fast the device answers (normal and exception responses). */
+  times = $state.raw<ResponseTimes>(NO_TIMES);
   read = $state.raw<{ address: number; data: RawData } | null>(null);
   previous = $state.raw<RawData | null>(null);
   mapResults = $state.raw<Map<number, PointResult>>(new Map());
@@ -647,6 +650,7 @@ This writes to the device.`,
     if (e === null) this.counters.valid++;
     else if (e.startsWith("timed out")) this.counters.timeouts++;
     else this.counters.errors++;
+    this.times = addTime(this.times, entry);
     this.pendingLog.push(entry);
     this.scheduleFlush();
   }
@@ -674,6 +678,10 @@ This writes to the device.`,
       this.pendingLog = [];
       this.flushQueued = false;
     });
+  }
+
+  resetTimes() {
+    this.times = NO_TIMES;
   }
 
   clearLog() {
