@@ -22,6 +22,24 @@ Get the latest installer from [Releases](https://github.com/nobrega8/modbench/re
 
 Modbench checks for new versions when it starts and installs them when you choose to. On Linux, in-app updates work for the AppImage.
 
+### Debian and Ubuntu (APT)
+
+Add the Modbench repository once:
+
+```sh
+curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
+sudo apt update
+```
+
+Then install it:
+
+```sh
+sudo apt install modbench
+```
+
+New versions arrive with `sudo apt update && sudo apt upgrade`, or on their own if `unattended-upgrades` is set to include third-party repositories.
+
 On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod -aG dialout $USER`, then log in again.
 
 ## Features

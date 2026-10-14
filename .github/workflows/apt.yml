@@ -1,0 +1,71 @@
+name: APT repository
+
+# Rebuilds the signed APT repository from the .deb files of the latest releases
+# and publishes it on GitHub Pages, so `apt upgrade` picks up new versions.
+# Runs after each release, or by hand from the Actions tab.
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: apt-repository
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download the .deb of the last 5 releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p repo/pool/main
+          for tag in $(gh release list -R "$GITHUB_REPOSITORY" --limit 5 --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName'); do
+            gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.deb' -D repo/pool/main
+          done
+          ls -l repo/pool/main
+
+      - name: Import the signing key
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+
+      - name: Build and sign the repository
+        env:
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        working-directory: repo
+        run: |
+          sudo apt-get install -y apt-utils
+          mkdir -p dists/stable/main/binary-amd64
+          apt-ftparchive packages pool > dists/stable/main/binary-amd64/Packages
+          gzip -k9 dists/stable/main/binary-amd64/Packages
+          apt-ftparchive \
+            -o APT::FTPArchive::Release::Origin=Modbench \
+            -o APT::FTPArchive::Release::Label=Modbench \
+            -o APT::FTPArchive::Release::Suite=stable \
+            -o APT::FTPArchive::Release::Codename=stable \
+            -o APT::FTPArchive::Release::Architectures=amd64 \
+            -o APT::FTPArchive::Release::Components=main \
+            release dists/stable > dists/stable/Release
+          sign() { gpg --batch --yes --pinentry-mode loopback --passphrase "$APT_GPG_PASSPHRASE" "$@"; }
+          sign --clearsign -o dists/stable/InRelease dists/stable/Release
+          sign --armor --detach-sign -o dists/stable/Release.gpg dists/stable/Release
+          gpg --armor --export > key.asc
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: repo
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
