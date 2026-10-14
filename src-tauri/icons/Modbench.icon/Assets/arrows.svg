@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="64 64 896 896" width="1024" height="1024">
-  <path d="M712 352 V276 a52 52 0 0 0 -52 -52 H420" fill="none" stroke="#22d36b" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- The arrows of assets/icon.svg as filled outlines of their 34-wide
+       strokes: icon rendering fills open paths instead of stroking them. -->
+  <path d="M729 352 V276 A69 69 0 0 0 660 207 H420 A17 17 0 0 0 420 241 H660 A35 35 0 0 1 695 276 V352 A17 17 0 0 0 729 352 Z" fill="#22d36b"/>
   <path d="M432 172 L354 224 L432 276 Z" fill="#22d36b" stroke="#22d36b" stroke-width="10" stroke-linejoin="round"/>
-  <path d="M310 668 V742 a52 52 0 0 0 52 52 H604" fill="none" stroke="#2196f3" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M293 668 V742 A69 69 0 0 0 362 811 H604 A17 17 0 0 0 604 777 H362 A35 35 0 0 1 327 742 V668 A17 17 0 0 0 293 668 Z" fill="#2196f3"/>
   <path d="M592 742 L670 794 L592 846 Z" fill="#2196f3" stroke="#2196f3" stroke-width="10" stroke-linejoin="round"/>
 </svg>
