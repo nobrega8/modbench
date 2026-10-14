@@ -11,6 +11,7 @@
     formatValue,
     parseForRegister,
     limitError,
+    valueTitle,
   } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
   import { diagnosticWhere, type Register } from "$lib/types";
@@ -301,6 +302,12 @@
       {#each rows as { reg, index } (index)}
         {@const r = bench.mapResults.get(index)}
         {@const off = bench.skipped.has(index)}
+        {@const shown =
+          reg.access === "W" || r?.sentinel
+            ? null
+            : formatValue(reg, r?.value ?? null)}
+        {@const shownTitle =
+          shown === null ? undefined : valueTitle(reg, r?.value ?? null)}
         <tr class:err={!!r?.error} class:off>
           <td class="read">
             {#if reg.access !== "W"}
@@ -345,13 +352,17 @@
               ? `Scaled by 10 to the power of ${reg.scale_factor}`
               : undefined}>{typeLabel(reg)}</td
           >
-          <td class="val mono" class:changed={bench.fresh(`m:${index}`)}>
+          <td
+            class="val mono"
+            class:changed={bench.fresh(`m:${index}`)}
+            title={shownTitle}
+          >
             {#if reg.access === "W"}<span class="dim">write only</span
               >{:else if r?.sentinel}<span
                 class="sentinel"
                 title="The device returned a reserved value: {r.sentinel}"
                 >{r.sentinel}</span
-              >{:else}{formatValue(reg, r?.value ?? null)}{/if}
+              >{:else}{shown}{/if}
           </td>
           <td class="unit">{r?.sentinel ? "" : reg.unit}</td>
           <td class="raw mono" title={r?.error ?? undefined}>
@@ -697,6 +708,10 @@
     font-size: 14px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+    /* Long enum labels are cut here (full text in the tooltip) instead of
+       running over the unit and raw columns */
+    overflow: hidden;
+    text-overflow: ellipsis;
     transition: background-color 0.6s var(--ease);
   }
 
