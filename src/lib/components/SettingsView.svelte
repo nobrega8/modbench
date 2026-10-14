@@ -207,6 +207,23 @@
         </label>
         <label class="setting">
           <div class="text">
+            <span class="name">CSV separator</span>
+            <span class="hint"
+              >For saved logs, exported values and recordings. Use a semicolon
+              if your spreadsheet expects a decimal comma.</span
+            >
+          </div>
+          <select
+            class="input"
+            bind:value={settings.csvSeparator}
+            onchange={changed}
+          >
+            <option value=",">Comma ( , )</option>
+            <option value=";">Semicolon ( ; )</option>
+          </select>
+        </label>
+        <label class="setting">
+          <div class="text">
             <span class="name">Requests kept in the log</span>
             <span class="hint">Older requests are dropped first.</span>
           </div>

@@ -54,7 +54,8 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Value templates**: save the values read from a device's writable registers to a `.mbtpl` text file, and write them to another device of the same model. Only values that differ are written by default, and the last apply can be undone.
 - **Reference checks**: a map can name registers with a known value; Modbench shows whether they match, which helps spot a wrong address, byte order or type.
 - **Remembers each device**: the registers you switch off, the byte order override and Loop come back for the same map on the same connection and unit ID (see below).
-- **Raw data**: the exact bytes sent and received, plus a request log you can save.
+- **Raw data**: the exact bytes sent and received, plus a request log you can save as text or CSV.
+- **CSV export and recording**: save the map values on screen to a CSV file, or record one row per reading cycle with a column for each register. The separator (comma or semicolon) is set in Settings.
 - **Device library**: keep your maps in the app, import them from a file or browse and download the shared maps of [mbmap-library](https://github.com/nobrega8/mbmap-library); double-click a `.mbmap` to open it.
 - **Command line and MCP**: `modbench-cli` reads devices without the UI (see below).
 - **Light and dark (OLED) themes**, a Rust core and small installers (about 2 MB on Windows).
@@ -67,7 +68,7 @@ Everything is stored on this computer, in the app's webview storage, and nothing
 |---|---|---|
 | Connection fields (port, baud rate, address, unit ID, timing, max registers per request) | the last test | Settings, "Remember the last connection" |
 | Registers switched off, byte order override, Loop | one **device**: the map file, the connection endpoint and the unit ID | Settings, "Remember register choices for each device" |
-| Theme, confirmations, read-only mode, log size, update check | the app | Settings |
+| Theme, confirmations, read-only mode, log size, CSV separator, update check | the app | Settings |
 
 A device is identified by the map file, **how it is reached** (host and port for TCP, the serial port name for RTU) and its **unit ID**. Two devices of the same model on different unit IDs or addresses keep separate choices. Registers are remembered by what the map says about them (area, address, type, bit and name), not by their position, so editing a map does not switch the wrong registers off.
 

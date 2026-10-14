@@ -2,6 +2,8 @@
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "$lib/api";
   import { FUNCTION_NAME, clock, hex } from "$lib/format";
+  import { logCsv } from "$lib/csv";
+  import { settings } from "$lib/settings.svelte";
   import { bench } from "$lib/state.svelte";
   import type { TrafficEntry } from "$lib/types";
 
@@ -32,12 +34,18 @@
   async function saveLog() {
     saveError = null;
     const path = await save({
-      defaultPath: "modbench-log.txt",
-      filters: [{ name: "Text", extensions: ["txt"] }],
+      defaultPath: "modbench-log.csv",
+      filters: [
+        { name: "CSV", extensions: ["csv"] },
+        { name: "Text", extensions: ["txt"] },
+      ],
     });
     if (!path) return;
+    const text = path.toLowerCase().endsWith(".csv")
+      ? logCsv(bench.log, settings.csvSeparator)
+      : bench.log.map(line).join("\n") + "\n";
     try {
-      await api.saveText(path, bench.log.map(line).join("\n") + "\n");
+      await api.saveText(path, text);
     } catch (e) {
       saveError = errorText(e);
     }

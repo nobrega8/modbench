@@ -78,6 +78,8 @@ export const api = {
   readText: (path: string) => invoke<string>("read_text", { path }),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),
+  appendText: (path: string, text: string) =>
+    invoke<void>("append_text", { path, text }),
 };
 
 /** Error text from a rejected command (commands reject with a string). */

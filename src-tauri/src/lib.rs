@@ -51,6 +51,7 @@ pub fn run() {
             commands::poll_map_once,
             commands::write_map_value,
             commands::save_text,
+            commands::append_text,
             commands::read_text,
             commands::scan_units,
             commands::cancel_scan,

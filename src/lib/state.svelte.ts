@@ -5,6 +5,7 @@ import { api, errorText } from "./api";
 import { FUNCTION_NAME } from "./format";
 import { settings } from "./settings.svelte";
 import { NO_TIMES, addTime, type ResponseTimes } from "./stats";
+import { recordHeader, recordRow } from "./csv";
 import {
   endpointOf,
   idsOf,
@@ -130,6 +131,16 @@ class Bench {
   mapResults = $state.raw<Map<number, PointResult>>(new Map());
   lastCycle = $state.raw<PollCycle | null>(null);
   log = $state.raw<TrafficEntry[]>([]);
+  /** CSV file that gets one row per map cycle, and its columns. */
+  recording = $state.raw<{
+    path: string;
+    mapPath: string;
+    indexes: number[];
+    rows: number;
+  } | null>(null);
+  recordError = $state<string | null>(null);
+  /** Appends run one after another, so rows stay in order. */
+  private recordQueue: Promise<void> = Promise.resolve();
   exchanges = $state.raw<Exchange[]>([]);
 
   private pendingLog: TrafficEntry[] = [];
@@ -649,6 +660,57 @@ This writes to the device.`,
     for (const r of cycle.results) next.set(r.index, r);
     this.mapResults = next;
     this.lastCycle = cycle;
+    this.recordCycle(cycle);
+  }
+
+  /**
+   * Starts recording every map cycle to a CSV file: the registers read now
+   * become the columns, in map order. The file is replaced.
+   */
+  async startRecording(path: string) {
+    const open = this.map;
+    if (!open) return;
+    const all = open.map.registers;
+    const indexes = all
+      .map((_, i) => i)
+      .filter((i) => !this.skipped.has(i) && all[i].access !== "W");
+    this.recordError = null;
+    try {
+      await api.saveText(
+        path,
+        recordHeader(
+          indexes.map((i) => all[i]),
+          settings.csvSeparator,
+        ),
+      );
+      this.recording = { path, mapPath: open.path, indexes, rows: 0 };
+    } catch (e) {
+      this.recordError = errorText(e);
+    }
+  }
+
+  stopRecording() {
+    this.recording = null;
+  }
+
+  private recordCycle(cycle: PollCycle) {
+    const rec = this.recording;
+    const open = this.map;
+    if (!rec || !open || open.path !== rec.mapPath) return;
+    const text = recordRow(
+      Date.now(),
+      open.map.registers,
+      rec.indexes,
+      new Map(cycle.results.map((r) => [r.index, r])),
+      settings.csvSeparator,
+    );
+    this.recording = { ...rec, rows: rec.rows + 1 };
+    this.recordQueue = this.recordQueue.then(() =>
+      api.appendText(rec.path, text).catch((e) => {
+        this.recordError = errorText(e);
+        this.recording = null;
+      }),
+    );
   }
 
   onPollStopped(reason: string) {

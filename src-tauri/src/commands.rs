@@ -512,6 +512,19 @@ pub async fn save_text(path: String, text: String) -> Result<(), ModbusError> {
     Ok(())
 }
 
+/// Adds text to the end of a file, creating it if needed (CSV recording).
+#[tauri::command]
+pub async fn append_text(path: String, text: String) -> Result<(), ModbusError> {
+    use tokio::io::AsyncWriteExt;
+    let mut file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .await?;
+    file.write_all(text.as_bytes()).await?;
+    Ok(())
+}
+
 /// Asks every unit ID in `from..=to` whether a device answers. Each unit ID
 /// about to be asked is sent to the UI as a `scan-progress` event.
 #[tauri::command]

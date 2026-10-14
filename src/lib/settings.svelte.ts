@@ -1,6 +1,7 @@
 // User preferences, kept in this machine's webview storage.
 
 export type Theme = "system" | "light" | "dark";
+export type CsvSeparator = "," | ";";
 
 interface Stored {
   theme: Theme;
@@ -9,6 +10,7 @@ interface Stored {
   confirmWrites: boolean;
   readOnly: boolean;
   logLimit: number;
+  csvSeparator: CsvSeparator;
   checkUpdates: boolean;
 }
 
@@ -20,6 +22,7 @@ const DEFAULTS: Stored = {
   confirmWrites: false,
   readOnly: false,
   logLimit: 1000,
+  csvSeparator: ",",
   checkUpdates: true,
 };
 
@@ -43,6 +46,8 @@ class Settings {
   /** Blocks every write; the backend refuses them while this is on. */
   readOnly = $state(false);
   logLimit = $state(1000);
+  /** Comma, or semicolon for spreadsheets set up for a decimal comma. */
+  csvSeparator = $state<CsvSeparator>(",");
   checkUpdates = $state(true);
 
   constructor() {
@@ -57,6 +62,7 @@ class Settings {
       confirmWrites: this.confirmWrites,
       readOnly: this.readOnly,
       logLimit: this.logLimit,
+      csvSeparator: this.csvSeparator,
       checkUpdates: this.checkUpdates,
     };
     try {

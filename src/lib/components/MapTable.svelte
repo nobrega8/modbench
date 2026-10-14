@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { errorText } from "$lib/api";
+  import { save } from "@tauri-apps/plugin-dialog";
+  import { api, errorText } from "$lib/api";
+  import { valuesCsv } from "$lib/csv";
+  import { settings } from "$lib/settings.svelte";
   import {
     AREA_TAG,
     AREA_NAME,
@@ -61,6 +64,52 @@
     });
     return out;
   });
+
+  let exportNote = $state<{ ok: boolean; text: string } | null>(null);
+  const recording = $derived(
+    bench.recording?.mapPath === open.path ? bench.recording : null,
+  );
+
+  function csvName(suffix: string) {
+    const name = `${meta.vendor}-${meta.model}`.replace(/[^\w.-]+/g, "_");
+    return `${name}-${suffix}.csv`;
+  }
+
+  /** Saves the values on screen, in the order shown. */
+  async function exportValues() {
+    exportNote = null;
+    const path = await save({
+      defaultPath: csvName("values"),
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    if (!path) return;
+    try {
+      await api.saveText(
+        path,
+        valuesCsv(
+          open.map.registers,
+          rows.map((r) => r.index),
+          bench.mapResults,
+          settings.csvSeparator,
+        ),
+      );
+      exportNote = { ok: true, text: "Saved." };
+    } catch (e) {
+      exportNote = { ok: false, text: `Not saved: ${errorText(e)}` };
+    }
+  }
+
+  async function toggleRecording() {
+    if (recording) {
+      bench.stopRecording();
+      return;
+    }
+    const path = await save({
+      defaultPath: csvName("recording"),
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    if (path) await bench.startRecording(path);
+  }
 
   function typeLabel(reg: Register): string {
     if (reg.type === "string") return `string[${reg.length}]`;
@@ -145,6 +194,28 @@
     disabled={readCount === 0}
     onclick={() => bench.setAllRead(false)}>Read none</button
   >
+  <button
+    class="btn small"
+    title="Save the values shown to a CSV file"
+    disabled={!bench.mapResults.size}
+    onclick={exportValues}>Export…</button
+  >
+  <button
+    class="btn small"
+    class:rec={recording}
+    title={recording
+      ? `Recording to ${recording.path}. Click to stop.`
+      : "Add one row per reading cycle to a CSV file, with a column for each register that is read now"}
+    disabled={!recording && readCount === 0}
+    onclick={toggleRecording}
+    >{recording ? `Stop recording (${recording.rows})` : "Record…"}</button
+  >
+  {#if exportNote}<span class:bad={!exportNote.ok} class="note"
+      >{exportNote.text}</span
+    >{/if}
+  {#if bench.recordError}<span class="bad note" title={bench.recordError}
+      >Recording stopped: {bench.recordError}</span
+    >{/if}
   <input
     class="input search"
     type="search"
@@ -368,6 +439,16 @@
 
   .search {
     width: 220px;
+  }
+
+  .note {
+    font-size: 12px;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+
+  .rec {
+    color: rgb(var(--alert-rgb));
   }
 
   .warnings {
