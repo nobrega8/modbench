@@ -54,6 +54,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Value templates**: save the values read from a device's writable registers to a `.mbtpl` text file, and write them to another device of the same model. Only values that differ are written by default, and the last apply can be undone.
 - **Reference checks**: a map can name registers with a known value; Modbench shows whether they match, which helps spot a wrong address, byte order or type.
 - **Remembers each device**: the registers you switch off, the byte order override and Loop come back for the same map on the same connection and unit ID (see below).
+- **Chart**: plot up to 8 map registers over time, already scaled, with one chart per unit, a hover readout and a time span from the last minute to everything recorded.
 - **Change highlighting**: a value that changes stays highlighted for a while (1 to 30 seconds, set in Settings) in the register grid and the device map, to find what moves on an unknown device.
 - **Address display**: show addresses as sent on the wire (0-based), 1-based like most manuals, or in hexadecimal, in the register grid, the device map and the log.
 - **Raw data**: the exact bytes sent and received, plus a request log you can save as text or CSV.

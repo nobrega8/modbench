@@ -7,6 +7,13 @@ import { settings } from "./settings.svelte";
 import { NO_TIMES, addTime, type ResponseTimes } from "./stats";
 import { recordHeader, recordRow } from "./csv";
 import {
+  MAX_SERIES,
+  addCycle,
+  freeSlot,
+  type Sample,
+  type Series,
+} from "./trend";
+import {
   isFresh,
   markPoll,
   markRead,
@@ -40,7 +47,7 @@ import type {
 
 export type TransportKind = "tcp" | "rtuovertcp" | "rtu";
 export type Page = "main" | "library" | "settings";
-export type Tab = "registers" | "map" | "write" | "raw" | "log";
+export type Tab = "registers" | "map" | "chart" | "write" | "raw" | "log";
 
 export interface OpenMap {
   path: string;
@@ -143,6 +150,10 @@ class Bench {
   mapResults = $state.raw<Map<number, PointResult>>(new Map());
   lastCycle = $state.raw<PollCycle | null>(null);
   log = $state.raw<TrafficEntry[]>([]);
+  /** Map registers on the Chart tab, with their color slots. */
+  chartSeries = $state.raw<Series[]>([]);
+  /** Values over time of the charted registers, by map index. */
+  history = $state.raw<Map<number, Sample[]>>(new Map());
   /** CSV file that gets one row per map cycle, and its columns. */
   recording = $state.raw<{
     path: string;
@@ -279,6 +290,8 @@ This writes to the device.`,
     this.restoreDevice();
     this.tab = "map";
     this.changes = new Map();
+    this.chartSeries = [];
+    this.history = new Map();
     this.mapResults = new Map();
     this.lastCycle = null;
   }
@@ -682,6 +695,13 @@ This writes to the device.`,
     for (const r of cycle.results) next.set(r.index, r);
     this.mapResults = next;
     this.lastCycle = cycle;
+    if (this.chartSeries.length)
+      this.history = addCycle(
+        this.history,
+        this.chartSeries,
+        cycle.results,
+        Date.now(),
+      );
     this.recordCycle(cycle);
   }
 
@@ -805,6 +825,27 @@ This writes to the device.`,
         this.ticker = null;
       }
     }, 200);
+  }
+
+  /** Puts a map register on the chart, and switches its reading on. */
+  addToChart(index: number) {
+    if (this.chartSeries.some((s) => s.index === index)) return;
+    if (this.chartSeries.length >= MAX_SERIES) return;
+    const slot = freeSlot(this.chartSeries);
+    if (slot === null) return;
+    this.chartSeries = [...this.chartSeries, { index, slot }];
+    if (this.skipped.has(index)) this.toggleRead(index);
+  }
+
+  removeFromChart(index: number) {
+    this.chartSeries = this.chartSeries.filter((s) => s.index !== index);
+    const next = new Map(this.history);
+    next.delete(index);
+    this.history = next;
+  }
+
+  clearChart() {
+    this.history = new Map();
   }
 
   resetTimes() {

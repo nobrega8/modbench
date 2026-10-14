@@ -1,6 +1,7 @@
 <script lang="ts">
   import { settings } from "$lib/settings.svelte";
   import { bench, type Tab } from "$lib/state.svelte";
+  import ChartView from "./ChartView.svelte";
   import Counter from "./Counter.svelte";
   import LogView from "./LogView.svelte";
   import MapTable from "./MapTable.svelte";
@@ -12,7 +13,15 @@
   import WriteGrid from "./WriteGrid.svelte";
 
   const tabs = $derived([
-    ...(bench.source === "map" ? [{ id: "map", label: "Device map" }] : []),
+    ...(bench.source === "map"
+      ? [
+          { id: "map", label: "Device map" },
+          {
+            id: "chart",
+            label: `Chart${bench.chartSeries.length ? ` (${bench.chartSeries.length})` : ""}`,
+          },
+        ]
+      : []),
     { id: "registers", label: "Read registers" },
     { id: "write", label: "Write values" },
     { id: "raw", label: "Raw data" },
@@ -142,6 +151,12 @@
           Open a <code>.mbmap</code> file in step 2 to see the device's registers
           by name, with types, units and scaling.
         </p>
+      {/if}
+    {:else if bench.tab === "chart"}
+      {#if bench.map}
+        {#key bench.map.path}<ChartView open={bench.map} />{/key}
+      {:else}
+        <p class="empty">Open a device map in step 2 to chart its values.</p>
       {/if}
     {:else if bench.tab === "write"}
       {#if settings.readOnly}
