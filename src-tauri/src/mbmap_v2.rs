@@ -344,11 +344,7 @@ pub(crate) fn read(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> 
 
     for key in ["mbmap", "vendor", "model", "registers"] {
         if !seen.contains(&key) {
-            ck.error(
-                None,
-                "missing-meta",
-                format!("missing required key {key:?}"),
-            );
+            ck.error(None, "missing-key", format!("missing required key {key:?}"));
         }
     }
     let items = registers?;
@@ -474,7 +470,7 @@ fn read_register(
                     warned.push(key.clone());
                     ck.warn(
                         Loc::pointer(&here),
-                        "unknown-column",
+                        "unknown-key",
                         format!("unknown key {key:?} (custom keys should start with 'x_')"),
                     );
                 }

@@ -1,14 +1,16 @@
-//! Checks the `.mbmap` parser against the shared fixtures in mbmap-library
-//! (vendor/mbmap-library/tests), the same ones its Python validator uses.
+//! Checks the `.mbmap` parser against the shared fixtures in mbmap-library,
+//! the same ones its Python validator uses: `tests/` for format version 2
+//! and `legacy/v1/tests/` for the deprecated version 1, which Modbench still
+//! opens.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use modbench_lib::mbmap::{self, Severity};
 use serde_json::Value;
 
-fn fixtures_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../vendor/mbmap-library/tests")
+fn library_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../vendor/mbmap-library")
 }
 
 /// (location, code): "line 5", a JSON Pointer, or "file".
@@ -39,9 +41,8 @@ fn read_expected(entry: &Value, key: &str) -> Expected {
         .collect()
 }
 
-#[test]
-fn parser_matches_shared_fixtures() {
-    let dir = fixtures_dir();
+/// Checks every fixture listed in `dir/expected.json`; returns how many.
+fn check_suite(dir: &Path, version: u8) -> usize {
     let expected_path = dir.join("expected.json");
     let expected: BTreeMap<String, Value> = serde_json::from_str(
         &std::fs::read_to_string(&expected_path).unwrap_or_else(|e| {
@@ -52,12 +53,14 @@ fn parser_matches_shared_fixtures() {
         }),
     )
     .unwrap();
-    assert!(expected.len() >= 30, "fixtures look incomplete");
 
     let mut failures = Vec::new();
     for (name, entry) in &expected {
         let bytes = std::fs::read(dir.join(name)).unwrap();
         let parsed = mbmap::parse(&bytes);
+        if parsed.version.is_some() && parsed.version != Some(version) {
+            failures.push(format!("{name}: read as version {:?}", parsed.version));
+        }
         for (key, severity) in [("errors", Severity::Error), ("warnings", Severity::Warning)] {
             let got: Expected = parsed
                 .diagnostics
@@ -89,11 +92,24 @@ fn parser_matches_shared_fixtures() {
         }
     }
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+    expected.len()
+}
+
+#[test]
+fn parser_matches_shared_fixtures() {
+    let count = check_suite(&library_dir().join("tests"), 2);
+    assert!(count >= 30, "fixtures look incomplete ({count})");
+}
+
+#[test]
+fn parser_matches_version_1_fixtures() {
+    let count = check_suite(&library_dir().join("legacy/v1/tests"), 1);
+    assert!(count >= 30, "fixtures look incomplete ({count})");
 }
 
 #[test]
 fn library_examples_are_valid() {
-    let examples = fixtures_dir().join("../examples");
+    let examples = library_dir().join("examples");
     let mut count = 0;
     for vendor in std::fs::read_dir(&examples).unwrap() {
         for file in std::fs::read_dir(vendor.unwrap().path()).unwrap() {
@@ -111,11 +127,11 @@ fn library_examples_are_valid() {
     assert!(count > 0);
 }
 
-/// Every map of the library reads the same after conversion to version 2,
-/// with the same warnings.
+/// Every map of the library is version 2 and survives a write and a re-read
+/// with the same map and the same warnings.
 #[test]
-fn library_maps_survive_conversion_to_version_2() {
-    let maps = fixtures_dir().join("../maps");
+fn library_maps_round_trip() {
+    let maps = library_dir().join("maps");
     let mut count = 0;
     for vendor in std::fs::read_dir(&maps).unwrap() {
         let vendor = vendor.unwrap().path();
@@ -125,12 +141,11 @@ fn library_maps_survive_conversion_to_version_2() {
         for file in std::fs::read_dir(vendor).unwrap() {
             let path = file.unwrap().path();
             let parsed = mbmap::parse(&std::fs::read(&path).unwrap());
+            assert_eq!(parsed.version, Some(2), "{}", path.display());
             let Some(map) = parsed.map.clone() else {
                 panic!("{}: {:?}", path.display(), parsed.diagnostics);
             };
-            let text = mbmap::to_string(&map);
-            let again = mbmap::parse(text.as_bytes());
-            assert_eq!(again.version, Some(2));
+            let again = mbmap::parse(mbmap::to_string(&map).as_bytes());
             let codes = |p: &mbmap::Parsed| {
                 let mut c: Vec<_> = p.diagnostics.iter().map(|d| d.code).collect();
                 c.sort();
@@ -144,15 +159,14 @@ fn library_maps_survive_conversion_to_version_2() {
     assert!(count > 100, "only {count} maps found");
 }
 
-/// The library's version 2 prototype (written by its tools/migrate.py) reads
+/// The library's version 2 example (written by its tools/migrate.py) reads
 /// as the same map as the version 1 example it was made from.
 #[test]
-fn library_prototype_matches_its_version_1_source() {
-    let dir = fixtures_dir().join("../examples/example-corp");
-    let v2 = dir.join("em-100.mbmap.json");
-    if !v2.exists() {
-        return; // library checkout from before version 2
-    }
+fn library_example_matches_its_version_1_source() {
+    let lib = library_dir();
     let read = |p: PathBuf| mbmap::parse(&std::fs::read(p).unwrap()).map.unwrap();
-    assert_eq!(read(v2), read(dir.join("em-100.mbmap")));
+    assert_eq!(
+        read(lib.join("examples/example-corp/em-100.mbmap.json")),
+        read(lib.join("legacy/v1/examples/example-corp/em-100.mbmap"))
+    );
 }
