@@ -38,6 +38,7 @@ pub fn run() {
             commands::list_serial_ports,
             commands::connect,
             commands::disconnect,
+            commands::set_read_only,
             commands::read_raw,
             commands::write_registers,
             commands::write_coils,

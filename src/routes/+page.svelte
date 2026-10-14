@@ -10,6 +10,7 @@
   import SettingsView from "$lib/components/SettingsView.svelte";
   import WindowControls from "$lib/components/WindowControls.svelte";
   import { bench, type Page } from "$lib/state.svelte";
+  import { settings } from "$lib/settings.svelte";
   import type { PollCycle, TrafficEntry } from "$lib/types";
 
   interface RawChunk {
@@ -30,6 +31,11 @@
       listen<string>("open-file", (e) => bench.openMap(e.payload)),
     ];
     return () => stops.forEach((p) => p.then((stop) => stop()));
+  });
+
+  // The backend enforces read-only mode; keep it in step with the setting.
+  $effect(() => {
+    api.setReadOnly(settings.readOnly).catch(() => {});
   });
 
   // Choices are kept per device: put back the ones of the device now shown

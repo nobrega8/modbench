@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::future;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use modbench_lib::codec::{self, ByteOrder, DataType, Value};
@@ -154,6 +155,36 @@ async fn coils_are_trimmed_to_the_requested_count() {
         s.read(Area::Coil, 0, 5).await.unwrap(),
         RawData::Bits(vec![true, false, true, true, false])
     );
+}
+
+#[tokio::test]
+async fn read_only_mode_blocks_writes_but_not_reads() {
+    let device = FakeDevice::default();
+    device.holding.lock().unwrap().insert(5, 7);
+    let mut s = Session::connect(&config(start_device(device.clone()).await), None)
+        .await
+        .unwrap();
+    let switch = Arc::new(AtomicBool::new(true));
+    s.set_read_only(switch.clone());
+
+    assert!(matches!(
+        s.write_registers(5, &[9]).await,
+        Err(ModbusError::ReadOnly)
+    ));
+    assert!(matches!(
+        s.write_coils(0, &[true]).await,
+        Err(ModbusError::ReadOnly)
+    ));
+    assert_eq!(
+        s.read(Area::Holding, 5, 1).await.unwrap(),
+        RawData::Registers(vec![7])
+    );
+    assert!(device.coils.lock().unwrap().is_empty());
+
+    // Switching it off applies to the open session.
+    switch.store(false, Ordering::Relaxed);
+    s.write_registers(5, &[9]).await.unwrap();
+    assert_eq!(device.holding.lock().unwrap()[&5], 9);
 }
 
 #[tokio::test]

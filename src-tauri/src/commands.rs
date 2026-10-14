@@ -35,6 +35,9 @@ pub struct AppState {
     poller: std::sync::Mutex<Option<JoinHandle<()>>>,
     /// Set to stop a scan that is running.
     scan_cancel: Arc<std::sync::atomic::AtomicBool>,
+    /// Read-only mode: shared with every session, which refuses writes while
+    /// it is on.
+    read_only: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl AppState {
@@ -123,11 +126,21 @@ pub async fn connect(
         );
     });
     let mut session = Session::connect(&config, Some(raw)).await?;
+    session.set_read_only(state.read_only.clone());
     session.set_logger(Arc::new(move |entry| {
         let _ = app.emit("traffic", entry);
     }));
     *slot = Some(session);
     Ok(())
+}
+
+/// Turns read-only mode on or off. Applies at once, also to a connection
+/// that is already open.
+#[tauri::command]
+pub fn set_read_only(state: State<'_, AppState>, on: bool) {
+    state
+        .read_only
+        .store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[tauri::command]
@@ -226,6 +239,9 @@ pub async fn write_map_value(
     value: Value,
     scale_register: Option<Register>,
 ) -> Result<(), ModbusError> {
+    if state.read_only.load(std::sync::atomic::Ordering::Relaxed) {
+        return Err(ModbusError::ReadOnly);
+    }
     if !register.access.writable() {
         return Err(ModbusError::Invalid(format!(
             "{} is read-only",

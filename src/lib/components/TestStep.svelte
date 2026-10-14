@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { settings } from "$lib/settings.svelte";
   import { bench, type Tab } from "$lib/state.svelte";
   import Counter from "./Counter.svelte";
   import LogView from "./LogView.svelte";
@@ -92,6 +93,13 @@
     </div>
 
     <div class="state" aria-live="polite">
+      {#if settings.readOnly}
+        <button
+          class="ro"
+          title="Writes are blocked. Click to change this in Settings."
+          onclick={() => (bench.page = "settings")}>Read-only</button
+        >
+      {/if}
       {#if bench.running}
         <span class="live"><span class="dot"></span>Running · {where}</span>
         {#if bench.source === "map" && bench.lastCycle}
@@ -136,6 +144,14 @@
         </p>
       {/if}
     {:else if bench.tab === "write"}
+      {#if settings.readOnly}
+        <p class="ro-note" role="status">
+          Read-only mode is on: nothing on this tab is written to the device.
+          <button class="btn small" onclick={() => (bench.page = "settings")}
+            >Settings</button
+          >
+        </p>
+      {/if}
       {#if bench.source === "map" && bench.map}
         {#key bench.map.path}<MapWriteList open={bench.map} />{/key}
       {:else}
@@ -256,6 +272,23 @@
     color: var(--text-2);
   }
 
+  .ro {
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: none;
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .ro:hover {
+    color: var(--text);
+  }
+
   .bad {
     color: var(--bad);
   }
@@ -274,6 +307,17 @@
   }
 
   .empty {
+    color: var(--text-2);
+  }
+
+  .ro-note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    border-radius: 9px;
+    background: var(--subtle);
     color: var(--text-2);
   }
 </style>

@@ -25,6 +25,7 @@ export const api = {
   listSerialPorts: () => invoke<string[]>("list_serial_ports"),
   connect: (config: ConnectionConfig) => invoke<void>("connect", { config }),
   disconnect: () => invoke<void>("disconnect"),
+  setReadOnly: (on: boolean) => invoke<void>("set_read_only", { on }),
   readRaw: (area: Area, address: number, count: number) =>
     invoke<RawData>("read_raw", { area, address, count }),
   writeRegisters: (address: number, words: number[]) =>

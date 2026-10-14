@@ -191,6 +191,22 @@
         </label>
         <label class="setting">
           <div class="text">
+            <span class="name">Read-only mode</span>
+            <span class="hint"
+              >Blocks every write, also on a connection that is already open.
+              Reading is not affected. Use it on a plant in operation.</span
+            >
+          </div>
+          <input
+            type="checkbox"
+            class="switch"
+            role="switch"
+            bind:checked={settings.readOnly}
+            onchange={changed}
+          />
+        </label>
+        <label class="setting">
+          <div class="text">
             <span class="name">Requests kept in the log</span>
             <span class="hint">Older requests are dropped first.</span>
           </div>

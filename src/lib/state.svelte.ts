@@ -363,6 +363,13 @@ This writes to the device.`,
   async start() {
     if (this.running || this.scanning) return;
     if (this.source === "manual" && !this.isRead) {
+      if (settings.readOnly) {
+        this.status = {
+          ok: false,
+          text: "Read-only mode is on: write commands are blocked. Turn it off in Settings.",
+        };
+        return;
+      }
       const ok = await this.confirmWrite(
         `Send "${FUNCTION_NAME[this.fc]}" to address ${this.address}?`,
       );

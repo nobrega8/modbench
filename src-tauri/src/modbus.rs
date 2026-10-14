@@ -78,6 +78,8 @@ pub enum ModbusError {
     Exception { code: u8, name: &'static str },
     #[error("{0}")]
     Invalid(String),
+    #[error("read-only mode is on: writes are blocked")]
+    ReadOnly,
 }
 
 impl Serialize for ModbusError {
@@ -165,6 +167,8 @@ pub struct Session {
     unit: u8,
     timeout: Duration,
     logger: Option<TrafficLogger>,
+    /// When set and true, every write is refused before it reaches the wire.
+    read_only: Option<Arc<AtomicBool>>,
 }
 
 impl Session {
@@ -230,11 +234,25 @@ impl Session {
             unit: config.unit_id,
             timeout: wait,
             logger: None,
+            read_only: None,
         })
     }
 
     pub fn set_logger(&mut self, logger: TrafficLogger) {
         self.logger = Some(logger);
+    }
+
+    /// Shares a read-only switch with the session: while it is on, writes
+    /// fail with [`ModbusError::ReadOnly`] and nothing is sent.
+    pub fn set_read_only(&mut self, switch: Arc<AtomicBool>) {
+        self.read_only = Some(switch);
+    }
+
+    fn check_writable(&self) -> Result<(), ModbusError> {
+        match &self.read_only {
+            Some(on) if on.load(Ordering::Relaxed) => Err(ModbusError::ReadOnly),
+            _ => Ok(()),
+        }
     }
 
     fn log<T>(
@@ -306,6 +324,7 @@ impl Session {
         address: u16,
         words: &[u16],
     ) -> Result<(), ModbusError> {
+        self.check_writable()?;
         let started = (SystemTime::now(), Instant::now());
         let (ctx, wait) = (&mut self.ctx, self.timeout);
         let (function, result) = match words {
@@ -325,6 +344,7 @@ impl Session {
 
     /// Writes coils: FC05 for a single coil, FC15 otherwise.
     pub async fn write_coils(&mut self, address: u16, bits: &[bool]) -> Result<(), ModbusError> {
+        self.check_writable()?;
         let started = (SystemTime::now(), Instant::now());
         let (ctx, wait) = (&mut self.ctx, self.timeout);
         let (function, result) = match bits {
