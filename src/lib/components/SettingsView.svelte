@@ -106,6 +106,16 @@
         <button class="btn" onclick={() => run(() => api.openLink("releases"))}
           >Release notes {@render external()}</button
         >
+        <button
+          class="btn"
+          title="Modbench is free and open source. Support its development on Ko-fi."
+          onclick={() => run(() => api.openLink("support"))}
+          ><svg class="heart" viewBox="0 0 16 16" aria-hidden="true"
+            ><path
+              d="M8 13.5S2 10 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 7.5-6 7.5z"
+            /></svg
+          >Support this project {@render external()}</button
+        >
       </div>
     </section>
 
@@ -509,6 +519,12 @@
     flex-wrap: wrap;
     gap: 6px;
     margin-top: 12px;
+  }
+
+  .heart {
+    width: 13px;
+    height: 13px;
+    fill: #ff5e5b;
   }
 
   .ext {

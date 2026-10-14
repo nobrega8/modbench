@@ -459,6 +459,7 @@ pub fn open_link(link: String) -> Result<(), ModbusError> {
         "releases" => "https://github.com/nobrega8/modbench/releases",
         "library" => "https://github.com/nobrega8/mbmap-library",
         "spec" => "https://github.com/nobrega8/mbmap-library/blob/main/SPEC.md",
+        "support" => "https://ko-fi.com/nobrega",
         _ => return Err(ModbusError::Invalid(format!("unknown link: {link}"))),
     };
     Ok(open_with_system(std::ffi::OsStr::new(url))?)
