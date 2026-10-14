@@ -14,6 +14,7 @@ interface Stored {
   logLimit: number;
   csvSeparator: CsvSeparator;
   addressFormat: AddressFormat;
+  highlightSeconds: number;
   checkUpdates: boolean;
 }
 
@@ -27,6 +28,7 @@ const DEFAULTS: Stored = {
   logLimit: 1000,
   csvSeparator: ",",
   addressFormat: "base0",
+  highlightSeconds: 2,
   checkUpdates: true,
 };
 
@@ -54,6 +56,8 @@ class Settings {
   csvSeparator = $state<CsvSeparator>(",");
   /** How the register grid, the map and the log show addresses. */
   addressFormat = $state<AddressFormat>("base0");
+  /** How long a changed value stays highlighted; 0 turns it off. */
+  highlightSeconds = $state(2);
   checkUpdates = $state(true);
 
   constructor() {
@@ -70,6 +74,7 @@ class Settings {
       logLimit: this.logLimit,
       csvSeparator: this.csvSeparator,
       addressFormat: this.addressFormat,
+      highlightSeconds: this.highlightSeconds,
       checkUpdates: this.checkUpdates,
     };
     try {

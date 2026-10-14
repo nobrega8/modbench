@@ -316,7 +316,7 @@
               ? `Scaled by 10 to the power of ${reg.scale_factor}`
               : undefined}>{typeLabel(reg)}</td
           >
-          <td class="val mono">
+          <td class="val mono" class:changed={bench.fresh(`m:${index}`)}>
             {#if reg.access === "W"}<span class="dim">write only</span
               >{:else if r?.sentinel}<span
                 class="sentinel"
@@ -651,6 +651,13 @@
     font-size: 14px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+    transition: background-color 0.6s var(--ease);
+  }
+
+  /* Lit at once when the value changes, then fades back */
+  td.val.changed {
+    background: var(--changed);
+    transition: none;
   }
 
   .unit {

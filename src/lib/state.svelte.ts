@@ -7,6 +7,13 @@ import { settings } from "./settings.svelte";
 import { NO_TIMES, addTime, type ResponseTimes } from "./stats";
 import { recordHeader, recordRow } from "./csv";
 import {
+  isFresh,
+  markPoll,
+  markRead,
+  prune,
+  type ChangeTimes,
+} from "./changes";
+import {
   endpointOf,
   idsOf,
   indexesOf,
@@ -128,6 +135,11 @@ class Bench {
   times = $state.raw<ResponseTimes>(NO_TIMES);
   read = $state.raw<{ address: number; data: RawData } | null>(null);
   previous = $state.raw<RawData | null>(null);
+  /** When each grid offset (`g:`) or map register (`m:`) last changed. */
+  changes = $state.raw<ChangeTimes>(new Map());
+  /** Clock for the highlight; ticks only while something is highlighted. */
+  now = $state(Date.now());
+  private ticker: ReturnType<typeof setInterval> | null = null;
   mapResults = $state.raw<Map<number, PointResult>>(new Map());
   lastCycle = $state.raw<PollCycle | null>(null);
   log = $state.raw<TrafficEntry[]>([]);
@@ -266,6 +278,7 @@ This writes to the device.`,
     }
     this.restoreDevice();
     this.tab = "map";
+    this.changes = new Map();
     this.mapResults = new Map();
     this.lastCycle = null;
   }
@@ -430,8 +443,14 @@ This writes to the device.`,
           this.quantity,
           area === "coil" || area === "discrete" ? null : this.maxRegisters,
         );
-        this.previous =
+        const prev =
           this.read?.address === this.address ? this.read.data : null;
+        this.previous = prev;
+        this.markChanges(
+          prev
+            ? markRead(this.changes, prev, data, Date.now())
+            : this.withoutGrid(),
+        );
         this.read = { address: this.address, data };
       } else if (this.fc === 5) {
         await api.writeCoils(this.address, [this.writeValues[0] !== 0]);
@@ -656,6 +675,9 @@ This writes to the device.`,
   // ---- events from the backend
 
   onPoll(cycle: PollCycle) {
+    this.markChanges(
+      markPoll(this.changes, this.mapResults, cycle.results, Date.now()),
+    );
     const next = new Map(this.mapResults);
     for (const r of cycle.results) next.set(r.index, r);
     this.mapResults = next;
@@ -752,6 +774,37 @@ This writes to the device.`,
       this.pendingLog = [];
       this.flushQueued = false;
     });
+  }
+
+  /** Whether a grid offset or map register changed within the hold time. */
+  fresh(key: string): boolean {
+    const hold = settings.highlightSeconds * 1000;
+    return hold > 0 && isFresh(this.changes, key, this.now, hold);
+  }
+
+  private withoutGrid(): ChangeTimes {
+    const kept = [...this.changes].filter(([k]) => !k.startsWith("g:"));
+    return kept.length === this.changes.size ? this.changes : new Map(kept);
+  }
+
+  /** Stores new change times and keeps the clock running while needed. */
+  private markChanges(times: ChangeTimes) {
+    if (times === this.changes) return;
+    this.changes = times;
+    this.now = Date.now();
+    if (this.ticker || !times.size || settings.highlightSeconds <= 0) return;
+    this.ticker = setInterval(() => {
+      this.now = Date.now();
+      this.changes = prune(
+        this.changes,
+        this.now,
+        settings.highlightSeconds * 1000,
+      );
+      if (!this.changes.size && this.ticker) {
+        clearInterval(this.ticker);
+        this.ticker = null;
+      }
+    }, 200);
   }
 
   resetTimes() {

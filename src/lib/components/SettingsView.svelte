@@ -11,6 +11,14 @@
     { id: "dark", label: "Dark" },
   ];
   const logLimits = [200, 1000, 5000, 20000];
+  const holds = [
+    { s: 0, label: "Off" },
+    { s: 1, label: "1 second" },
+    { s: 2, label: "2 seconds" },
+    { s: 5, label: "5 seconds" },
+    { s: 10, label: "10 seconds" },
+    { s: 30, label: "30 seconds" },
+  ];
 
   let version = $state("");
   let copied = $state(false);
@@ -123,6 +131,30 @@
             {/each}
           </div>
         </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="key">Values</h2>
+      <div class="group">
+        <label class="setting">
+          <div class="text">
+            <span class="name">Highlight changed values</span>
+            <span class="hint"
+              >A value that changes stays highlighted this long, in the register
+              grid and the device map. Helps to find what moves on an unknown
+              device.</span
+            >
+          </div>
+          <select
+            class="input"
+            bind:value={settings.highlightSeconds}
+            onchange={changed}
+          >
+            {#each holds as h (h.s)}<option value={h.s}>{h.label}</option
+              >{/each}
+          </select>
+        </label>
       </div>
     </section>
 

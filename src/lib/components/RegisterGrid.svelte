@@ -82,29 +82,27 @@
   /** Cells in display order: one per register, or one per pair for 32-bit. */
   const cells = $derived.by((): Cell[] => {
     if (!read) return [];
-    const prev = bench.previous;
+    const fresh = (i: number) => bench.fresh(`g:${i}`);
     const out: Cell[] = [];
     if (read.data.kind === "bits") {
-      const p = prev?.kind === "bits" ? prev.values : null;
       read.data.values.forEach((b, i) =>
         out.push({
           offset: i,
           text: b ? "1" : "0",
           span: 1,
-          changed: !!p && p[i] !== b,
+          changed: fresh(i),
         }),
       );
       return out;
     }
     const v = read.data.values;
-    const p = prev?.kind === "registers" ? prev.values : null;
     if (wide) {
       for (let i = 0; i + 1 < v.length; i += 2) {
         out.push({
           offset: i,
           text: pair(v[i], v[i + 1]),
           span: 2,
-          changed: !!p && (p[i] !== v[i] || p[i + 1] !== v[i + 1]),
+          changed: fresh(i) || fresh(i + 1),
         });
       }
       return out;
@@ -114,7 +112,7 @@
         offset: i,
         text: word(w),
         span: 1,
-        changed: !!p && p[i] !== w,
+        changed: fresh(i),
       }),
     );
     return out;
@@ -248,7 +246,13 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Lit at once when the value changes, then fades back */
+  .cell {
+    transition: background-color 0.6s var(--ease);
+  }
+
   .cell.changed {
     background: var(--changed);
+    transition: none;
   }
 </style>
