@@ -61,6 +61,24 @@ export interface Meta {
   extra: [string, string][];
   /** Free notes about the whole file. */
   notes?: string[];
+  /** Every model name or code the map applies to; empty means `model`. */
+  models?: string[];
+  /** Revision of the map's content, and its date. */
+  revision?: number | null;
+  revised?: string | null;
+  /** Firmware range the map applies to, e.g. "1" to "2" (1.x and 2.x). */
+  firmware_min?: string | null;
+  firmware_max?: string | null;
+  sources?: Source[];
+}
+
+/** A document a map was built or checked from. */
+export interface Source {
+  title: string;
+  version: string | null;
+  date: string | null;
+  url: string | null;
+  note: string | null;
 }
 
 export interface Register {
@@ -92,6 +110,11 @@ export interface Register {
   extra: [string, string][];
   /** Free note about this register. */
   comment?: string;
+  /** Firmware range that has this register. */
+  firmware_min?: string | null;
+  firmware_max?: string | null;
+  /** What this register tells about the device. */
+  role?: "model" | "firmware" | "serial" | null;
 }
 
 export interface DeviceMap {

@@ -3,6 +3,13 @@
 import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorText } from "./api";
 import { FUNCTION_NAME } from "./format";
+import {
+  appliesTo,
+  identify,
+  rangeText,
+  versionText,
+  type Identity,
+} from "./identity";
 import { settings } from "./settings.svelte";
 import { NO_TIMES, addTime, type ResponseTimes } from "./stats";
 import { recordHeader, recordRow } from "./csv";
@@ -52,6 +59,13 @@ import type {
 export type TransportKind = "tcp" | "rtuovertcp" | "rtu";
 export type Page = "main" | "library" | "settings";
 export type Tab = "registers" | "map" | "chart" | "write" | "raw" | "log";
+
+function hasRange(r: {
+  firmware_min?: string | null;
+  firmware_max?: string | null;
+}) {
+  return !!(r.firmware_min || r.firmware_max);
+}
 
 export interface OpenMap {
   path: string;
@@ -166,6 +180,10 @@ class Bench {
   now = $state(Date.now());
   private ticker: ReturnType<typeof setInterval> | null = null;
   mapResults = $state.raw<Map<number, PointResult>>(new Map());
+  /** The user chose to write although the device does not match the map. */
+  mismatchAccepted = $state(false);
+  /** Firmware version the registers being read were chosen for. */
+  private readFor: string | null = null;
   lastCycle = $state.raw<PollCycle | null>(null);
   log = $state.raw<TrafficEntry[]>([]);
   /** Map registers on the Chart tab, with their color slots. */
@@ -215,6 +233,41 @@ class Bench {
     } catch {
       // Storage unavailable: nothing to remember.
     }
+  }
+
+  /** The connected device checked against the open map (from its identity
+   * registers), or null without a map. */
+  get identity(): Identity | null {
+    return this.map ? identify(this.map.map, this.mapResults) : null;
+  }
+
+  /** Before the first write to a device that does not match the map, asks
+   * whether to go ahead; true to write. */
+  async acceptMismatch(): Promise<boolean> {
+    const id = this.identity;
+    const meta = this.map?.map.meta;
+    if (!id || !meta || this.mismatchAccepted) return true;
+    const problems: string[] = [];
+    if (id.model.status === "mismatch")
+      problems.push(
+        `The map is for ${(meta.models?.length ? meta.models : [meta.model]).join(", ")}; the device reports ${id.model.found}.`,
+      );
+    if (id.firmware.status === "mismatch" && id.firmware.version)
+      problems.push(
+        `The map is for firmware ${rangeText(meta.firmware_min, meta.firmware_max)}; the device reports ${versionText(id.firmware.version)}.`,
+      );
+    if (!problems.length) return true;
+    const ok = await ask(
+      `${problems.join("\n")}\n\nAddresses or meanings may differ on this device. Write anyway?`,
+      {
+        title: "Device does not match the map",
+        kind: "warning",
+        okLabel: "Write anyway",
+        cancelLabel: "Cancel",
+      },
+    );
+    this.mismatchAccepted = ok;
+    return ok;
   }
 
   /** Asks before a write when Settings require it; true to go ahead. */
@@ -329,6 +382,8 @@ This writes to the device.`,
     this.chartSeries = [];
     this.history = new Map();
     this.mapResults = new Map();
+    this.mismatchAccepted = false;
+    this.readFor = null;
     this.lastCycle = null;
   }
 
@@ -345,6 +400,8 @@ This writes to the device.`,
     const open = this.map;
     if (!open || this.running) return;
     this.mapResults = new Map();
+    this.mismatchAccepted = false;
+    this.readFor = null;
     this.lastCycle = null;
     if (!settings.rememberDevices) {
       this.skipped = new Set();
@@ -582,7 +639,12 @@ This writes to the device.`,
     const open = this.map!;
     const m = open.map.meta;
     const all = $state.snapshot(open.map.registers);
-    const indexes = all.map((_, i) => i).filter((i) => !this.skipped.has(i));
+    // Registers the device's firmware does not have are not read.
+    const version = this.identity?.firmware.version ?? null;
+    this.readFor = version ? versionText(version) : null;
+    const indexes = all
+      .map((_, i) => i)
+      .filter((i) => !this.skipped.has(i) && appliesTo(all[i], version));
     const registers = indexes.map((i) => all[i]);
     // Scale factors of read registers are read too, even when switched off.
     const names = new Set(registers.map((r) => r.name));
@@ -732,6 +794,11 @@ This writes to the device.`,
   ): Promise<{ index: number; error: string | null }[]> {
     const open = this.map;
     if (!open || !items.length) return [];
+    if (!(await this.acceptMismatch()))
+      return items.map((i) => ({
+        index: i.index,
+        error: "Not written: the device does not match the map.",
+      }));
     const temporary = !this.connected;
     if (temporary && !(await this.open())) {
       const error = this.status?.text ?? "Could not connect.";
@@ -766,6 +833,8 @@ This writes to the device.`,
   async writeMapValue(index: number, value: import("./types").Value) {
     const open = this.map;
     if (!open) return;
+    if (!(await this.acceptMismatch()))
+      throw new Error("the device does not match the map");
     const temporary = !this.connected;
     if (temporary && !(await this.open())) throw new Error(this.status?.text);
     try {
@@ -806,6 +875,11 @@ This writes to the device.`,
     const next = new Map(this.mapResults);
     for (const r of cycle.results) next.set(r.index, r);
     this.mapResults = next;
+    // Once the firmware is known, read only the registers it has.
+    const version = this.identity?.firmware.version;
+    const seen = version ? versionText(version) : null;
+    if (seen !== this.readFor && this.map?.map.registers.some(hasRange))
+      this.refreshPolling();
     this.lastCycle = cycle;
     if (this.chartSeries.length)
       this.history = addCycle(
