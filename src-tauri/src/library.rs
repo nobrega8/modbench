@@ -1,5 +1,7 @@
-//! The device library: `.mbmap` files kept in the app's data folder as
-//! `<vendor>/<model>.mbmap`, the same layout as the mbmap-library repo.
+//! The device library: maps kept in the app's data folder as
+//! `<vendor>/<model>.mbmap.json` (format version 2), the layout of the
+//! mbmap-library repo. Maps are stored in version 2 whatever version they
+//! came in, and `upgrade` converts the version 1 files of older releases.
 
 use std::path::{Path, PathBuf};
 
@@ -53,9 +55,9 @@ fn error_summary(parsed: &Parsed) -> String {
     parsed
         .errors()
         .take(3)
-        .map(|d| match d.line {
-            Some(l) => format!("line {l}: {}", d.message),
-            None => d.message.clone(),
+        .map(|d| match (d.line, &d.pointer) {
+            (None, None) => d.message.clone(),
+            _ => format!("{}: {}", d.location(), d.message),
         })
         .collect::<Vec<_>>()
         .join("; ")
@@ -70,10 +72,45 @@ fn read_valid(bytes: &[u8]) -> Result<DeviceMap, String> {
 /// Path a map gets inside the library.
 pub fn path_for(root: &Path, map: &DeviceMap) -> PathBuf {
     root.join(slug(&map.meta.vendor))
-        .join(format!("{}.mbmap", slug(&map.meta.model)))
+        .join(format!("{}.mbmap.json", slug(&map.meta.model)))
 }
 
-/// Every `.mbmap` in the library, sorted by vendor and model.
+fn is_map(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(mbmap::is_map_file)
+}
+
+/// Converts the valid version 1 maps of the library to version 2, in place.
+/// Files with errors are left as they are. Returns how many were converted.
+pub fn upgrade(root: &Path) -> std::io::Result<usize> {
+    let mut converted = 0;
+    if !root.exists() {
+        return Ok(0);
+    }
+    for vendor in std::fs::read_dir(root)? {
+        let vendor = vendor?.path();
+        if !vendor.is_dir() {
+            continue;
+        }
+        for file in std::fs::read_dir(&vendor)? {
+            let path = file?.path();
+            if path.extension().and_then(|e| e.to_str()) != Some("mbmap") {
+                continue;
+            }
+            let parsed = mbmap::parse(&std::fs::read(&path)?);
+            if let (Some(1), Some(map)) = (parsed.version, parsed.map) {
+                let target = path.with_extension("mbmap.json");
+                std::fs::write(&target, mbmap::to_string(&map))?;
+                std::fs::remove_file(&path)?;
+                converted += 1;
+            }
+        }
+    }
+    Ok(converted)
+}
+
+/// Every map in the library, sorted by vendor and model.
 pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
     let mut entries = Vec::new();
     if !root.exists() {
@@ -86,7 +123,7 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
         }
         for file in std::fs::read_dir(&vendor)? {
             let path = file?.path();
-            if path.extension().and_then(|e| e.to_str()) != Some("mbmap") {
+            if !is_map(&path) {
                 continue;
             }
             let bytes = std::fs::read(&path)?;
@@ -121,8 +158,13 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                         .map(|n| n.to_string_lossy().into_owned())
                         .unwrap_or_default(),
                     model: path
-                        .file_stem()
+                        .file_name()
                         .map(|n| n.to_string_lossy().into_owned())
+                        .map(|n| {
+                            n.trim_end_matches(".json")
+                                .trim_end_matches(".mbmap")
+                                .into()
+                        })
                         .unwrap_or_default(),
                     description: None,
                     vendor_website: None,
@@ -142,15 +184,20 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
     Ok(entries)
 }
 
-/// Stores the contents of a valid map; returns where it was stored. A map
-/// with the same vendor and model replaces the stored one.
+/// Stores a valid map of either version, as version 2; returns where it was
+/// stored. A map with the same vendor and model replaces the stored one.
 pub fn store(root: &Path, bytes: &[u8]) -> Result<String, String> {
     let map = read_valid(bytes)?;
     let target = path_for(root, &map);
     if let Some(dir) = target.parent() {
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
-    std::fs::write(&target, bytes).map_err(|e| e.to_string())?;
+    std::fs::write(&target, mbmap::to_string(&map)).map_err(|e| e.to_string())?;
+    // The version 1 copy an older release stored for the same model.
+    let legacy = target.with_extension("");
+    if legacy.exists() {
+        std::fs::remove_file(&legacy).map_err(|e| e.to_string())?;
+    }
     Ok(target.display().to_string())
 }
 
@@ -188,7 +235,7 @@ pub fn import(root: &Path, sources: &[String]) -> Vec<ImportResult> {
 pub fn delete(root: &Path, path: &str) -> std::io::Result<()> {
     let target = std::fs::canonicalize(path)?;
     let root = std::fs::canonicalize(root)?;
-    if !target.starts_with(&root) || target.extension().and_then(|e| e.to_str()) != Some("mbmap") {
+    if !target.starts_with(&root) || !is_map(&target) {
         return Err(std::io::Error::new(
             std::io::ErrorKind::PermissionDenied,
             "only maps inside the library can be deleted",
@@ -243,7 +290,7 @@ mod tests {
                 .stored
                 .as_deref()
                 .unwrap()
-                .ends_with("pm-200-b.mbmap")
+                .ends_with("pm-200-b.mbmap.json")
         );
         assert!(results[1].error.is_some());
 
@@ -265,6 +312,35 @@ mod tests {
         delete(&lib, &entries[0].path).unwrap();
         assert!(list(&lib).unwrap().is_empty());
         assert!(!lib.join("acme-meters").exists());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn version_1_maps_are_upgraded() {
+        let root = temp_root("upgrade");
+        let dir = root.join("acme-meters");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("pm-200-b.mbmap"), MAP).unwrap();
+        std::fs::write(dir.join("broken.mbmap"), "@mbmap=1\n").unwrap();
+
+        assert_eq!(upgrade(&root).unwrap(), 1);
+        assert!(!dir.join("pm-200-b.mbmap").exists());
+        let v2 = std::fs::read(dir.join("pm-200-b.mbmap.json")).unwrap();
+        assert_eq!(mbmap::parse(&v2).version, Some(2));
+        // A file with errors stays as it is, and is still listed.
+        assert!(dir.join("broken.mbmap").exists());
+        let entries = list(&root).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert!(
+            entries
+                .iter()
+                .any(|e| e.model == "broken" && e.error.is_some())
+        );
+
+        // Storing the same model again replaces the old copy, in version 2.
+        std::fs::write(dir.join("pm-200-b.mbmap"), MAP).unwrap();
+        store(&root, MAP.as_bytes()).unwrap();
+        assert!(!dir.join("pm-200-b.mbmap").exists());
         let _ = std::fs::remove_dir_all(&root);
     }
 }

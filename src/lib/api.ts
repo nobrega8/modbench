@@ -45,6 +45,8 @@ export const api = {
   openMap: (path: string) => invoke<Parsed>("open_map", { path }),
   saveMap: (path: string, map: DeviceMap) =>
     invoke<void>("save_map", { path, map }),
+  /** Writes a version 2 copy of a version 1 map; returns its path. */
+  convertMap: (path: string) => invoke<string>("convert_map", { path }),
   startPolling: (request: PollRequest) =>
     invoke<void>("start_polling", { request }),
   stopPolling: () => invoke<void>("stop_polling"),

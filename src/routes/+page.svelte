@@ -11,11 +11,12 @@
   import WindowControls from "$lib/components/WindowControls.svelte";
   import { bench, type Page } from "$lib/state.svelte";
   import { settings } from "$lib/settings.svelte";
-  import type {
-    LinkEvent,
-    PollCycle,
-    SerialProgress,
-    TrafficEntry,
+  import {
+    diagnosticWhere,
+    type LinkEvent,
+    type PollCycle,
+    type SerialProgress,
+    type TrafficEntry,
   } from "$lib/types";
 
   interface RawChunk {
@@ -118,9 +119,7 @@
         <ul>
           {#each bench.mapError.diagnostics as d, i (i)}
             <li class={d.severity}>
-              <span class="where"
-                >{d.line === null ? "file" : `line ${d.line}`}</span
-              >
+              <span class="where">{diagnosticWhere(d)}</span>
               <span>{d.message}</span>
               <span class="code">{d.code}</span>
             </li>

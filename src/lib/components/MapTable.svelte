@@ -13,7 +13,7 @@
     limitError,
   } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
-  import type { Register } from "$lib/types";
+  import { diagnosticWhere, type Register } from "$lib/types";
   import AddressFormat from "./AddressFormat.svelte";
 
   let { open }: { open: OpenMap } = $props();
@@ -24,6 +24,22 @@
   let draft = $state("");
   let note = $state<{ index: number; ok: boolean; text: string } | null>(null);
   let busy = $state(false);
+  let converting = $state(false);
+  let convertError = $state<string | null>(null);
+
+  async function convert() {
+    const index = bench.maps.indexOf(open);
+    if (index < 0) return;
+    converting = true;
+    convertError = null;
+    try {
+      await bench.convertMap(index);
+    } catch (e) {
+      convertError = errorText(e);
+    } finally {
+      converting = false;
+    }
+  }
 
   const meta = $derived(open.map.meta);
   const base = $derived(meta.address_base ?? 0);
@@ -237,6 +253,19 @@
   {/if}
 </div>
 
+{#if open.version === 1}
+  <div class="deprecated">
+    <span
+      >This map uses format version 1 (CSV), which is deprecated. Convert it to
+      version 2 (JSON); the original file is kept.</span
+    >
+    <button class="btn" disabled={converting} onclick={convert}
+      >{converting ? "Converting…" : "Convert to version 2"}</button
+    >
+    {#if convertError}<span class="error">{convertError}</span>{/if}
+  </div>
+{/if}
+
 {#if open.warnings.length}
   <details class="warnings">
     <summary
@@ -246,7 +275,7 @@
     <ul>
       {#each open.warnings as w, k (k)}
         <li>
-          <span class="where">{w.line ? `line ${w.line}` : "file"}</span>
+          <span class="where">{diagnosticWhere(w)}</span>
           {w.message}
         </li>
       {/each}
@@ -464,6 +493,23 @@
   .warnings {
     margin: 0 0 8px;
     font-size: 13px;
+  }
+
+  .deprecated {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    background: var(--subtle);
+    font-size: 13px;
+    color: var(--text-2);
+  }
+
+  .deprecated .error {
+    color: rgb(var(--alert-rgb));
   }
 
   .warnings summary {

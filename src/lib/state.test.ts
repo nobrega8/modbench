@@ -76,8 +76,9 @@ function openMap(path = "/maps/meter.mbmap", names = ["V", "A", "W", "PF"]) {
     registers: names.map((n) => register(n, ADDRESS[n])),
   } as unknown as DeviceMap;
   const existing = bench.maps.findIndex((m) => m.path === path);
-  if (existing >= 0) bench.maps[existing] = { path, map, warnings: [] };
-  else bench.maps.push({ path, map, warnings: [] });
+  if (existing >= 0)
+    bench.maps[existing] = { path, map, warnings: [], version: 2 };
+  else bench.maps.push({ path, map, warnings: [], version: 2 });
   bench.selectMap(existing >= 0 ? existing : bench.maps.length - 1);
 }
 

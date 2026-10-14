@@ -59,6 +59,8 @@ export interface Meta {
   enums: [string, [number, string][]][];
   sentinels: [DataType, [number, string][]][];
   extra: [string, string][];
+  /** Free notes about the whole file. */
+  notes?: string[];
 }
 
 export interface Register {
@@ -88,6 +90,8 @@ export interface Register {
   enum_ref: string | null;
   description: string;
   extra: [string, string][];
+  /** Free note about this register. */
+  comment?: string;
 }
 
 export interface DeviceMap {
@@ -98,6 +102,8 @@ export interface DeviceMap {
 export interface Diagnostic {
   severity: "error" | "warning";
   line: number | null;
+  /** JSON Pointer to the value, in version 2 files. */
+  pointer: string | null;
   code: string;
   message: string;
 }
@@ -105,7 +111,18 @@ export interface Diagnostic {
 export interface Parsed {
   map: DeviceMap | null;
   diagnostics: Diagnostic[];
+  /** Format version of the file; 1 is deprecated. */
+  version: number | null;
 }
+
+/** Where a diagnostic points: "/registers/3/address", "line 5" or "file". */
+export function diagnosticWhere(d: Diagnostic): string {
+  if (d.pointer) return d.pointer;
+  return d.line === null ? "file" : `line ${d.line}`;
+}
+
+/** File extensions offered when picking a map (`.mbmap.json` ends in json). */
+export const MAP_EXTENSIONS = ["mbmap", "json"];
 
 export interface PlanLimits {
   max_registers: number;

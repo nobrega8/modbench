@@ -2,6 +2,7 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
+  import { MAP_EXTENSIONS } from "$lib/types";
   import OnlineLibrary from "./OnlineLibrary.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
@@ -87,7 +88,7 @@
     const picked = await open({
       multiple: true,
       directory: false,
-      filters: [{ name: "Modbus map", extensions: ["mbmap"] }],
+      filters: [{ name: "Modbus map", extensions: MAP_EXTENSIONS }],
     });
     if (!picked) return;
     await importPaths(Array.isArray(picked) ? picked : [picked]);

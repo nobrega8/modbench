@@ -327,6 +327,7 @@ fn register(name: &str, area: Area, address: u16, ty: DataType) -> modbench_lib:
         enum_ref: None,
         description: String::new(),
         extra: Vec::new(),
+        comment: String::new(),
     }
 }
 
