@@ -11,6 +11,14 @@
   let busy = $state(false);
   let menuOpen = $state(false);
   let onlineOpen = $state(false);
+
+  // The map picker can send people here to browse the online library.
+  $effect(() => {
+    if (bench.onlineRequested) {
+      bench.onlineRequested = false;
+      onlineOpen = true;
+    }
+  });
   let menu: HTMLDivElement | undefined = $state();
 
   // Close the import menu on a click outside it or on Esc

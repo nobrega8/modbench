@@ -5,6 +5,7 @@ export type Theme = "system" | "light" | "dark";
 interface Stored {
   theme: Theme;
   rememberConnection: boolean;
+  rememberDevices: boolean;
   confirmWrites: boolean;
   logLimit: number;
   checkUpdates: boolean;
@@ -14,6 +15,7 @@ const KEY = "modbench.settings";
 const DEFAULTS: Stored = {
   theme: "system",
   rememberConnection: true,
+  rememberDevices: true,
   confirmWrites: false,
   logLimit: 1000,
   checkUpdates: true,
@@ -34,6 +36,7 @@ function load(): Stored {
 class Settings {
   theme = $state<Theme>("system");
   rememberConnection = $state(true);
+  rememberDevices = $state(true);
   confirmWrites = $state(false);
   logLimit = $state(1000);
   checkUpdates = $state(true);
@@ -46,6 +49,7 @@ class Settings {
     const data: Stored = {
       theme: this.theme,
       rememberConnection: this.rememberConnection,
+      rememberDevices: this.rememberDevices,
       confirmWrites: this.confirmWrites,
       logLimit: this.logLimit,
       checkUpdates: this.checkUpdates,

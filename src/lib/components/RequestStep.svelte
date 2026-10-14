@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { open } from "@tauri-apps/plugin-dialog";
-  import { errorText } from "$lib/api";
   import { FUNCTION_NAME } from "$lib/format";
   import { bench } from "$lib/state.svelte";
   import type { ByteOrder } from "$lib/types";
   import IntInput from "./IntInput.svelte";
+  import MapPicker from "./MapPicker.svelte";
   import StepCard from "./StepCard.svelte";
 
   const orders: ByteOrder[] = ["ABCD", "CDAB", "BADC", "DCBA"];
@@ -13,41 +12,6 @@
     bench.fc <= 2 ? 2000 : bench.fc === 15 ? 1968 : bench.fc === 16 ? 123 : 125,
   );
   const single = $derived(bench.fc === 5 || bench.fc === 6);
-  let openError = $state<string | null>(null);
-  const libraryOnly = $derived(
-    bench.library.filter(
-      (e) => !e.error && !bench.maps.some((m) => m.path === e.path),
-    ),
-  );
-
-  async function chooseMap() {
-    const path = await open({
-      multiple: false,
-      directory: false,
-      filters: [{ name: "Modbus map", extensions: ["mbmap"] }],
-    });
-    if (typeof path !== "string") return;
-    openError = null;
-    try {
-      await bench.openMap(path);
-    } catch (e) {
-      openError = errorText(e);
-    }
-  }
-
-  function onMapSelect(e: Event) {
-    const v = (e.currentTarget as HTMLSelectElement).value;
-    if (v.startsWith("lib:")) {
-      bench.openMap(v.slice(4)).catch((err) => (openError = errorText(err)));
-    } else if (v === "open") {
-      (e.currentTarget as HTMLSelectElement).value = String(
-        bench.activeMap ?? "",
-      );
-      chooseMap();
-    } else if (v !== "") {
-      bench.selectMap(Number(v));
-    }
-  }
 
   function setSource(source: "manual" | "map") {
     if (bench.source === source) return;
@@ -140,47 +104,21 @@
         />
       </label>
     {:else}
-      <label class="field">
+      <div class="field">
         <span>Map</span>
-        <select
-          class="input map"
-          value={bench.activeMap === null ? "" : String(bench.activeMap)}
-          onchange={onMapSelect}
-          disabled={locked}
-        >
-          {#if bench.activeMap === null}<option value="">Choose a map</option
-            >{/if}
-          {#if bench.maps.length}
-            <optgroup label="Open">
-              {#each bench.maps as m, i (m.path)}
-                <option value={String(i)}
-                  >{m.map.meta.vendor} · {m.map.meta.model} ({m.map.registers
-                    .length})</option
-                >
-              {/each}
-            </optgroup>
-          {/if}
-          {#if libraryOnly.length}
-            <optgroup label="Library">
-              {#each libraryOnly as e (e.path)}
-                <option value="lib:{e.path}"
-                  >{e.vendor} · {e.model} ({e.registers})</option
-                >
-              {/each}
-            </optgroup>
-          {/if}
-          <option value="open">Open map file…</option>
-        </select>
-      </label>
-      <button class="btn" onclick={chooseMap} disabled={locked}>Open…</button>
+        <MapPicker disabled={locked} />
+      </div>
       <label class="field" title="Read every value with another byte order">
         <span>Byte order</span>
         <select
           class="input"
-          bind:value={bench.orderOverride}
-          onchange={() => bench.refreshPolling()}
+          value={bench.orderOverride ?? ""}
+          onchange={(e) =>
+            bench.setOrderOverride(
+              (e.currentTarget.value || null) as ByteOrder | null,
+            )}
         >
-          <option value={null}
+          <option value=""
             >From map{bench.map
               ? ` (${bench.map.map.meta.byte_order ?? "ABCD"})`
               : ""}</option
@@ -196,13 +134,13 @@
           type="checkbox"
           class="switch"
           role="switch"
-          bind:checked={bench.loop}
+          checked={bench.loop}
+          onchange={(e) => bench.setLoop(e.currentTarget.checked)}
           disabled={locked}
         /> Loop command</label
       >
     </div>
   </div>
-  {#if openError}<p class="error">Could not open the map: {openError}</p>{/if}
 </StepCard>
 
 <style>
@@ -217,10 +155,6 @@
     width: 250px;
   }
 
-  .map {
-    width: 300px;
-  }
-
   .options {
     margin-left: auto;
     height: 34px;
@@ -230,10 +164,5 @@
 
   .loop {
     gap: 9px;
-  }
-
-  .error {
-    margin: 8px 0 0;
-    color: var(--bad);
   }
 </style>

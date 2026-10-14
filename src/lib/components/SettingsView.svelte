@@ -2,6 +2,7 @@
   import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
   import { settings, type Theme } from "$lib/settings.svelte";
+  import { forgetAll } from "$lib/profiles";
   import { updates } from "$lib/updates.svelte";
 
   const themes: { id: Theme; label: string }[] = [
@@ -13,6 +14,7 @@
 
   let version = $state("");
   let copied = $state(false);
+  let forgotten = $state<number | null>(null);
   let problem = $state<string | null>(null);
 
   $effect(() => {
@@ -31,6 +33,11 @@
     } catch (e) {
       problem = errorText(e);
     }
+  }
+
+  function forgetDevices() {
+    forgotten = forgetAll();
+    setTimeout(() => (forgotten = null), 2500);
   }
 
   async function copyFolder() {
@@ -138,6 +145,34 @@
             onchange={changed}
           />
         </label>
+        <label class="setting">
+          <div class="text">
+            <span class="name">Remember register choices for each device</span>
+            <span class="hint"
+              >Which registers are read, the byte order and Loop come back when
+              you pick the same map on the same connection and unit ID. Nothing
+              is sent to the device when they are restored.</span
+            >
+          </div>
+          <input
+            type="checkbox"
+            class="switch"
+            role="switch"
+            bind:checked={settings.rememberDevices}
+            onchange={changed}
+          />
+        </label>
+        <div class="setting">
+          <div class="text">
+            <span class="name">Forget saved device choices</span>
+            <span class="hint"
+              >{forgotten === null
+                ? "Every device goes back to reading all registers."
+                : `Forgot ${forgotten} device${forgotten === 1 ? "" : "s"}.`}</span
+            >
+          </div>
+          <button class="btn" onclick={forgetDevices}>Forget</button>
+        </div>
         <label class="setting">
           <div class="text">
             <span class="name">Confirm before writing to a device</span>

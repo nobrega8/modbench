@@ -4,6 +4,16 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorText } from "./api";
 import { FUNCTION_NAME } from "./format";
 import { settings } from "./settings.svelte";
+import {
+  endpointOf,
+  idsOf,
+  indexesOf,
+  loadMapDefault,
+  loadProfile,
+  profileKey,
+  saveMapDefault,
+  saveProfile,
+} from "./profiles";
 import type {
   Area,
   ByteOrder,
@@ -56,29 +66,7 @@ const CONNECTION_FIELDS = [
 ] as const;
 const RAW_LIMIT = 200;
 
-const SKIPPED_KEY = "modbench.skipped:";
-
-/** Registers switched off for a map, remembered per map file. */
-function loadSkipped(path: string | undefined): Set<number> {
-  if (!path) return new Set();
-  try {
-    const raw = localStorage.getItem(SKIPPED_KEY + path);
-    return new Set(raw ? (JSON.parse(raw) as number[]) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function saveSkipped(path: string | undefined, skipped: Set<number>) {
-  if (!path) return;
-  try {
-    if (skipped.size)
-      localStorage.setItem(SKIPPED_KEY + path, JSON.stringify([...skipped]));
-    else localStorage.removeItem(SKIPPED_KEY + path);
-  } catch {
-    // Storage unavailable: the choice lasts for this session only.
-  }
-}
+const LAST_MAP_KEY = "modbench.lastMap";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -111,6 +99,10 @@ class Bench {
   skipped = $state.raw<Set<number>>(new Set());
   library = $state.raw<LibraryEntry[]>([]);
   libraryFolder = $state("");
+  /** Path of the map used last time, offered first in the picker. */
+  lastMap = $state<string | null>(null);
+  /** Set to ask the Library page to open the online library. */
+  onlineRequested = $state(false);
 
   // Step 3 — test
   running = $state(false);
@@ -130,6 +122,11 @@ class Bench {
   private flushQueued = false;
 
   constructor() {
+    try {
+      this.lastMap = localStorage.getItem(LAST_MAP_KEY);
+    } catch {
+      // Storage unavailable.
+    }
     if (!settings.rememberConnection) return;
     try {
       const saved = JSON.parse(localStorage.getItem(CONNECTION_KEY) ?? "{}");
@@ -172,6 +169,16 @@ This writes to the device.`,
 
   get map(): OpenMap | null {
     return this.activeMap === null ? null : (this.maps[this.activeMap] ?? null);
+  }
+
+  /**
+   * Identity of the device the current choices belong to: the map, how it is
+   * reached and the unit ID. Null until a map is open.
+   */
+  get deviceKey(): string | null {
+    const open = this.map;
+    if (!open) return null;
+    return profileKey(open.path, endpointOf(this), this.unitId);
   }
 
   get isRead(): boolean {
@@ -222,11 +229,79 @@ This writes to the device.`,
   selectMap(index: number) {
     this.page = "main";
     this.activeMap = index;
-    this.skipped = loadSkipped(this.maps[index]?.path);
     this.source = "map";
+    const path = this.maps[index]?.path;
+    if (path) {
+      this.lastMap = path;
+      try {
+        localStorage.setItem(LAST_MAP_KEY, path);
+      } catch {
+        // Storage unavailable.
+      }
+    }
+    this.restoreDevice();
     this.tab = "map";
     this.mapResults = new Map();
     this.lastCycle = null;
+  }
+
+  /**
+   * Puts back what was chosen for the current device: registers switched off,
+   * byte order override and Loop. Only changes what the screen shows; it never
+   * sends anything to a device, and does nothing while a test runs.
+   *
+   * A device seen for the first time starts from the registers last used with
+   * the same map (or everything on) and from the map's own byte order, so one
+   * device's byte order override never carries over to another.
+   */
+  restoreDevice() {
+    const open = this.map;
+    if (!open || this.running) return;
+    this.mapResults = new Map();
+    this.lastCycle = null;
+    if (!settings.rememberDevices) {
+      this.skipped = new Set();
+      this.orderOverride = null;
+      return;
+    }
+    const registers = open.map.registers;
+    const key = this.deviceKey!;
+    const profile = loadProfile(key);
+    if (profile) {
+      this.skipped = indexesOf(profile.skipped, registers);
+      this.orderOverride = profile.order;
+      this.loop = profile.loop;
+      return;
+    }
+    const seed = loadMapDefault(open.path, registers);
+    this.skipped = seed ? indexesOf(seed, registers) : new Set();
+    this.orderOverride = null;
+  }
+
+  /** Remembers the current choices for this device. */
+  private persistDevice() {
+    const open = this.map;
+    const key = this.deviceKey;
+    if (!open || !key || !settings.rememberDevices) return;
+    const ids = idsOf(this.skipped, open.map.registers);
+    saveProfile(key, {
+      v: 1,
+      skipped: ids,
+      order: this.orderOverride,
+      loop: this.loop,
+    });
+    saveMapDefault(open.path, ids);
+  }
+
+  setOrderOverride(order: ByteOrder | null) {
+    this.orderOverride = order;
+    this.persistDevice();
+    this.refreshPolling();
+  }
+
+  setLoop(on: boolean) {
+    this.loop = on;
+    this.persistDevice();
   }
 
   /** Fills the connection settings with a map's defaults. */
@@ -362,7 +437,7 @@ This writes to the device.`,
 
   private setSkipped(next: Set<number>) {
     this.skipped = next;
-    saveSkipped(this.map?.path, next);
+    this.persistDevice();
     this.refreshPolling();
   }
 

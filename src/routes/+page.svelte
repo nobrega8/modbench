@@ -1,5 +1,6 @@
 <script lang="ts">
   import { listen } from "@tauri-apps/api/event";
+  import { untrack } from "svelte";
   import { api } from "$lib/api";
   import ConnectionStep from "$lib/components/ConnectionStep.svelte";
   import RequestStep from "$lib/components/RequestStep.svelte";
@@ -28,6 +29,13 @@
       listen<string>("open-file", (e) => bench.openMap(e.payload)),
     ];
     return () => stops.forEach((p) => p.then((stop) => stop()));
+  });
+
+  // Choices are kept per device: put back the ones of the device now shown
+  // whenever the map, the endpoint or the unit ID change.
+  $effect(() => {
+    void bench.deviceKey;
+    untrack(() => bench.restoreDevice());
   });
 
   $effect(() => {
