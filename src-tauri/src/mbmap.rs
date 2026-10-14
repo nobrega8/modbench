@@ -763,6 +763,14 @@ pub fn parse(bytes: &[u8]) -> Parsed {
         (1, read_v1(text, &mut ck))
     };
     let map = read.and_then(|(meta, rows)| finish(&mut ck, meta, rows));
+    if version == 2 {
+        // Version 2 names this code after keys, not CSV cells.
+        for d in &mut ck.out {
+            if d.code == "empty-cell" {
+                d.code = "missing-key";
+            }
+        }
+    }
     Parsed {
         map,
         diagnostics: ck.out,
@@ -1003,7 +1011,11 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>) -> Option<DeviceMap> 
             .collect();
         if !empty.is_empty() {
             for col in empty {
-                ck.error(line, "empty-cell", format!("empty required cell {col:?}"));
+                ck.error(
+                    line,
+                    "empty-cell",
+                    format!("missing or empty required field {col:?}"),
+                );
             }
             continue;
         }
@@ -1978,7 +1990,7 @@ A,holding,0,uint16
             diags(&doc(
                 r#"{"name": "A", "area": "holding", "address": 0, "type": "int16", "colour": "red"}"#
             )),
-            [("unknown-column", at("/registers/0/colour"))]
+            [("unknown-key", at("/registers/0/colour"))]
         );
         assert_eq!(
             diags(&doc(
@@ -1993,7 +2005,7 @@ A,holding,0,uint16
         );
         assert_eq!(
             diags(r#"{"mbmap": 3, "vendor": "T", "model": "M"}"#),
-            [("bad-meta-value", at("/mbmap")), ("missing-meta", None)]
+            [("bad-meta-value", at("/mbmap")), ("missing-key", None)]
         );
     }
 
