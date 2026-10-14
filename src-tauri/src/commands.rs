@@ -33,6 +33,8 @@ fn now_ms() -> u64 {
 pub struct AppState {
     session: Arc<Mutex<Option<Session>>>,
     poller: std::sync::Mutex<Option<JoinHandle<()>>>,
+    /// Set to stop a scan that is running.
+    scan_cancel: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl AppState {
@@ -478,6 +480,49 @@ pub fn startup_file() -> Option<String> {
 pub async fn save_text(path: String, text: String) -> Result<(), ModbusError> {
     tokio::fs::write(&path, text).await?;
     Ok(())
+}
+
+/// Asks every unit ID in `from..=to` whether a device answers. Each unit ID
+/// about to be asked is sent to the UI as a `scan-progress` event.
+#[tauri::command]
+pub async fn scan_units(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    from: u8,
+    to: u8,
+    timeout_ms: u64,
+) -> Result<Vec<modbus::ScanHit>, ModbusError> {
+    if from > to {
+        return Err(ModbusError::Invalid(
+            "the first unit ID is above the last".into(),
+        ));
+    }
+    state.stop_poller();
+    state
+        .scan_cancel
+        .store(false, std::sync::atomic::Ordering::Relaxed);
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    let wait = std::time::Duration::from_millis(timeout_ms.max(1));
+    Ok(session
+        .scan_units(from, to, wait, &state.scan_cancel, |unit| {
+            let _ = app.emit("scan-progress", unit);
+        })
+        .await)
+}
+
+/// Stops a running scan after the unit ID being asked.
+#[tauri::command]
+pub fn cancel_scan(state: State<'_, AppState>) {
+    state
+        .scan_cancel
+        .store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Reads a text file chosen by the user (a value template).
+#[tauri::command]
+pub async fn read_text(path: String) -> Result<String, ModbusError> {
+    Ok(tokio::fs::read_to_string(&path).await?)
 }
 
 /// Reads one typed value, without a map.

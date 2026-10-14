@@ -26,6 +26,7 @@
       ),
       listen<PollCycle>("poll", (e) => bench.onPoll(e.payload)),
       listen<string>("poll-stopped", (e) => bench.onPollStopped(e.payload)),
+      listen<number>("scan-progress", (e) => bench.onScanProgress(e.payload)),
       listen<string>("open-file", (e) => bench.openMap(e.payload)),
     ];
     return () => stops.forEach((p) => p.then((stop) => stop()));

@@ -22,6 +22,8 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Three-step workflow**: connection (serial RTU, Modbus TCP or RTU over TCP), request (any function code, or a device map), test (Start/Stop, valid/error/timeout counters).
 - **Device maps (`.mbmap`)**: plain-text, CSV-based files that describe a device and all of its registers: types, byte order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps.
 - **Write from the map**: writable registers and control commands are listed with the right control for each type. A register can declare the values it accepts (`write_min`, `write_max`) and Modbench refuses anything outside them.
+- **Find unit IDs**: *Find…* next to Device asks each unit ID for one register and lists the ones that answer. Read-only.
+- **Value templates**: save the values read from a device's writable registers to a `.mbtpl` text file, and write them to another device of the same model. Only values that differ are written by default, and the last apply can be undone.
 - **Reference checks**: a map can name registers with a known value; Modbench shows whether they match, which helps spot a wrong address, byte order or type.
 - **Remembers each device**: the registers you switch off, the byte order override and Loop come back for the same map on the same connection and unit ID (see below).
 - **Raw data**: the exact bytes sent and received, plus a request log you can save.
@@ -84,6 +86,7 @@ cargo run --bin modbench-cli -- ports
 cargo run --bin modbench-cli -- read --tcp 192.168.1.10 holding 0x0405 1
 cargo run --bin modbench-cli -- read --rtu COM3 --baud 9600 --stop-bits 2 --unit 18 holding 1029 4
 cargo run --bin modbench-cli -- map --rtu COM3 --unit 18 path/to/device.mbmap --filter voltage
+cargo run --bin modbench-cli -- scan --rtu COM3 --baud 9600 --from 1 --to 32 --timeout 200
 cargo run --bin modbench-cli -- validate path/to/device.mbmap
 ```
 

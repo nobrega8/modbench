@@ -2,12 +2,14 @@
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::time::timeout;
 use tokio_modbus::client::{Client, Context, Reader, Writer, rtu, tcp};
+use tokio_modbus::prelude::SlaveContext;
 use tokio_modbus::{ExceptionCode, Slave};
 use tokio_serial::SerialPortBuilderExt;
 
@@ -150,8 +152,17 @@ pub struct TrafficEntry {
 
 pub type TrafficLogger = Arc<dyn Fn(TrafficEntry) + Send + Sync>;
 
+/// A unit ID that answered during a scan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ScanHit {
+    pub unit: u8,
+    /// What came back: a normal response, or the exception the device raised.
+    pub response: String,
+}
+
 pub struct Session {
     ctx: Context,
+    unit: u8,
     timeout: Duration,
     logger: Option<TrafficLogger>,
 }
@@ -216,6 +227,7 @@ impl Session {
         };
         Ok(Self {
             ctx,
+            unit: config.unit_id,
             timeout: wait,
             logger: None,
         })
@@ -328,6 +340,45 @@ impl Session {
         };
         self.log(function, address, bits.len() as u16, started, &result);
         result
+    }
+
+    /// Looks for devices by asking each unit ID in `from..=to` for one
+    /// holding register. Any answer counts, including a Modbus exception:
+    /// it still proves a device is there. Unit IDs that stay silent are
+    /// skipped after `wait`. The session's own unit ID and timeout are
+    /// restored afterwards. `progress` gets each unit ID before it is asked.
+    pub async fn scan_units(
+        &mut self,
+        from: u8,
+        to: u8,
+        wait: Duration,
+        cancel: &AtomicBool,
+        progress: impl Fn(u8),
+    ) -> Vec<ScanHit> {
+        let (unit, timeout) = (self.unit, self.timeout);
+        self.timeout = wait;
+        let mut hits = Vec::new();
+        for id in from..=to {
+            if cancel.load(Ordering::Relaxed) {
+                break;
+            }
+            progress(id);
+            self.ctx.set_slave(Slave(id));
+            match self.read(Area::Holding, 0, 1).await {
+                Ok(_) => hits.push(ScanHit {
+                    unit: id,
+                    response: "responds".into(),
+                }),
+                Err(ModbusError::Exception { name, .. }) => hits.push(ScanHit {
+                    unit: id,
+                    response: format!("responds with exception: {name}"),
+                }),
+                Err(_) => {}
+            }
+        }
+        self.ctx.set_slave(Slave(unit));
+        self.timeout = timeout;
+        hits
     }
 
     pub async fn disconnect(mut self) -> Result<(), ModbusError> {

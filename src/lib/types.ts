@@ -194,3 +194,9 @@ export interface ImportResult {
   stored: string | null;
   error: string | null;
 }
+
+/** A unit ID that answered during a scan. */
+export interface ScanHit {
+  unit: number;
+  response: string;
+}

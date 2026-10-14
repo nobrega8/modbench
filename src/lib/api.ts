@@ -14,6 +14,7 @@ import type {
   PollRequest,
   RawData,
   Register,
+  ScanHit,
   TypedAddress,
   Value,
 } from "./types";
@@ -65,6 +66,10 @@ export const api = {
   vendorIcon: (website: string) =>
     invoke<string | null>("vendor_icon", { website }),
   startupFile: () => invoke<string | null>("startup_file"),
+  scanUnits: (from: number, to: number, timeoutMs: number) =>
+    invoke<ScanHit[]>("scan_units", { from, to, timeoutMs }),
+  cancelScan: () => invoke<void>("cancel_scan"),
+  readText: (path: string) => invoke<string>("read_text", { path }),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),
 };

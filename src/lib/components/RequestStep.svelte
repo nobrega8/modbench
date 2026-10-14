@@ -4,6 +4,7 @@
   import type { ByteOrder } from "$lib/types";
   import IntInput from "./IntInput.svelte";
   import MapPicker from "./MapPicker.svelte";
+  import ScanPanel from "./ScanPanel.svelte";
   import StepCard from "./StepCard.svelte";
 
   const orders: ByteOrder[] = ["ABCD", "CDAB", "BADC", "DCBA"];
@@ -12,6 +13,7 @@
     bench.fc <= 2 ? 2000 : bench.fc === 15 ? 1968 : bench.fc === 16 ? 123 : 125,
   );
   const single = $derived(bench.fc === 5 || bench.fc === 6);
+  let scanOpen = $state(false);
 
   function setSource(source: "manual" | "map") {
     if (bench.source === source) return;
@@ -39,6 +41,12 @@
         onchange={(n) => (bench.unitId = n)}
       />
     </label>
+    <button
+      class="btn"
+      title="Find which unit IDs answer on this connection"
+      disabled={locked}
+      onclick={() => (scanOpen = !scanOpen)}>Find…</button
+    >
 
     <div class="field">
       <span>Source</span>
@@ -141,6 +149,7 @@
       >
     </div>
   </div>
+  {#if scanOpen}<ScanPanel onclose={() => (scanOpen = false)} />{/if}
 </StepCard>
 
 <style>

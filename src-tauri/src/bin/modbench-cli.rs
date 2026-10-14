@@ -60,6 +60,20 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Find which unit IDs answer on a connection
+    Scan {
+        #[command(flatten)]
+        conn: Conn,
+        /// First unit ID to try
+        #[arg(long, default_value_t = 1)]
+        from: u8,
+        /// Last unit ID to try
+        #[arg(long, default_value_t = 247)]
+        to: u8,
+        /// Print JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Check a .mbmap file against the spec
     Validate { map: String },
     /// Run as an MCP server over stdio
@@ -609,6 +623,27 @@ async fn serve_mcp() {
     }
 }
 
+async fn scan(cfg: &ConnectionConfig, from: u8, to: u8) -> Result<Vec<modbus::ScanHit>, String> {
+    if from > to {
+        return Err("--from is above --to".into());
+    }
+    let mut session = Session::connect(cfg, None)
+        .await
+        .map_err(|e| format!("could not connect ({}): {e}", Conn::describe(cfg)))?;
+    let cancel = std::sync::atomic::AtomicBool::new(false);
+    let hits = session
+        .scan_units(
+            from,
+            to,
+            Duration::from_millis(cfg.timeout_ms),
+            &cancel,
+            |_| {},
+        )
+        .await;
+    let _ = session.disconnect().await;
+    Ok(hits)
+}
+
 // ---- CLI entry point
 
 async fn run(cli: Cli) -> Result<(), String> {
@@ -652,6 +687,28 @@ async fn run(cli: Cli) -> Result<(), String> {
                 println!("{}", serde_json::to_string_pretty(&rows).unwrap());
             } else {
                 print!("{}", map_text(&where_, &map, &rows));
+            }
+        }
+        Command::Scan {
+            conn,
+            from,
+            to,
+            json,
+        } => {
+            let cfg = conn.config(None)?;
+            let hits = scan(&cfg, from, to).await?;
+            if json {
+                println!("{}", serde_json::to_string_pretty(&hits).unwrap());
+            } else if hits.is_empty() {
+                println!(
+                    "{}: no device answered on unit IDs {from}-{to}",
+                    Conn::describe(&cfg)
+                );
+            } else {
+                println!("{}", Conn::describe(&cfg));
+                for h in &hits {
+                    println!("  unit {:>3}  {}", h.unit, h.response);
+                }
             }
         }
         Command::Mcp => serve_mcp().await,

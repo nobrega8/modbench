@@ -25,6 +25,7 @@ import type {
   PointResult,
   PollCycle,
   RawData,
+  ScanHit,
   TrafficEntry,
 } from "./types";
 
@@ -103,6 +104,13 @@ class Bench {
   lastMap = $state<string | null>(null);
   /** Set to ask the Library page to open the online library. */
   onlineRequested = $state(false);
+
+  // Unit ID scan
+  scanning = $state(false);
+  /** The unit ID being asked right now. */
+  scanUnit = $state<number | null>(null);
+  scanHits = $state.raw<ScanHit[] | null>(null);
+  scanError = $state<string | null>(null);
 
   // Step 3 — test
   running = $state(false);
@@ -350,7 +358,7 @@ This writes to the device.`,
   }
 
   async start() {
-    if (this.running) return;
+    if (this.running || this.scanning) return;
     if (this.source === "manual" && !this.isRead) {
       const ok = await this.confirmWrite(
         `Send "${FUNCTION_NAME[this.fc]}" to address ${this.address}?`,
@@ -509,6 +517,79 @@ This writes to the device.`,
     if (this.running && this.source === "map" && this.loop) {
       await api.startPolling(this.pollRequest());
     }
+  }
+
+  /**
+   * Asks every unit ID from `from` to `to` whether a device answers, over the
+   * connection settings above. Reads one register per unit ID.
+   */
+  async scan(from: number, to: number, timeoutMs: number) {
+    if (this.running || this.scanning) return;
+    this.scanning = true;
+    this.scanHits = null;
+    this.scanError = null;
+    this.scanUnit = from;
+    try {
+      if (!(await this.open())) {
+        this.scanError = this.status?.text ?? "Could not connect.";
+        return;
+      }
+      this.status = null;
+      this.scanHits = await api.scanUnits(from, to, timeoutMs);
+    } catch (e) {
+      this.scanError = errorText(e);
+    } finally {
+      await this.close();
+      this.scanning = false;
+      this.scanUnit = null;
+    }
+  }
+
+  cancelScan() {
+    api.cancelScan().catch(() => {});
+  }
+
+  onScanProgress(unit: number) {
+    this.scanUnit = unit;
+  }
+
+  /**
+   * Writes several map registers over one connection (opened just for this
+   * when none is open). Returns what each write did, in order.
+   */
+  async writeMapValues(
+    items: { index: number; value: import("./types").Value }[],
+  ): Promise<{ index: number; error: string | null }[]> {
+    const open = this.map;
+    if (!open || !items.length) return [];
+    const temporary = !this.connected;
+    if (temporary && !(await this.open())) {
+      const error = this.status?.text ?? "Could not connect.";
+      return items.map((i) => ({ index: i.index, error }));
+    }
+    const done: { index: number; error: string | null }[] = [];
+    try {
+      for (const { index, value } of items) {
+        const register = $state.snapshot(open.map.registers[index]);
+        const sf = register.scale_factor
+          ? open.map.registers.find((r) => r.name === register.scale_factor)
+          : undefined;
+        try {
+          await api.writeMapValue(
+            register,
+            open.map.meta.byte_order ?? "ABCD",
+            value,
+            sf ? $state.snapshot(sf) : null,
+          );
+          done.push({ index, error: null });
+        } catch (e) {
+          done.push({ index, error: errorText(e) });
+        }
+      }
+    } finally {
+      if (temporary) await this.close();
+    }
+    return done;
   }
 
   /** Writes to a map register, opening the connection just for it if needed. */
