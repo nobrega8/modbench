@@ -182,11 +182,9 @@ pub(crate) fn read(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> 
     let doc: J = match serde_json::from_str(text) {
         Ok(doc) => doc,
         Err(e) => {
-            ck.error(
-                Some(e.line()),
-                "not-json",
-                format!("not a valid JSON document: {e}"),
-            );
+            // Parsers place syntax errors differently, so the position is
+            // only in the message.
+            ck.error(None, "not-json", format!("not a valid JSON document: {e}"));
             return None;
         }
     };
@@ -280,34 +278,40 @@ pub(crate) fn read(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> 
             ("sentinels", J::Obj(tables)) => {
                 for (type_name, table) in tables {
                     let at = child(&at, type_name);
-                    let parsed = parse_type(type_name)
-                        .filter(|ty| sentinel_range(*ty).is_some())
-                        .zip(match table {
-                            J::Obj(pairs) if !pairs.is_empty() => Some(pairs),
-                            _ => None,
-                        })
-                        .and_then(|(ty, pairs)| {
-                            let (lo, hi) = sentinel_range(ty)?;
-                            pairs
-                                .iter()
-                                .map(|(k, l)| match (parse_i128(k), l) {
-                                    (Some(n), J::Str(l))
-                                        if (lo..=hi).contains(&n) && !l.trim().is_empty() =>
-                                    {
-                                        Some((n, l.clone()))
-                                    }
-                                    _ => None,
-                                })
-                                .collect::<Option<Vec<_>>>()
-                                .map(|t| (ty, t))
-                        });
-                    match parsed {
-                        Some(table) => meta.sentinels.push(table),
-                        None => ck.error(
+                    let ty = parse_type(type_name).filter(|ty| sentinel_range(*ty).is_some());
+                    let (Some(ty), J::Obj(pairs)) = (ty, table) else {
+                        ck.error(
                             Loc::pointer(at),
                             "bad-sentinel",
                             format!("invalid sentinel table for {type_name:?}"),
+                        );
+                        continue;
+                    };
+                    let (lo, hi) = sentinel_range(ty).unwrap_or_default();
+                    let mut values: Vec<(i128, String)> = Vec::new();
+                    let bad = pairs.iter().find(|(k, l)| match (parse_i128(k), l) {
+                        (Some(n), J::Str(l))
+                            if (lo..=hi).contains(&n)
+                                && !l.trim().is_empty()
+                                && !values.iter().any(|(v, _)| *v == n) =>
+                        {
+                            values.push((n, l.clone()));
+                            false
+                        }
+                        _ => true,
+                    });
+                    match bad {
+                        Some((key, _)) => ck.error(
+                            Loc::pointer(child(&at, key)),
+                            "bad-sentinel",
+                            format!(
+                                "{key:?} is not a valid value with a label, or repeats a value"
+                            ),
                         ),
+                        None if values.is_empty() => {
+                            ck.error(Loc::pointer(at), "bad-sentinel", "empty table".into())
+                        }
+                        None => meta.sentinels.push((ty, values)),
                     }
                 }
             }

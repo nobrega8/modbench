@@ -11,9 +11,10 @@ fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../vendor/mbmap-library/tests")
 }
 
-type Expected = Vec<(Option<usize>, String)>;
+/// (location, code): "line 5", a JSON Pointer, or "file".
+type Expected = Vec<(String, String)>;
 
-fn counted(mut items: Expected) -> BTreeMap<(Option<usize>, String), usize> {
+fn counted(mut items: Expected) -> BTreeMap<(String, String), usize> {
     items.sort();
     let mut map = BTreeMap::new();
     for item in items {
@@ -28,8 +29,12 @@ fn read_expected(entry: &Value, key: &str) -> Expected {
         .unwrap()
         .iter()
         .map(|pair| {
-            let line = pair[0].as_u64().map(|n| n as usize);
-            (line, pair[1].as_str().unwrap().to_string())
+            let at = match &pair[0] {
+                Value::Number(n) => format!("line {n}"),
+                Value::String(p) => p.clone(),
+                _ => "file".into(),
+            };
+            (at, pair[1].as_str().unwrap().to_string())
         })
         .collect()
 }
@@ -58,7 +63,7 @@ fn parser_matches_shared_fixtures() {
                 .diagnostics
                 .iter()
                 .filter(|d| d.severity == severity)
-                .map(|d| (d.line, d.code.to_string()))
+                .map(|d| (d.location(), d.code.to_string()))
                 .collect();
             let want = read_expected(entry, key);
             if counted(got.clone()) != counted(want.clone()) {

@@ -1989,7 +1989,7 @@ A,holding,0,uint16
         );
         assert_eq!(
             diags(r#"{"mbmap": 2, "vendor": "T", "vendor": "U", "model": "M", "registers": []}"#),
-            [("not-json", at("line 1"))]
+            [("not-json", None)]
         );
         assert_eq!(
             diags(r#"{"mbmap": 3, "vendor": "T", "model": "M"}"#),
