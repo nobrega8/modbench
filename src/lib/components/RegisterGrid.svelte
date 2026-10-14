@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { hex } from "$lib/format";
+  import { formatAddress, hex } from "$lib/format";
+  import { settings } from "$lib/settings.svelte";
+  import AddressFormat from "./AddressFormat.svelte";
   import { bench } from "$lib/state.svelte";
   import type { ByteOrder } from "$lib/types";
 
@@ -27,7 +29,6 @@
 
   let format = $state<Format>("unsigned");
   let order = $state<ByteOrder>("ABCD");
-  let hexAddresses = $state(false);
 
   const wide = $derived(
     format === "int32" || format === "uint32" || format === "float32",
@@ -35,7 +36,7 @@
   const read = $derived(bench.read);
 
   function addr(n: number) {
-    return hexAddresses ? hex(n) : String(n).padStart(5, "0");
+    return formatAddress(n, settings.addressFormat, true);
   }
 
   function word(w: number): string {
@@ -81,29 +82,27 @@
   /** Cells in display order: one per register, or one per pair for 32-bit. */
   const cells = $derived.by((): Cell[] => {
     if (!read) return [];
-    const prev = bench.previous;
+    const fresh = (i: number) => bench.fresh(`g:${i}`);
     const out: Cell[] = [];
     if (read.data.kind === "bits") {
-      const p = prev?.kind === "bits" ? prev.values : null;
       read.data.values.forEach((b, i) =>
         out.push({
           offset: i,
           text: b ? "1" : "0",
           span: 1,
-          changed: !!p && p[i] !== b,
+          changed: fresh(i),
         }),
       );
       return out;
     }
     const v = read.data.values;
-    const p = prev?.kind === "registers" ? prev.values : null;
     if (wide) {
       for (let i = 0; i + 1 < v.length; i += 2) {
         out.push({
           offset: i,
           text: pair(v[i], v[i + 1]),
           span: 2,
-          changed: !!p && (p[i] !== v[i] || p[i + 1] !== v[i + 1]),
+          changed: fresh(i) || fresh(i + 1),
         });
       }
       return out;
@@ -113,7 +112,7 @@
         offset: i,
         text: word(w),
         span: 1,
-        changed: !!p && p[i] !== w,
+        changed: fresh(i),
       }),
     );
     return out;
@@ -144,9 +143,7 @@
       </label>
     {/if}
   {/if}
-  <label class="check"
-    ><input type="checkbox" bind:checked={hexAddresses} /> Hexadecimal addresses</label
-  >
+  <AddressFormat />
   <span class="spacer"></span>
   <button class="btn" disabled={!read} onclick={() => bench.copyReadToWrite()}
     >Copy data to write values</button
@@ -171,7 +168,7 @@
             class="cell"
             class:changed={c.changed}
             style:grid-column="span {c.span}"
-            title="Address {r.address + c.offset}">{c.text}</span
+            title="Address {addr(r.address + c.offset)}">{c.text}</span
           >
         {/each}
         {#if row.length * row[0].span < PER_ROW}
@@ -249,7 +246,13 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Lit at once when the value changes, then fades back */
+  .cell {
+    transition: background-color 0.6s var(--ease);
+  }
+
   .cell.changed {
     background: var(--changed);
+    transition: none;
   }
 </style>

@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { settings } from "$lib/settings.svelte";
   import { bench, type Tab } from "$lib/state.svelte";
+  import ChartView from "./ChartView.svelte";
   import Counter from "./Counter.svelte";
   import LogView from "./LogView.svelte";
   import MapTable from "./MapTable.svelte";
@@ -11,7 +13,15 @@
   import WriteGrid from "./WriteGrid.svelte";
 
   const tabs = $derived([
-    ...(bench.source === "map" ? [{ id: "map", label: "Device map" }] : []),
+    ...(bench.source === "map"
+      ? [
+          { id: "map", label: "Device map" },
+          {
+            id: "chart",
+            label: `Chart${bench.chartSeries.length ? ` (${bench.chartSeries.length})` : ""}`,
+          },
+        ]
+      : []),
     { id: "registers", label: "Read registers" },
     { id: "write", label: "Write values" },
     { id: "raw", label: "Raw data" },
@@ -92,7 +102,25 @@
     </div>
 
     <div class="state" aria-live="polite">
-      {#if bench.running}
+      {#if settings.readOnly}
+        <button
+          class="ro"
+          title="Writes are blocked. Click to change this in Settings."
+          onclick={() => (bench.page = "settings")}>Read-only</button
+        >
+      {/if}
+      {#if bench.running && bench.link}
+        <span class="live warn"
+          ><span class="dot"></span>Reconnecting · {where}</span
+        >
+        <span class="sub" title={bench.link.error ?? undefined}
+          >Connection lost. Attempt {bench.link.attempt} in {(
+            bench.link.retry_ms / 1000
+          ).toFixed(1)} s{bench.link.error
+            ? ` · last error: ${bench.link.error}`
+            : ""}</span
+        >
+      {:else if bench.running}
         <span class="live"><span class="dot"></span>Running · {where}</span>
         {#if bench.source === "map" && bench.lastCycle}
           <span class="sub"
@@ -135,7 +163,21 @@
           by name, with types, units and scaling.
         </p>
       {/if}
+    {:else if bench.tab === "chart"}
+      {#if bench.map}
+        {#key bench.map.path}<ChartView open={bench.map} />{/key}
+      {:else}
+        <p class="empty">Open a device map in step 2 to chart its values.</p>
+      {/if}
     {:else if bench.tab === "write"}
+      {#if settings.readOnly}
+        <p class="ro-note" role="status">
+          Read-only mode is on: nothing on this tab is written to the device.
+          <button class="btn small" onclick={() => (bench.page = "settings")}
+            >Settings</button
+          >
+        </p>
+      {/if}
       {#if bench.source === "map" && bench.map}
         {#key bench.map.path}<MapWriteList open={bench.map} />{/key}
       {:else}
@@ -238,6 +280,14 @@
     color: var(--text);
   }
 
+  .live.warn {
+    color: rgb(var(--alert-rgb));
+  }
+
+  .live.warn .dot {
+    background: rgb(var(--alert-rgb));
+  }
+
   .dot {
     width: 8px;
     height: 8px;
@@ -254,6 +304,23 @@
 
   .sub {
     color: var(--text-2);
+  }
+
+  .ro {
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: none;
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .ro:hover {
+    color: var(--text);
   }
 
   .bad {
@@ -274,6 +341,17 @@
   }
 
   .empty {
+    color: var(--text-2);
+  }
+
+  .ro-note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    border-radius: 9px;
+    background: var(--subtle);
     color: var(--text-2);
   }
 </style>

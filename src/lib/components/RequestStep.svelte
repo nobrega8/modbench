@@ -43,7 +43,9 @@
     </label>
     <button
       class="btn"
-      title="Find which unit IDs answer on this connection"
+      title={bench.transport === "rtu"
+        ? "Find which unit IDs answer, or the serial settings of a device"
+        : "Find which unit IDs answer on this connection"}
       disabled={locked}
       onclick={() => (scanOpen = !scanOpen)}>Find…</button
     >

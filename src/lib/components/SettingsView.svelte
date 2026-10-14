@@ -11,6 +11,14 @@
     { id: "dark", label: "Dark" },
   ];
   const logLimits = [200, 1000, 5000, 20000];
+  const holds = [
+    { s: 0, label: "Off" },
+    { s: 1, label: "1 second" },
+    { s: 2, label: "2 seconds" },
+    { s: 5, label: "5 seconds" },
+    { s: 10, label: "10 seconds" },
+    { s: 30, label: "30 seconds" },
+  ];
 
   let version = $state("");
   let copied = $state(false);
@@ -127,6 +135,30 @@
     </section>
 
     <section>
+      <h2 class="key">Values</h2>
+      <div class="group">
+        <label class="setting">
+          <div class="text">
+            <span class="name">Highlight changed values</span>
+            <span class="hint"
+              >A value that changes stays highlighted this long, in the register
+              grid and the device map. Helps to find what moves on an unknown
+              device.</span
+            >
+          </div>
+          <select
+            class="input"
+            bind:value={settings.highlightSeconds}
+            onchange={changed}
+          >
+            {#each holds as h (h.s)}<option value={h.s}>{h.label}</option
+              >{/each}
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section>
       <h2 class="key">Connection</h2>
       <div class="group">
         <label class="setting">
@@ -188,6 +220,56 @@
             bind:checked={settings.confirmWrites}
             onchange={changed}
           />
+        </label>
+        <label class="setting">
+          <div class="text">
+            <span class="name">Reconnect when the connection is lost</span>
+            <span class="hint"
+              >While a test runs, a connection that fails (an I/O error, or over
+              TCP three timeouts in a row) is opened again, after 0.5 s and then
+              less often, up to every 10 s.</span
+            >
+          </div>
+          <input
+            type="checkbox"
+            class="switch"
+            role="switch"
+            bind:checked={settings.autoReconnect}
+            onchange={changed}
+          />
+        </label>
+        <label class="setting">
+          <div class="text">
+            <span class="name">Read-only mode</span>
+            <span class="hint"
+              >Blocks every write, also on a connection that is already open.
+              Reading is not affected. Use it on a plant in operation.</span
+            >
+          </div>
+          <input
+            type="checkbox"
+            class="switch"
+            role="switch"
+            bind:checked={settings.readOnly}
+            onchange={changed}
+          />
+        </label>
+        <label class="setting">
+          <div class="text">
+            <span class="name">CSV separator</span>
+            <span class="hint"
+              >For saved logs, exported values and recordings. Use a semicolon
+              if your spreadsheet expects a decimal comma.</span
+            >
+          </div>
+          <select
+            class="input"
+            bind:value={settings.csvSeparator}
+            onchange={changed}
+          >
+            <option value=",">Comma ( , )</option>
+            <option value=";">Semicolon ( ; )</option>
+          </select>
         </label>
         <label class="setting">
           <div class="text">

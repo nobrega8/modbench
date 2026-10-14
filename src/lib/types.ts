@@ -125,6 +125,8 @@ export interface PollRequest {
   sentinels: [DataType, [number, string][]][];
   /** Scale factor registers the request needs but does not report. */
   scale_registers: Register[];
+  /** Open the link again when it is lost. */
+  reconnect: boolean;
 }
 
 export type ReferenceOutcome = "match" | "mismatch";
@@ -139,6 +141,16 @@ export interface PointResult {
   /** Set when the raw value is a reserved one, e.g. "Unimplemented". */
   sentinel: string | null;
 }
+
+/** Change in the link while reading, sent by the backend. */
+export type LinkEvent =
+  | {
+      state: "reconnecting";
+      attempt: number;
+      retry_ms: number;
+      error: string | null;
+    }
+  | { state: "restored" };
 
 export interface PollCycle {
   cycle: number;
@@ -193,6 +205,40 @@ export interface ImportResult {
   source: string;
   stored: string | null;
   error: string | null;
+}
+
+/** What to try when looking for a serial device's settings. */
+export interface SerialScan {
+  port: string;
+  baudrates: number[];
+  parities: Parity[];
+  stop_bits: number[];
+  data_bits: number;
+  from: number;
+  to: number;
+  area: Area;
+  address: number;
+  timeout_ms: number;
+  stop_at_first: boolean;
+}
+
+/** A serial setting and unit ID that got an answer. */
+export interface SerialHit {
+  baudrate: number;
+  parity: Parity;
+  data_bits: number;
+  stop_bits: number;
+  unit: number;
+  response: string;
+}
+
+export interface SerialProgress {
+  baudrate: number;
+  parity: Parity;
+  stop_bits: number;
+  unit: number;
+  done: number;
+  total: number;
 }
 
 /** A unit ID that answered during a scan. */

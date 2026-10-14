@@ -1,8 +1,12 @@
 <script lang="ts">
-  import { errorText } from "$lib/api";
+  import { save } from "@tauri-apps/plugin-dialog";
+  import { api, errorText } from "$lib/api";
+  import { valuesCsv } from "$lib/csv";
+  import { settings } from "$lib/settings.svelte";
   import {
     AREA_TAG,
     AREA_NAME,
+    formatAddress,
     formatRaw,
     formatValue,
     parseForRegister,
@@ -10,6 +14,7 @@
   } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
   import type { Register } from "$lib/types";
+  import AddressFormat from "./AddressFormat.svelte";
 
   let { open }: { open: OpenMap } = $props();
 
@@ -35,7 +40,10 @@
           !q ||
           reg.name.toLowerCase().includes(q) ||
           reg.description.toLowerCase().includes(q) ||
-          String(reg.address).includes(q)
+          String(reg.address).includes(q) ||
+          formatAddress(reg.address, settings.addressFormat)
+            .toLowerCase()
+            .includes(q)
         );
       })
       // Registers that are not read go to the end, in map order.
@@ -61,6 +69,52 @@
     });
     return out;
   });
+
+  let exportNote = $state<{ ok: boolean; text: string } | null>(null);
+  const recording = $derived(
+    bench.recording?.mapPath === open.path ? bench.recording : null,
+  );
+
+  function csvName(suffix: string) {
+    const name = `${meta.vendor}-${meta.model}`.replace(/[^\w.-]+/g, "_");
+    return `${name}-${suffix}.csv`;
+  }
+
+  /** Saves the values on screen, in the order shown. */
+  async function exportValues() {
+    exportNote = null;
+    const path = await save({
+      defaultPath: csvName("values"),
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    if (!path) return;
+    try {
+      await api.saveText(
+        path,
+        valuesCsv(
+          open.map.registers,
+          rows.map((r) => r.index),
+          bench.mapResults,
+          settings.csvSeparator,
+        ),
+      );
+      exportNote = { ok: true, text: "Saved." };
+    } catch (e) {
+      exportNote = { ok: false, text: `Not saved: ${errorText(e)}` };
+    }
+  }
+
+  async function toggleRecording() {
+    if (recording) {
+      bench.stopRecording();
+      return;
+    }
+    const path = await save({
+      defaultPath: csvName("recording"),
+      filters: [{ name: "CSV", extensions: ["csv"] }],
+    });
+    if (path) await bench.startRecording(path);
+  }
 
   function typeLabel(reg: Register): string {
     if (reg.type === "string") return `string[${reg.length}]`;
@@ -145,6 +199,28 @@
     disabled={readCount === 0}
     onclick={() => bench.setAllRead(false)}>Read none</button
   >
+  <button
+    class="btn small"
+    title="Save the values shown to a CSV file"
+    disabled={!bench.mapResults.size}
+    onclick={exportValues}>Export…</button
+  >
+  <button
+    class="btn small"
+    class:rec={recording}
+    title={recording
+      ? `Recording to ${recording.path}. Click to stop.`
+      : "Add one row per reading cycle to a CSV file, with a column for each register that is read now"}
+    disabled={!recording && readCount === 0}
+    onclick={toggleRecording}
+    >{recording ? `Stop recording (${recording.rows})` : "Record…"}</button
+  >
+  {#if exportNote}<span class:bad={!exportNote.ok} class="note"
+      >{exportNote.text}</span
+    >{/if}
+  {#if bench.recordError}<span class="bad note" title={bench.recordError}
+      >Recording stopped: {bench.recordError}</span
+    >{/if}
   <input
     class="input search"
     type="search"
@@ -152,6 +228,7 @@
     bind:value={search}
     aria-label="Search registers"
   />
+  <AddressFormat />
   {#if groups.length}
     <select class="input" bind:value={group} aria-label="Group">
       <option value="">All groups</option>
@@ -211,10 +288,13 @@
           </td>
           <td
             class="addr mono"
-            title="{AREA_NAME[reg.area]} {reg.address}{base
+            title="{AREA_NAME[reg.area]} {reg.address} on the wire{base
               ? ` (${reg.address + base} in the manual)`
               : ''}"
-            ><span class="area">{AREA_TAG[reg.area]}</span>{reg.address}</td
+            ><span class="area">{AREA_TAG[reg.area]}</span>{formatAddress(
+              reg.address,
+              settings.addressFormat,
+            )}</td
           >
           <td class="name" title={reg.description || undefined}
             >{reg.name}{#if reg.group && !group}<span class="grp"
@@ -236,7 +316,7 @@
               ? `Scaled by 10 to the power of ${reg.scale_factor}`
               : undefined}>{typeLabel(reg)}</td
           >
-          <td class="val mono">
+          <td class="val mono" class:changed={bench.fresh(`m:${index}`)}>
             {#if reg.access === "W"}<span class="dim">write only</span
               >{:else if r?.sentinel}<span
                 class="sentinel"
@@ -333,8 +413,9 @@
 <style>
   .toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 8px 10px;
     padding-bottom: 10px;
   }
 
@@ -368,6 +449,16 @@
 
   .search {
     width: 220px;
+  }
+
+  .note {
+    font-size: 12px;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+
+  .rec {
+    color: rgb(var(--alert-rgb));
   }
 
   .warnings {
@@ -560,6 +651,13 @@
     font-size: 14px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+    transition: background-color 0.6s var(--ease);
+  }
+
+  /* Lit at once when the value changes, then fades back */
+  td.val.changed {
+    background: var(--changed);
+    transition: none;
   }
 
   .unit {

@@ -35,6 +35,9 @@ pub struct AppState {
     poller: std::sync::Mutex<Option<JoinHandle<()>>>,
     /// Set to stop a scan that is running.
     scan_cancel: Arc<std::sync::atomic::AtomicBool>,
+    /// Read-only mode: shared with every session, which refuses writes while
+    /// it is on.
+    read_only: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl AppState {
@@ -123,11 +126,38 @@ pub async fn connect(
         );
     });
     let mut session = Session::connect(&config, Some(raw)).await?;
+    session.set_read_only(state.read_only.clone());
     session.set_logger(Arc::new(move |entry| {
         let _ = app.emit("traffic", entry);
     }));
     *slot = Some(session);
     Ok(())
+}
+
+/// Whether the open connection looks lost (see `Session::link_lost`).
+#[tauri::command]
+pub async fn link_lost(state: State<'_, AppState>) -> Result<bool, ModbusError> {
+    let slot = state.session.lock().await;
+    Ok(slot.as_ref().ok_or(ModbusError::NotConnected)?.link_lost())
+}
+
+/// Opens the connection again with the same settings.
+#[tauri::command]
+pub async fn reconnect(state: State<'_, AppState>) -> Result<(), ModbusError> {
+    let mut slot = state.session.lock().await;
+    slot.as_mut()
+        .ok_or(ModbusError::NotConnected)?
+        .reconnect()
+        .await
+}
+
+/// Turns read-only mode on or off. Applies at once, also to a connection
+/// that is already open.
+#[tauri::command]
+pub fn set_read_only(state: State<'_, AppState>, on: bool) {
+    state
+        .read_only
+        .store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[tauri::command]
@@ -145,10 +175,14 @@ pub async fn read_raw(
     area: Area,
     address: u16,
     count: u16,
+    max_per_request: Option<u16>,
 ) -> Result<RawData, ModbusError> {
     let mut slot = state.session.lock().await;
     let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
-    session.read(area, address, count).await
+    match max_per_request {
+        Some(max) => session.read_chunked(area, address, count, max).await,
+        None => session.read(area, address, count).await,
+    }
 }
 
 #[tauri::command]
@@ -180,14 +214,21 @@ pub fn start_polling(app: AppHandle, state: State<'_, AppState>, request: PollRe
     state.stop_poller();
     let session = state.session.clone();
     let handle = tauri::async_runtime::spawn(async move {
-        poller::run(session, request, |cycle| match cycle {
-            Ok(c) => {
-                let _ = app.emit("poll", c);
-            }
-            Err(reason) => {
-                let _ = app.emit("poll-stopped", reason);
-            }
-        })
+        poller::run(
+            session,
+            request,
+            |cycle| match cycle {
+                Ok(c) => {
+                    let _ = app.emit("poll", c);
+                }
+                Err(reason) => {
+                    let _ = app.emit("poll-stopped", reason);
+                }
+            },
+            |event| {
+                let _ = app.emit("link", event);
+            },
+        )
         .await;
     });
     *state.poller.lock().unwrap() = Some(handle);
@@ -226,6 +267,9 @@ pub async fn write_map_value(
     value: Value,
     scale_register: Option<Register>,
 ) -> Result<(), ModbusError> {
+    if state.read_only.load(std::sync::atomic::Ordering::Relaxed) {
+        return Err(ModbusError::ReadOnly);
+    }
     if !register.access.writable() {
         return Err(ModbusError::Invalid(format!(
             "{} is read-only",
@@ -492,6 +536,19 @@ pub async fn save_text(path: String, text: String) -> Result<(), ModbusError> {
     Ok(())
 }
 
+/// Adds text to the end of a file, creating it if needed (CSV recording).
+#[tauri::command]
+pub async fn append_text(path: String, text: String) -> Result<(), ModbusError> {
+    use tokio::io::AsyncWriteExt;
+    let mut file = tokio::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .await?;
+    file.write_all(text.as_bytes()).await?;
+    Ok(())
+}
+
 /// Asks every unit ID in `from..=to` whether a device answers. Each unit ID
 /// about to be asked is sent to the UI as a `scan-progress` event.
 #[tauri::command]
@@ -519,6 +576,28 @@ pub async fn scan_units(
             let _ = app.emit("scan-progress", unit);
         })
         .await)
+}
+
+/// Looks for the line settings of a serial device. Progress is sent to the
+/// UI as `serial-scan-progress` events; `cancel_scan` stops it.
+#[tauri::command]
+pub async fn scan_serial(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    scan: modbus::SerialScan,
+) -> Result<Vec<modbus::SerialHit>, ModbusError> {
+    state.stop_poller();
+    // The port must be free: close any connection the app holds.
+    if let Some(old) = state.session.lock().await.take() {
+        let _ = old.disconnect().await;
+    }
+    state
+        .scan_cancel
+        .store(false, std::sync::atomic::Ordering::Relaxed);
+    modbus::scan_serial(&scan, &state.scan_cancel, |p| {
+        let _ = app.emit("serial-scan-progress", p);
+    })
+    .await
 }
 
 /// Stops a running scan after the unit ID being asked.

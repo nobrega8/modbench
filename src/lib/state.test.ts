@@ -203,3 +203,18 @@ describe("remembered choices per device", () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe("read-only mode", () => {
+  it("refuses a manual write command before connecting", async () => {
+    calls.length = 0;
+    settings.readOnly = true;
+    bench.running = false;
+    bench.source = "manual";
+    bench.fc = 6;
+    await bench.start();
+    expect(calls).toEqual([]);
+    expect(bench.running).toBe(false);
+    expect(bench.status?.text).toMatch(/Read-only mode/);
+    settings.readOnly = false;
+  });
+});

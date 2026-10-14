@@ -144,6 +144,25 @@
         disabled={locked}
       />
     </label>
+    <label
+      class="field"
+      title="Largest number of registers in one read request. Lower it for devices that cannot read 125 at once: longer reads are split into several requests."
+    >
+      <span>Max registers</span>
+      <input
+        class="input num short"
+        type="number"
+        min="1"
+        max="125"
+        bind:value={bench.maxRegisters}
+        onchange={() =>
+          (bench.maxRegisters = Math.min(
+            125,
+            Math.max(1, Math.round(bench.maxRegisters) || 125),
+          ))}
+        disabled={locked}
+      />
+    </label>
     <label class="field" title="How long to wait for a response">
       <span>Timeout (ms)</span>
       <input

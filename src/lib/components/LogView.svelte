@@ -1,11 +1,13 @@
 <script lang="ts">
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "$lib/api";
-  import { FUNCTION_NAME, clock, hex } from "$lib/format";
+  import { FUNCTION_NAME, clock, formatAddress } from "$lib/format";
+  import AddressFormat from "./AddressFormat.svelte";
+  import { logCsv } from "$lib/csv";
+  import { settings } from "$lib/settings.svelte";
   import { bench } from "$lib/state.svelte";
   import type { TrafficEntry } from "$lib/types";
 
-  let hexAddresses = $state(false);
   let errorsOnly = $state(false);
   let saveError = $state<string | null>(null);
   let list = $state<HTMLElement>();
@@ -16,7 +18,7 @@
   );
 
   function addr(n: number) {
-    return hexAddresses ? `${hex(n)}h` : String(n);
+    return formatAddress(n, settings.addressFormat);
   }
 
   function line(t: TrafficEntry): string {
@@ -32,12 +34,18 @@
   async function saveLog() {
     saveError = null;
     const path = await save({
-      defaultPath: "modbench-log.txt",
-      filters: [{ name: "Text", extensions: ["txt"] }],
+      defaultPath: "modbench-log.csv",
+      filters: [
+        { name: "CSV", extensions: ["csv"] },
+        { name: "Text", extensions: ["txt"] },
+      ],
     });
     if (!path) return;
+    const text = path.toLowerCase().endsWith(".csv")
+      ? logCsv(bench.log, settings.csvSeparator)
+      : bench.log.map(line).join("\n") + "\n";
     try {
-      await api.saveText(path, bench.log.map(line).join("\n") + "\n");
+      await api.saveText(path, text);
     } catch (e) {
       saveError = errorText(e);
     }
@@ -48,9 +56,7 @@
   <label class="check"
     ><input type="checkbox" bind:checked={errorsOnly} /> Errors only</label
   >
-  <label class="check"
-    ><input type="checkbox" bind:checked={hexAddresses} /> Hexadecimal addresses</label
-  >
+  <AddressFormat />
   <span class="spacer"></span>
   {#if saveError}<span class="bad">Could not save: {saveError}</span>{/if}
   <button

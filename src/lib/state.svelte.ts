@@ -5,6 +5,21 @@ import { api, errorText } from "./api";
 import { FUNCTION_NAME } from "./format";
 import { settings } from "./settings.svelte";
 import { NO_TIMES, addTime, type ResponseTimes } from "./stats";
+import { recordHeader, recordRow } from "./csv";
+import {
+  MAX_SERIES,
+  addCycle,
+  freeSlot,
+  type Sample,
+  type Series,
+} from "./trend";
+import {
+  isFresh,
+  markPoll,
+  markRead,
+  prune,
+  type ChangeTimes,
+} from "./changes";
 import {
   endpointOf,
   idsOf,
@@ -22,17 +37,21 @@ import type {
   DeviceMap,
   Diagnostic,
   LibraryEntry,
+  LinkEvent,
   Parity,
   PointResult,
   PollCycle,
   RawData,
   ScanHit,
+  SerialHit,
+  SerialProgress,
+  SerialScan,
   TrafficEntry,
 } from "./types";
 
 export type TransportKind = "tcp" | "rtuovertcp" | "rtu";
 export type Page = "main" | "library" | "settings";
-export type Tab = "registers" | "map" | "write" | "raw" | "log";
+export type Tab = "registers" | "map" | "chart" | "write" | "raw" | "log";
 
 export interface OpenMap {
   path: string;
@@ -64,6 +83,7 @@ const CONNECTION_FIELDS = [
   "stopBits",
   "delayMs",
   "timeoutMs",
+  "maxRegisters",
   "unitId",
 ] as const;
 const RAW_LIMIT = 200;
@@ -71,6 +91,9 @@ const RAW_LIMIT = 200;
 const LAST_MAP_KEY = "modbench.lastMap";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Pauses between attempts to open a lost link (same as the backend's). */
+const BACKOFF_MS = [500, 1000, 2000, 5000, 10000];
 
 class Bench {
   // Step 1 — connection
@@ -84,6 +107,8 @@ class Bench {
   stopBits = $state(1);
   delayMs = $state(100);
   timeoutMs = $state(1000);
+  /** Largest register block per read request; longer reads are split. */
+  maxRegisters = $state(125);
 
   // Step 2 — request
   unitId = $state(1);
@@ -112,11 +137,20 @@ class Bench {
   scanUnit = $state<number | null>(null);
   scanHits = $state.raw<ScanHit[] | null>(null);
   scanError = $state<string | null>(null);
+  /** Serial settings scan: where it is, and what answered. */
+  serialProgress = $state.raw<SerialProgress | null>(null);
+  serialHits = $state.raw<SerialHit[] | null>(null);
 
   // Step 3 — test
   running = $state(false);
   connected = $state(false);
   status = $state<{ ok: boolean; text: string } | null>(null);
+  /** Set while a lost link is being opened again. */
+  link = $state<{
+    attempt: number;
+    retry_ms: number;
+    error: string | null;
+  } | null>(null);
   page = $state<Page>("main");
   tab = $state<Tab>("registers");
   counters = $state({ valid: 0, errors: 0, timeouts: 0 });
@@ -124,9 +158,28 @@ class Bench {
   times = $state.raw<ResponseTimes>(NO_TIMES);
   read = $state.raw<{ address: number; data: RawData } | null>(null);
   previous = $state.raw<RawData | null>(null);
+  /** When each grid offset (`g:`) or map register (`m:`) last changed. */
+  changes = $state.raw<ChangeTimes>(new Map());
+  /** Clock for the highlight; ticks only while something is highlighted. */
+  now = $state(Date.now());
+  private ticker: ReturnType<typeof setInterval> | null = null;
   mapResults = $state.raw<Map<number, PointResult>>(new Map());
   lastCycle = $state.raw<PollCycle | null>(null);
   log = $state.raw<TrafficEntry[]>([]);
+  /** Map registers on the Chart tab, with their color slots. */
+  chartSeries = $state.raw<Series[]>([]);
+  /** Values over time of the charted registers, by map index. */
+  history = $state.raw<Map<number, Sample[]>>(new Map());
+  /** CSV file that gets one row per map cycle, and its columns. */
+  recording = $state.raw<{
+    path: string;
+    mapPath: string;
+    indexes: number[];
+    rows: number;
+  } | null>(null);
+  recordError = $state<string | null>(null);
+  /** Appends run one after another, so rows stay in order. */
+  private recordQueue: Promise<void> = Promise.resolve();
   exchanges = $state.raw<Exchange[]>([]);
 
   private pendingLog: TrafficEntry[] = [];
@@ -252,6 +305,9 @@ This writes to the device.`,
     }
     this.restoreDevice();
     this.tab = "map";
+    this.changes = new Map();
+    this.chartSeries = [];
+    this.history = new Map();
     this.mapResults = new Map();
     this.lastCycle = null;
   }
@@ -363,6 +419,13 @@ This writes to the device.`,
   async start() {
     if (this.running || this.scanning) return;
     if (this.source === "manual" && !this.isRead) {
+      if (settings.readOnly) {
+        this.status = {
+          ok: false,
+          text: "Read-only mode is on: write commands are blocked. Turn it off in Settings.",
+        };
+        return;
+      }
       const ok = await this.confirmWrite(
         `Send "${FUNCTION_NAME[this.fc]}" to address ${this.address}?`,
       );
@@ -381,6 +444,7 @@ This writes to the device.`,
 
   async stop() {
     this.running = false;
+    this.link = null;
     if (this.source === "map") await api.stopPolling();
     await this.close();
   }
@@ -394,6 +458,10 @@ This writes to the device.`,
     do {
       await this.sendOnce();
       if (!this.loop || !this.running) break;
+      if (this.status && !this.status.ok && (await this.lost())) {
+        await this.reopen();
+        continue;
+      }
       await sleep(Math.max(this.delayMs, 10));
     } while (this.running);
     if (this.running) await this.stop();
@@ -402,13 +470,21 @@ This writes to the device.`,
   private async sendOnce() {
     try {
       if (this.isRead) {
+        const area = READ_AREA[this.fc];
         const data = await api.readRaw(
-          READ_AREA[this.fc],
+          area,
           this.address,
           this.quantity,
+          area === "coil" || area === "discrete" ? null : this.maxRegisters,
         );
-        this.previous =
+        const prev =
           this.read?.address === this.address ? this.read.data : null;
+        this.previous = prev;
+        this.markChanges(
+          prev
+            ? markRead(this.changes, prev, data, Date.now())
+            : this.withoutGrid(),
+        );
         this.read = { address: this.address, data };
       } else if (this.fc === 5) {
         await api.writeCoils(this.address, [this.writeValues[0] !== 0]);
@@ -429,6 +505,36 @@ This writes to the device.`,
     } catch (e) {
       this.status = { ok: false, text: errorText(e) };
     }
+  }
+
+  /** Whether the link is lost and should be opened again. */
+  private async lost(): Promise<boolean> {
+    if (!settings.autoReconnect) return false;
+    try {
+      return await api.linkLost();
+    } catch {
+      return false;
+    }
+  }
+
+  /** Opens a lost link again, waiting longer between attempts. */
+  private async reopen() {
+    let error: string | null = null;
+    for (let attempt = 1; this.running; attempt++) {
+      const retry_ms = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length) - 1];
+      this.link = { attempt, retry_ms, error };
+      await sleep(retry_ms);
+      if (!this.running) break;
+      try {
+        await api.reconnect();
+        this.link = null;
+        this.status = null;
+        return;
+      } catch (e) {
+        error = errorText(e);
+      }
+    }
+    this.link = null;
   }
 
   /** Turns reading of one map register on or off. */
@@ -480,8 +586,9 @@ This writes to the device.`,
       // Like a manual loop: Delay is the pause between every two requests.
       interval_ms: 0,
       delay_ms: this.delayMs,
+      reconnect: settings.autoReconnect,
       limits: {
-        max_registers: m.max_read_registers ?? 125,
+        max_registers: Math.min(m.max_read_registers ?? 125, this.maxRegisters),
         max_bits: m.max_read_bits ?? 2000,
         max_gap: 0,
       },
@@ -546,6 +653,46 @@ This writes to the device.`,
       this.scanning = false;
       this.scanUnit = null;
     }
+  }
+
+  /**
+   * Tries combinations of baud rate, parity and stop bits on the serial port
+   * of step 1, asking each unit ID for one register. Reads only.
+   */
+  async scanSerial(
+    scan: Omit<SerialScan, "port" | "data_bits">,
+  ): Promise<void> {
+    if (this.running || this.scanning) return;
+    this.scanning = true;
+    this.serialHits = null;
+    this.scanError = null;
+    this.serialProgress = null;
+    try {
+      await this.close();
+      this.serialHits = await api.scanSerial({
+        ...scan,
+        port: this.serialPort,
+        data_bits: this.dataBits,
+      });
+    } catch (e) {
+      this.scanError = errorText(e);
+    } finally {
+      this.scanning = false;
+      this.serialProgress = null;
+    }
+  }
+
+  onSerialProgress(p: SerialProgress) {
+    this.serialProgress = p;
+  }
+
+  /** Uses a serial setting found by a scan. */
+  useSerial(hit: SerialHit) {
+    this.baudrate = hit.baudrate;
+    this.parity = hit.parity;
+    this.dataBits = hit.data_bits;
+    this.stopBits = hit.stop_bits;
+    this.unitId = hit.unit;
   }
 
   cancelScan() {
@@ -633,13 +780,85 @@ This writes to the device.`,
   // ---- events from the backend
 
   onPoll(cycle: PollCycle) {
+    this.markChanges(
+      markPoll(this.changes, this.mapResults, cycle.results, Date.now()),
+    );
     const next = new Map(this.mapResults);
     for (const r of cycle.results) next.set(r.index, r);
     this.mapResults = next;
     this.lastCycle = cycle;
+    if (this.chartSeries.length)
+      this.history = addCycle(
+        this.history,
+        this.chartSeries,
+        cycle.results,
+        Date.now(),
+      );
+    this.recordCycle(cycle);
+  }
+
+  /**
+   * Starts recording every map cycle to a CSV file: the registers read now
+   * become the columns, in map order. The file is replaced.
+   */
+  async startRecording(path: string) {
+    const open = this.map;
+    if (!open) return;
+    const all = open.map.registers;
+    const indexes = all
+      .map((_, i) => i)
+      .filter((i) => !this.skipped.has(i) && all[i].access !== "W");
+    this.recordError = null;
+    try {
+      await api.saveText(
+        path,
+        recordHeader(
+          indexes.map((i) => all[i]),
+          settings.csvSeparator,
+        ),
+      );
+      this.recording = { path, mapPath: open.path, indexes, rows: 0 };
+    } catch (e) {
+      this.recordError = errorText(e);
+    }
+  }
+
+  stopRecording() {
+    this.recording = null;
+  }
+
+  private recordCycle(cycle: PollCycle) {
+    const rec = this.recording;
+    const open = this.map;
+    if (!rec || !open || open.path !== rec.mapPath) return;
+    const text = recordRow(
+      Date.now(),
+      open.map.registers,
+      rec.indexes,
+      new Map(cycle.results.map((r) => [r.index, r])),
+      settings.csvSeparator,
+    );
+    this.recording = { ...rec, rows: rec.rows + 1 };
+    this.recordQueue = this.recordQueue.then(() =>
+      api.appendText(rec.path, text).catch((e) => {
+        this.recordError = errorText(e);
+        this.recording = null;
+      }),
+    );
+  }
+
+  onLink(event: LinkEvent) {
+    if (event.state === "restored") {
+      this.link = null;
+      if (this.status && !this.status.ok) this.status = null;
+    } else if (this.running) {
+      const { attempt, retry_ms, error } = event;
+      this.link = { attempt, retry_ms, error };
+    }
   }
 
   onPollStopped(reason: string) {
+    this.link = null;
     this.status = { ok: false, text: `Reading stopped: ${reason}` };
     this.running = false;
     this.connected = false;
@@ -678,6 +897,58 @@ This writes to the device.`,
       this.pendingLog = [];
       this.flushQueued = false;
     });
+  }
+
+  /** Whether a grid offset or map register changed within the hold time. */
+  fresh(key: string): boolean {
+    const hold = settings.highlightSeconds * 1000;
+    return hold > 0 && isFresh(this.changes, key, this.now, hold);
+  }
+
+  private withoutGrid(): ChangeTimes {
+    const kept = [...this.changes].filter(([k]) => !k.startsWith("g:"));
+    return kept.length === this.changes.size ? this.changes : new Map(kept);
+  }
+
+  /** Stores new change times and keeps the clock running while needed. */
+  private markChanges(times: ChangeTimes) {
+    if (times === this.changes) return;
+    this.changes = times;
+    this.now = Date.now();
+    if (this.ticker || !times.size || settings.highlightSeconds <= 0) return;
+    this.ticker = setInterval(() => {
+      this.now = Date.now();
+      this.changes = prune(
+        this.changes,
+        this.now,
+        settings.highlightSeconds * 1000,
+      );
+      if (!this.changes.size && this.ticker) {
+        clearInterval(this.ticker);
+        this.ticker = null;
+      }
+    }, 200);
+  }
+
+  /** Puts a map register on the chart, and switches its reading on. */
+  addToChart(index: number) {
+    if (this.chartSeries.some((s) => s.index === index)) return;
+    if (this.chartSeries.length >= MAX_SERIES) return;
+    const slot = freeSlot(this.chartSeries);
+    if (slot === null) return;
+    this.chartSeries = [...this.chartSeries, { index, slot }];
+    if (this.skipped.has(index)) this.toggleRead(index);
+  }
+
+  removeFromChart(index: number) {
+    this.chartSeries = this.chartSeries.filter((s) => s.index !== index);
+    const next = new Map(this.history);
+    next.delete(index);
+    this.history = next;
+  }
+
+  clearChart() {
+    this.history = new Map();
   }
 
   resetTimes() {

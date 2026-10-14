@@ -15,6 +15,8 @@ import type {
   RawData,
   Register,
   ScanHit,
+  SerialHit,
+  SerialScan,
   TypedAddress,
   Value,
 } from "./types";
@@ -25,8 +27,15 @@ export const api = {
   listSerialPorts: () => invoke<string[]>("list_serial_ports"),
   connect: (config: ConnectionConfig) => invoke<void>("connect", { config }),
   disconnect: () => invoke<void>("disconnect"),
-  readRaw: (area: Area, address: number, count: number) =>
-    invoke<RawData>("read_raw", { area, address, count }),
+  setReadOnly: (on: boolean) => invoke<void>("set_read_only", { on }),
+  linkLost: () => invoke<boolean>("link_lost"),
+  reconnect: () => invoke<void>("reconnect"),
+  readRaw: (
+    area: Area,
+    address: number,
+    count: number,
+    maxPerRequest: number | null = null,
+  ) => invoke<RawData>("read_raw", { area, address, count, maxPerRequest }),
   writeRegisters: (address: number, words: number[]) =>
     invoke<void>("write_registers", { address, words }),
   writeCoils: (address: number, bits: boolean[]) =>
@@ -69,10 +78,14 @@ export const api = {
   startupFile: () => invoke<string | null>("startup_file"),
   scanUnits: (from: number, to: number, timeoutMs: number) =>
     invoke<ScanHit[]>("scan_units", { from, to, timeoutMs }),
+  scanSerial: (scan: SerialScan) =>
+    invoke<SerialHit[]>("scan_serial", { scan }),
   cancelScan: () => invoke<void>("cancel_scan"),
   readText: (path: string) => invoke<string>("read_text", { path }),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),
+  appendText: (path: string, text: string) =>
+    invoke<void>("append_text", { path, text }),
 };
 
 /** Error text from a rejected command (commands reject with a string). */

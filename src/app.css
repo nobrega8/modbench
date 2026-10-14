@@ -38,6 +38,16 @@
   --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.14);
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+  /* Chart series, in fixed order (validated for colour-vision deficiency) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
 }
 
 /* Dark (OLED): follows the system unless Settings forces light or dark */
@@ -63,6 +73,14 @@
       0 20px 56px -14px rgb(0 0 0 / 0.8);
     --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
     --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
   }
 }
 
@@ -86,6 +104,14 @@
     inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 20px 56px -14px rgb(0 0 0 / 0.8);
   --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
 }
 
 /* ───────────── named colours used by the components ───────────── */

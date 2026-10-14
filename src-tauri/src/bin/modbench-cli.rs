@@ -74,6 +74,42 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Find the baud rate, parity and stop bits of a serial device
+    ScanSerial {
+        /// Serial port, e.g. COM3 or /dev/ttyUSB0
+        #[arg(long)]
+        rtu: String,
+        /// Baud rates to try, in order
+        #[arg(long, value_delimiter = ',', default_value = "9600,19200,38400,115200")]
+        bauds: Vec<u32>,
+        /// Parities to try, in order: letters from N, E, O
+        #[arg(long, default_value = "ENO")]
+        parities: String,
+        /// Stop bits to try, in order
+        #[arg(long, value_delimiter = ',', default_value = "1,2")]
+        stop_bits: Vec<u8>,
+        /// First unit ID to ask
+        #[arg(long, default_value_t = 1)]
+        from: u8,
+        /// Last unit ID to ask
+        #[arg(long, default_value_t = 1)]
+        to: u8,
+        /// Area of the register to ask for: holding or input
+        #[arg(long, default_value = "holding")]
+        area: String,
+        /// Address of the register to ask for
+        #[arg(long, default_value = "0")]
+        address: String,
+        /// How long to wait for each answer, in milliseconds
+        #[arg(long, default_value_t = 200)]
+        timeout: u64,
+        /// Stop at the first setting that gets an answer
+        #[arg(long)]
+        first: bool,
+        /// Print JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Check a .mbmap file against the spec
     Validate { map: String },
     /// Run as an MCP server over stdio
@@ -114,6 +150,10 @@ struct Conn {
     #[arg(long, default_value_t = 50)]
     #[serde(default = "default_delay")]
     delay: u64,
+    /// Largest number of registers per read request (default 125, or the
+    /// map's); longer reads are split
+    #[arg(long)]
+    max_regs: Option<u16>,
 }
 
 fn default_timeout() -> u64 {
@@ -252,7 +292,7 @@ async fn read_registers(
         .await
         .map_err(|e| format!("could not connect ({}): {e}", Conn::describe(&cfg)))?;
     let data = session
-        .read(area, address, count)
+        .read_chunked(area, address, count, conn.max_regs.unwrap_or(125))
         .await
         .map_err(|e| e.to_string());
     let _ = session.disconnect().await;
@@ -380,13 +420,16 @@ async fn read_map(
         interval_ms: 0,
         delay_ms: conn.delay,
         limits: PlanLimits {
-            max_registers: map.meta.max_read_registers(),
+            max_registers: conn.max_regs.map_or(map.meta.max_read_registers(), |n| {
+                n.min(map.meta.max_read_registers())
+            }),
             max_bits: map.meta.max_read_bits(),
             max_gap: 0,
         },
         indexes: wanted.clone(),
         sentinels: map.meta.sentinels.clone(),
         scale_registers: map.scale_registers(&wanted),
+        reconnect: false,
     };
     let mut session = Session::connect(&cfg, None)
         .await
@@ -505,7 +548,8 @@ fn conn_schema() -> Json {
         "stop_bits": {"type": "integer"},
         "unit": {"type": "integer", "description": "Unit / slave ID"},
         "timeout": {"type": "integer", "description": "Response timeout, ms (default 1000)"},
-        "delay": {"type": "integer", "description": "Pause between requests, ms (default 50)"}
+        "delay": {"type": "integer", "description": "Pause between requests, ms (default 50)"},
+        "max_regs": {"type": "integer", "description": "Largest number of registers per read request; longer reads are split"}
     })
 }
 
@@ -708,6 +752,74 @@ async fn run(cli: Cli) -> Result<(), String> {
                 println!("{}", Conn::describe(&cfg));
                 for h in &hits {
                     println!("  unit {:>3}  {}", h.unit, h.response);
+                }
+            }
+        }
+        Command::ScanSerial {
+            rtu,
+            bauds,
+            parities,
+            stop_bits,
+            from,
+            to,
+            area,
+            address,
+            timeout,
+            first,
+            json,
+        } => {
+            let parities = parities
+                .to_uppercase()
+                .chars()
+                .map(|c| match c {
+                    'N' => Ok(Parity::N),
+                    'E' => Ok(Parity::E),
+                    'O' => Ok(Parity::O),
+                    c => Err(format!("parity must be N, E or O, not {c}")),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let scan = modbus::SerialScan {
+                port: rtu.clone(),
+                baudrates: bauds,
+                parities,
+                stop_bits,
+                data_bits: 8,
+                from,
+                to,
+                area: parse_area(&area)?,
+                address: parse_int(&address)?,
+                timeout_ms: timeout,
+                stop_at_first: first,
+            };
+            let cancel = std::sync::atomic::AtomicBool::new(false);
+            let hits = modbus::scan_serial(&scan, &cancel, |p| {
+                if !json {
+                    eprint!(
+                        "\r{} 8{:?}{} unit {:>3}  ({}/{})   ",
+                        p.baudrate,
+                        p.parity,
+                        p.stop_bits,
+                        p.unit,
+                        p.done + 1,
+                        p.total
+                    );
+                }
+            })
+            .await
+            .map_err(|e| format!("{rtu}: {e}"))?;
+            if !json {
+                eprintln!();
+            }
+            if json {
+                println!("{}", serde_json::to_string_pretty(&hits).unwrap());
+            } else if hits.is_empty() {
+                println!("{rtu}: no setting got an answer");
+            } else {
+                for h in &hits {
+                    println!(
+                        "{rtu} {} {}{:?}{}  unit {:>3}  {}",
+                        h.baudrate, h.data_bits, h.parity, h.stop_bits, h.unit, h.response
+                    );
                 }
             }
         }
