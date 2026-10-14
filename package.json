@@ -1,6 +1,6 @@
 {
   "name": "modbench",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Lightweight Modbus TCP/RTU client with device map (.mbmap) support",
   "type": "module",
   "scripts": {
