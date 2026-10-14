@@ -49,17 +49,73 @@
     new Set(bench.library.map((e) => key(e.vendor, e.model))),
   );
 
+  /** The vendor whose maps are shown, or null for the list of vendors. */
+  let vendor = $state<string | null>(null);
+
+  const vendorKey = (name: string) => name.trim().toLowerCase();
+  const query = $derived(search.trim().toLowerCase());
+
+  function matches(e: OnlineEntry): boolean {
+    return (
+      e.model.toLowerCase().includes(query) ||
+      (e.description ?? "").toLowerCase().includes(query)
+    );
+  }
+
+  /**
+   * Vendors, filtered by the search. A vendor stays when its name matches, or
+   * when some of its maps do (then only those are counted).
+   */
+  const vendors = $derived.by(() => {
+    const groups = new Map<
+      string,
+      { name: string; website: string | null; total: number; hits: number }
+    >();
+    for (const e of entries ?? []) {
+      const k = vendorKey(e.vendor);
+      const g = groups.get(k) ?? {
+        name: e.vendor.trim(),
+        website: e.vendor_website,
+        total: 0,
+        hits: 0,
+      };
+      g.total++;
+      g.website ??= e.vendor_website;
+      if (query && matches(e)) g.hits++;
+      groups.set(k, g);
+    }
+    return [...groups.values()]
+      .filter((g) => !query || g.name.toLowerCase().includes(query) || g.hits)
+      .map((g) => ({
+        ...g,
+        shown:
+          query && !g.name.toLowerCase().includes(query) ? g.hits : g.total,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+
   const shown = $derived(
-    (entries ?? []).filter((e) => {
-      const q = search.trim().toLowerCase();
-      return (
-        !q ||
-        e.vendor.toLowerCase().includes(q) ||
-        e.model.toLowerCase().includes(q) ||
-        (e.description ?? "").toLowerCase().includes(q)
-      );
-    }),
+    (entries ?? [])
+      .filter((e) => vendor !== null && vendorKey(e.vendor) === vendor)
+      .filter((e) => !query || matches(e))
+      .sort((a, b) => a.model.localeCompare(b.model)),
   );
+
+  const vendorName = $derived(
+    vendors.find((g) => vendorKey(g.name) === vendor)?.name ??
+      (entries ?? []).find((e) => vendorKey(e.vendor) === vendor)?.vendor ??
+      "",
+  );
+
+  function openVendor(name: string) {
+    vendor = vendorKey(name);
+    search = "";
+  }
+
+  function back() {
+    vendor = null;
+    search = "";
+  }
 
   async function add(entry: OnlineEntry) {
     const replacing = local.has(key(entry.vendor, entry.model));
@@ -95,16 +151,24 @@
     <div>
       <h2 id="online-title">Online library</h2>
       <p>
-        Maps shared in the
-        <span class="mono">nobrega8/mbmap-library</span> repository on GitHub.
+        {#if vendor !== null}
+          <button class="crumb" onclick={back}>All vendors</button>
+          <span aria-hidden="true">/</span>
+          {vendorName}
+        {:else}
+          Maps shared in the
+          <span class="mono">nobrega8/mbmap-library</span> repository on GitHub.
+        {/if}
       </p>
     </div>
     <input
       class="input search"
       type="search"
-      placeholder="Search vendor or model"
+      placeholder={vendor === null ? "Search vendor or model" : "Search models"}
       bind:value={search}
-      aria-label="Search the online library"
+      aria-label={vendor === null
+        ? "Search vendors"
+        : `Search ${vendorName} models`}
     />
   </header>
 
@@ -116,6 +180,26 @@
         <p class="bad">{loadError}</p>
         <button class="btn" onclick={load}>Try again</button>
       </div>
+    {:else if vendor === null}
+      {#each vendors as g (g.name.toLowerCase())}
+        <button class="row vendor-row" onclick={() => openVendor(g.name)}>
+          <VendorIcon vendor={g.name} website={g.website} size={28} />
+          <div class="text">
+            <span class="model">{g.name}</span>
+          </div>
+          <span class="count"
+            >{g.shown} map{g.shown === 1 ? "" : "s"}{query &&
+            g.shown !== g.total
+              ? ` of ${g.total}`
+              : ""}</span
+          >
+          <span class="chev" aria-hidden="true">›</span>
+        </button>
+      {:else}
+        <p class="note">
+          {entries?.length ? `Nothing matches “${search}”.` : "No maps yet."}
+        </p>
+      {/each}
     {:else}
       {#each shown as e (e.path)}
         {@const inLibrary = local.has(key(e.vendor, e.model))}
@@ -125,7 +209,6 @@
           <div class="text">
             <div class="title">
               <span class="model">{e.model}</span>
-              <span class="vendor">{e.vendor}</span>
             </div>
             {#if rowError[e.path]}
               <div class="desc bad">{rowError[e.path]}</div>
@@ -156,7 +239,7 @@
         </div>
       {:else}
         <p class="note">
-          {entries?.length ? `No maps match “${search}”.` : "No maps yet."}
+          No maps match “{search}”.
         </p>
       {/each}
     {/if}
@@ -243,6 +326,35 @@
     border-radius: 10px;
   }
 
+  .vendor-row {
+    grid-template-columns: auto 1fr auto auto;
+    width: 100%;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .chev {
+    color: var(--text-3);
+    font-size: 18px;
+  }
+
+  .crumb {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .crumb:hover {
+    text-decoration: underline;
+  }
+
   .row + .row {
     box-shadow: inset 0 1px 0 var(--border);
   }
@@ -263,10 +375,6 @@
 
   .model {
     font-weight: 600;
-  }
-
-  .vendor {
-    color: var(--text-2);
   }
 
   .desc {
