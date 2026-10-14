@@ -2,9 +2,12 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AddressRange,
+  AddressScan,
   Area,
   ByteOrder,
   ConnectionConfig,
+  DeviceIdentity,
   DeviceMap,
   ImportResult,
   LibraryEntry,
@@ -17,6 +20,7 @@ import type {
   ScanHit,
   SerialHit,
   SerialScan,
+  SimView,
   TypedAddress,
   Value,
 } from "./types";
@@ -89,6 +93,21 @@ export const api = {
     invoke<void>("save_text", { path, text }),
   appendText: (path: string, text: string) =>
     invoke<void>("append_text", { path, text }),
+  readDeviceId: (level: number) =>
+    invoke<DeviceIdentity>("read_device_id", { level }),
+  scanAddresses: (scan: AddressScan) =>
+    invoke<AddressRange[]>("scan_addresses", { scan }),
+  /** Starts the simulated device; returns the port it listens on. */
+  simStart: (port: number, isPublic: boolean, unit: number | null) =>
+    invoke<number>("sim_start", { port, public: isPublic, unit }),
+  simStop: () => invoke<void>("sim_stop"),
+  simStatus: () => invoke<number | null>("sim_status"),
+  simLoad: (map: DeviceMap | null, strict: boolean) =>
+    invoke<void>("sim_load", { map, strict }),
+  simRead: (area: Area, address: number, count: number) =>
+    invoke<SimView>("sim_read", { area, address, count }),
+  simWrite: (area: Area, address: number, data: RawData) =>
+    invoke<void>("sim_write", { area, address, data }),
 };
 
 /** Error text from a rejected command (commands reject with a string). */

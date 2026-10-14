@@ -9,10 +9,11 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::time::timeout;
 use tokio_modbus::client::{Client, Context, Reader, Writer, rtu, tcp};
-use tokio_modbus::prelude::SlaveContext;
-use tokio_modbus::{ExceptionCode, Slave};
+use tokio_modbus::prelude::{ReadCode, SlaveContext};
+use tokio_modbus::{ExceptionCode, Request, Response, Slave};
 use tokio_serial::SerialPortBuilderExt;
 
+use crate::ascii;
 use crate::planner::Area;
 use crate::tap::{RawSink, Tap};
 
@@ -37,6 +38,14 @@ pub enum Transport {
         port: u16,
     },
     Rtu {
+        port: String,
+        baudrate: u32,
+        parity: Parity,
+        data_bits: u8,
+        stop_bits: u8,
+    },
+    /// Modbus ASCII over a serial port: hex text frames with an LRC.
+    Ascii {
         port: String,
         baudrate: u32,
         parity: Parity,
@@ -140,6 +149,36 @@ async fn with_timeout<T>(
         .map_err(|_| ModbusError::Timeout(ms))???)
 }
 
+fn open_serial(
+    port: &str,
+    baudrate: u32,
+    parity: Parity,
+    data_bits: u8,
+    stop_bits: u8,
+) -> Result<tokio_serial::SerialStream, ModbusError> {
+    let builder = tokio_serial::new(port, baudrate)
+        .parity(match parity {
+            Parity::N => tokio_serial::Parity::None,
+            Parity::E => tokio_serial::Parity::Even,
+            Parity::O => tokio_serial::Parity::Odd,
+        })
+        .data_bits(match data_bits {
+            7 => tokio_serial::DataBits::Seven,
+            8 => tokio_serial::DataBits::Eight,
+            n => {
+                return Err(ModbusError::Invalid(format!("unsupported data bits: {n}")));
+            }
+        })
+        .stop_bits(match stop_bits {
+            1 => tokio_serial::StopBits::One,
+            2 => tokio_serial::StopBits::Two,
+            n => {
+                return Err(ModbusError::Invalid(format!("unsupported stop bits: {n}")));
+            }
+        });
+    Ok(builder.open_native_async()?)
+}
+
 /// Opens the transport a configuration describes.
 async fn open(config: &ConnectionConfig, raw: Option<RawSink>) -> Result<Context, ModbusError> {
     let wait = Duration::from_millis(config.timeout_ms.max(1));
@@ -166,27 +205,18 @@ async fn open(config: &ConnectionConfig, raw: Option<RawSink>) -> Result<Context
             data_bits,
             stop_bits,
         } => {
-            let builder = tokio_serial::new(port, *baudrate)
-                .parity(match parity {
-                    Parity::N => tokio_serial::Parity::None,
-                    Parity::E => tokio_serial::Parity::Even,
-                    Parity::O => tokio_serial::Parity::Odd,
-                })
-                .data_bits(match data_bits {
-                    7 => tokio_serial::DataBits::Seven,
-                    8 => tokio_serial::DataBits::Eight,
-                    n => {
-                        return Err(ModbusError::Invalid(format!("unsupported data bits: {n}")));
-                    }
-                })
-                .stop_bits(match stop_bits {
-                    1 => tokio_serial::StopBits::One,
-                    2 => tokio_serial::StopBits::Two,
-                    n => {
-                        return Err(ModbusError::Invalid(format!("unsupported stop bits: {n}")));
-                    }
-                });
-            rtu::attach_slave(Tap::new(builder.open_native_async()?, raw), slave)
+            let stream = open_serial(port, *baudrate, *parity, *data_bits, *stop_bits)?;
+            rtu::attach_slave(Tap::new(stream, raw), slave)
+        }
+        Transport::Ascii {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => {
+            let stream = open_serial(port, *baudrate, *parity, *data_bits, *stop_bits)?;
+            ascii::attach_slave(Tap::new(stream, raw), slave)
         }
     };
     Ok(ctx)
@@ -350,6 +380,79 @@ pub struct ScanHit {
     pub response: String,
 }
 
+/// What an address scan looks at.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AddressScan {
+    pub area: Area,
+    pub from: u16,
+    pub to: u16,
+    /// Addresses read at once before splitting.
+    pub block: u16,
+    /// How long to wait for each answer.
+    pub timeout_ms: u64,
+}
+
+/// A run of addresses that answered during an address scan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AddressRange {
+    pub start: u16,
+    pub count: u16,
+}
+
+/// Where an address scan is, for a progress bar.
+#[derive(Debug, Clone, Serialize)]
+pub struct AddressProgress {
+    /// The first address of the piece being read.
+    pub address: u16,
+    /// Addresses settled so far, out of `total`, and how many answered.
+    pub done: u32,
+    pub total: u32,
+    pub found: u32,
+}
+
+/// One identification object of a device (FC43).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DeviceIdItem {
+    pub id: u8,
+    pub name: &'static str,
+    pub value: String,
+}
+
+/// What a device says about itself (FC43 / MEI 14).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DeviceIdentity {
+    /// Conformity level byte: which objects and access the device supports.
+    pub conformity: u8,
+    pub objects: Vec<DeviceIdItem>,
+}
+
+/// Name of a standard identification object.
+fn object_name(id: u8) -> &'static str {
+    match id {
+        0x00 => "Vendor name",
+        0x01 => "Product code",
+        0x02 => "Revision",
+        0x03 => "Vendor URL",
+        0x04 => "Product name",
+        0x05 => "Model name",
+        0x06 => "User application name",
+        0x07..=0x7F => "Reserved",
+        _ => "Private object",
+    }
+}
+
+/// An object's value as text, or as hex when it is not printable text.
+fn object_text(bytes: &[u8]) -> String {
+    match std::str::from_utf8(bytes).map(|s| s.trim_end_matches('\0')) {
+        Ok(s) if s.chars().all(|c| !c.is_control()) => s.to_string(),
+        _ => bytes
+            .iter()
+            .map(|b| format!("{b:02X}"))
+            .collect::<Vec<_>>()
+            .join(" "),
+    }
+}
+
 pub struct Session {
     ctx: Context,
     /// How the session was opened, to open it again after a lost link.
@@ -397,7 +500,10 @@ impl Session {
     }
 
     fn over_network(&self) -> bool {
-        !matches!(self.config.transport, Transport::Rtu { .. })
+        !matches!(
+            self.config.transport,
+            Transport::Rtu { .. } | Transport::Ascii { .. }
+        )
     }
 
     /// Closes the link and opens it again with the same settings, keeping
@@ -636,6 +742,121 @@ impl Session {
         answer
     }
 
+    /// Reads the device's identification objects (FC43 / MEI 14). `level`
+    /// is the read code: 1 basic, 2 regular, 3 extended. Answers split over
+    /// several responses are joined.
+    pub async fn read_device_id(&mut self, level: u8) -> Result<DeviceIdentity, ModbusError> {
+        let code = ReadCode::try_from_value(level)
+            .filter(|c| *c != ReadCode::Specific)
+            .ok_or_else(|| ModbusError::Invalid(format!("unknown identification level {level}")))?;
+        let mut identity = DeviceIdentity {
+            conformity: 0,
+            objects: Vec::new(),
+        };
+        let mut next = 0u8;
+        // A device that keeps saying "more follows" must not loop forever.
+        for _ in 0..32 {
+            let started = (SystemTime::now(), Instant::now());
+            let result = with_timeout(
+                self.timeout,
+                self.ctx.call(Request::ReadDeviceIdentification(code, next)),
+            )
+            .await;
+            self.log(43, next.into(), 1, started, &result);
+            self.track(&result);
+            let Response::ReadDeviceIdentification(part) = result? else {
+                return Err(ModbusError::Protocol(
+                    "the answer is not a device identification".into(),
+                ));
+            };
+            identity.conformity = part.conformity_level.value();
+            identity
+                .objects
+                .extend(part.device_id_objects.iter().map(|o| DeviceIdItem {
+                    id: o.id,
+                    name: object_name(o.id),
+                    value: object_text(&o.value),
+                }));
+            if !part.more_follows || part.next_object_id <= next {
+                break;
+            }
+            next = part.next_object_id;
+        }
+        Ok(identity)
+    }
+
+    /// Finds which addresses of an area answer between `from` and `to`. Each
+    /// block of `block` addresses is read at once; a block that fails is
+    /// split in halves until the addresses that answer are found, so a
+    /// sparse map costs few requests. Fails only when the link is lost.
+    pub async fn scan_addresses(
+        &mut self,
+        scan: &AddressScan,
+        cancel: &AtomicBool,
+        progress: impl Fn(&AddressProgress),
+    ) -> Result<Vec<AddressRange>, ModbusError> {
+        if scan.from > scan.to {
+            return Err(ModbusError::Invalid(
+                "the first address is above the last".into(),
+            ));
+        }
+        let limit = if scan.area.is_bit() { 2000 } else { 125 };
+        let block = scan.block.clamp(1, limit);
+        let timeout = self.timeout;
+        self.timeout = Duration::from_millis(scan.timeout_ms.max(1));
+        let total = u32::from(scan.to - scan.from) + 1;
+        let mut done = 0u32;
+        let mut found: Vec<AddressRange> = Vec::new();
+        // Pieces still to try, the next one last.
+        let mut pending: Vec<(u16, u16)> = Vec::new();
+        let mut start = u32::from(scan.from);
+        while start <= u32::from(scan.to) {
+            let n = (u32::from(scan.to) - start + 1).min(block.into());
+            pending.push((start as u16, n as u16));
+            start += n;
+        }
+        pending.reverse();
+        let result = loop {
+            let Some((address, count)) = pending.pop() else {
+                break Ok(());
+            };
+            if cancel.load(Ordering::Relaxed) {
+                break Ok(());
+            }
+            progress(&AddressProgress {
+                address,
+                done,
+                total,
+                found: found.iter().map(|r| u32::from(r.count)).sum(),
+            });
+            match self.read(scan.area, address, count).await {
+                Ok(_) => {
+                    done += u32::from(count);
+                    match found.last_mut() {
+                        Some(r)
+                            if u32::from(r.start) + u32::from(r.count) == u32::from(address) =>
+                        {
+                            r.count += count;
+                        }
+                        _ => found.push(AddressRange {
+                            start: address,
+                            count,
+                        }),
+                    }
+                }
+                Err(ModbusError::Io(e)) => break Err(ModbusError::Io(e)),
+                Err(_) if count == 1 => done += 1,
+                Err(_) => {
+                    let half = count / 2;
+                    pending.push((address + half, count - half));
+                    pending.push((address, half));
+                }
+            }
+        };
+        self.timeout = timeout;
+        result.map(|()| found)
+    }
+
     pub async fn disconnect(mut self) -> Result<(), ModbusError> {
         self.ctx.disconnect().await?;
         Ok(())
@@ -644,15 +865,53 @@ impl Session {
 
 /// Serial ports present on this machine.
 pub fn list_serial_ports() -> Result<Vec<String>, ModbusError> {
-    Ok(tokio_serial::available_ports()?
+    let names: Vec<String> = tokio_serial::available_ports()?
         .into_iter()
         .map(|p| p.port_name)
-        .collect())
+        .collect();
+    Ok(without_dial_in(names))
+}
+
+/// macOS lists each port twice: `/dev/tty.*` waits for a modem's carrier
+/// signal, `/dev/cu.*` does not and is the one to use. Keeps the `cu` one.
+fn without_dial_in(names: Vec<String>) -> Vec<String> {
+    names
+        .iter()
+        .filter(|n| match n.strip_prefix("/dev/tty.") {
+            Some(rest) => !names.contains(&format!("/dev/cu.{rest}")),
+            None => true,
+        })
+        .cloned()
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dial_in_ports_are_hidden_when_a_callout_port_exists() {
+        let names = [
+            "/dev/cu.usbserial-1",
+            "/dev/tty.usbserial-1",
+            "/dev/tty.other",
+            "COM3",
+        ]
+        .map(String::from)
+        .to_vec();
+        assert_eq!(
+            without_dial_in(names),
+            ["/dev/cu.usbserial-1", "/dev/tty.other", "COM3"]
+        );
+    }
+
+    #[test]
+    fn identification_objects_read_as_text_or_hex() {
+        assert_eq!(object_text(b"ACME\0\0"), "ACME");
+        assert_eq!(object_text(&[0x01, 0xFF]), "01 FF");
+        assert_eq!(object_name(0x01), "Product code");
+        assert_eq!(object_name(0x90), "Private object");
+    }
 
     #[test]
     fn serial_scan_tries_every_combination_in_order() {

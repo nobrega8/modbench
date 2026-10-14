@@ -13,6 +13,7 @@ use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
 use crate::online;
 use crate::planner::Area;
 use crate::poller::{self, PollCycle, PollRequest};
+use crate::simulator;
 use crate::tap::{Direction, RawSink};
 
 /// Bytes seen on the wire, sent to the UI as a `raw` event.
@@ -38,6 +39,9 @@ pub struct AppState {
     /// Read-only mode: shared with every session, which refuses writes while
     /// it is on.
     read_only: Arc<std::sync::atomic::AtomicBool>,
+    /// The simulated device: its memory lives on while it is stopped.
+    sim_memory: Arc<std::sync::Mutex<simulator::Memory>>,
+    sim: std::sync::Mutex<Option<simulator::Running>>,
 }
 
 impl AppState {
@@ -719,4 +723,138 @@ pub async fn write_typed(
             session.write_registers(t.address, &words).await
         }
     }
+}
+
+/// Reads the device's identification objects (FC43). `level`: 1 basic,
+/// 2 regular, 3 extended.
+#[tauri::command]
+pub async fn read_device_id(
+    state: State<'_, AppState>,
+    level: u8,
+) -> Result<modbus::DeviceIdentity, ModbusError> {
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    session.read_device_id(level).await
+}
+
+/// Finds which addresses of an area answer. Progress is sent to the UI as
+/// `address-scan-progress` events; `cancel_scan` stops it.
+#[tauri::command]
+pub async fn scan_addresses(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    scan: modbus::AddressScan,
+) -> Result<Vec<modbus::AddressRange>, ModbusError> {
+    state.stop_poller();
+    state
+        .scan_cancel
+        .store(false, std::sync::atomic::Ordering::Relaxed);
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    session
+        .scan_addresses(&scan, &state.scan_cancel, |p| {
+            let _ = app.emit("address-scan-progress", p);
+        })
+        .await
+}
+
+/// Starts the simulated device on a TCP port, on this computer only unless
+/// `public`. Each request it answers is sent to the UI as a `sim` event.
+/// Returns the port.
+#[tauri::command]
+pub async fn sim_start(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    port: u16,
+    public: bool,
+    unit: Option<u8>,
+) -> Result<u16, ModbusError> {
+    if let Some(old) = state.sim.lock().unwrap().take() {
+        old.stop();
+    }
+    let ip = if public { [0, 0, 0, 0] } else { [127, 0, 0, 1] };
+    let logger: simulator::SimLogger = Arc::new(move |event| {
+        let _ = app.emit("sim", event);
+    });
+    let running = simulator::start(
+        (ip, port).into(),
+        state.sim_memory.clone(),
+        unit,
+        Some(logger),
+    )
+    .await
+    .map_err(|e| match e.kind() {
+        std::io::ErrorKind::AddrInUse => {
+            ModbusError::Invalid(format!("port {port} is already in use; choose another"))
+        }
+        std::io::ErrorKind::PermissionDenied => ModbusError::Invalid(format!(
+            "this system does not allow port {port}; use one above 1023"
+        )),
+        _ => ModbusError::Io(e),
+    })?;
+    let port = running.addr.port();
+    *state.sim.lock().unwrap() = Some(running);
+    Ok(port)
+}
+
+#[tauri::command]
+pub fn sim_stop(state: State<'_, AppState>) {
+    if let Some(running) = state.sim.lock().unwrap().take() {
+        running.stop();
+    }
+}
+
+/// The port the simulator listens on, or None when it is stopped.
+#[tauri::command]
+pub fn sim_status(state: State<'_, AppState>) -> Option<u16> {
+    state.sim.lock().unwrap().as_ref().map(|r| r.addr.port())
+}
+
+/// Clears the simulator's memory, or shapes it after a map (see
+/// `Memory::from_map`).
+#[tauri::command]
+pub fn sim_load(state: State<'_, AppState>, map: Option<DeviceMap>, strict: bool) {
+    *state.sim_memory.lock().unwrap() = match map {
+        Some(map) => simulator::Memory::from_map(&map, strict),
+        None => simulator::Memory::default(),
+    };
+}
+
+/// Values held by the simulator, and which of those addresses exist.
+#[derive(serde::Serialize)]
+pub struct SimView {
+    data: RawData,
+    defined: Vec<bool>,
+}
+
+#[tauri::command]
+pub fn sim_read(state: State<'_, AppState>, area: Area, address: u16, count: u16) -> SimView {
+    let memory = state.sim_memory.lock().unwrap();
+    let data = memory.read(area, address, count);
+    let n = match &data {
+        RawData::Bits(b) => b.len(),
+        RawData::Registers(w) => w.len(),
+    };
+    SimView {
+        defined: (0..n)
+            .map(|i| memory.defined(area, address + i as u16))
+            .collect(),
+        data,
+    }
+}
+
+/// Changes values in the simulator, in any area.
+#[tauri::command]
+pub fn sim_write(
+    state: State<'_, AppState>,
+    area: Area,
+    address: u16,
+    data: RawData,
+) -> Result<(), ModbusError> {
+    state
+        .sim_memory
+        .lock()
+        .unwrap()
+        .set(area, address, &data)
+        .map_err(ModbusError::Invalid)
 }

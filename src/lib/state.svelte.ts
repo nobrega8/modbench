@@ -11,7 +11,15 @@ import {
   type Identity,
 } from "./identity";
 import { settings } from "./settings.svelte";
-import { NO_TIMES, addTime, type ResponseTimes } from "./stats";
+import {
+  NO_BREAKDOWN,
+  NO_TIMES,
+  addEntry,
+  addTime,
+  type Breakdown,
+  type ResponseTimes,
+} from "./stats";
+import { loadAlarms, saveAlarms, type Alarm } from "./alarms";
 import { recordHeader, recordRow } from "./csv";
 import {
   MAX_SERIES,
@@ -38,9 +46,13 @@ import {
   saveProfile,
 } from "./profiles";
 import type {
+  AddressProgress,
+  AddressRange,
+  AddressScan,
   Area,
   ByteOrder,
   ConnectionConfig,
+  DeviceIdentity,
   DeviceMap,
   Diagnostic,
   LibraryEntry,
@@ -57,7 +69,18 @@ import type {
 } from "./types";
 
 export type TransportKind = "tcp" | "rtuovertcp" | "rtu";
-export type Page = "main" | "library" | "settings";
+export type Page = "main" | "tools" | "library" | "settings";
+export type ToolId =
+  | "simulator"
+  | "identify"
+  | "addresses"
+  | "decoder"
+  | "frames"
+  | "stats"
+  | "alarms"
+  | "player";
+/** Framing on a serial port. */
+export type Framing = "rtu" | "ascii";
 export type Tab = "registers" | "map" | "chart" | "write" | "raw" | "log";
 
 function hasRange(r: {
@@ -93,6 +116,7 @@ const CONNECTION_FIELDS = [
   "host",
   "tcpPort",
   "serialPort",
+  "framing",
   "baudrate",
   "parity",
   "dataBits",
@@ -117,6 +141,7 @@ class Bench {
   host = $state("127.0.0.1");
   tcpPort = $state(502);
   serialPort = $state("");
+  framing = $state<Framing>("rtu");
   baudrate = $state(9600);
   parity = $state<Parity>("E");
   dataBits = $state(8);
@@ -168,11 +193,22 @@ class Bench {
     error: string | null;
   } | null>(null);
   page = $state<Page>("main");
+  tool = $state<ToolId>("simulator");
   tab = $state<Tab>("registers");
   counters = $state({ valid: 0, errors: 0, timeouts: 0 });
   /** How fast the device answers (normal and exception responses). */
   times = $state.raw<ResponseTimes>(NO_TIMES);
-  read = $state.raw<{ address: number; data: RawData } | null>(null);
+  /** Every request since the last reset, by cause and by function code. */
+  breakdown = $state.raw<Breakdown>(NO_BREAKDOWN);
+  /** Alarm limits of the active map's registers. */
+  alarms = $state.raw<Alarm[]>([]);
+  /** Address scan: where it is, and what answered. */
+  addressProgress = $state.raw<AddressProgress | null>(null);
+  addressHits = $state.raw<AddressRange[] | null>(null);
+  addressArea = $state<Area>("holding");
+  read = $state.raw<{ address: number; area: Area; data: RawData } | null>(
+    null,
+  );
   previous = $state.raw<RawData | null>(null);
   /** When each grid offset (`g:`) or map register (`m:`) last changed. */
   changes = $state.raw<ChangeTimes>(new Map());
@@ -308,7 +344,7 @@ This writes to the device.`,
     const transport =
       this.transport === "rtu"
         ? {
-            kind: "rtu" as const,
+            kind: this.framing,
             port: this.serialPort,
             baudrate: this.baudrate,
             parity: this.parity,
@@ -377,6 +413,7 @@ This writes to the device.`,
       }
     }
     this.restoreDevice();
+    this.alarms = path ? loadAlarms(path) : [];
     this.tab = "map";
     this.changes = new Map();
     this.chartSeries = [];
@@ -435,6 +472,12 @@ This writes to the device.`,
       loop: this.loop,
     });
     saveMapDefault(open.path, ids);
+  }
+
+  /** Replaces the alarm limits of the active map, and remembers them. */
+  setAlarms(alarms: Alarm[]) {
+    this.alarms = alarms;
+    if (this.map) saveAlarms(this.map.path, alarms);
   }
 
   setOrderOverride(order: ByteOrder | null) {
@@ -562,7 +605,7 @@ This writes to the device.`,
             ? markRead(this.changes, prev, data, Date.now())
             : this.withoutGrid(),
         );
-        this.read = { address: this.address, data };
+        this.read = { address: this.address, area, data };
       } else if (this.fc === 5) {
         await api.writeCoils(this.address, [this.writeValues[0] !== 0]);
       } else if (this.fc === 15) {
@@ -829,6 +872,107 @@ This writes to the device.`,
     return done;
   }
 
+  /**
+   * Runs `work` over the open connection, or over one opened just for it.
+   * Fails with the connection error when it cannot connect.
+   */
+  private async withLink<T>(work: () => Promise<T>): Promise<T> {
+    const temporary = !this.connected;
+    if (temporary) {
+      this.saveConnection();
+      if (!(await this.open()))
+        throw new Error(this.status?.text ?? "Could not connect.");
+      this.status = null;
+    }
+    try {
+      return await work();
+    } finally {
+      if (temporary) await this.close();
+    }
+  }
+
+  /** Asks the device to identify itself (FC43): 1 basic, 2 regular, 3 extended. */
+  async readDeviceId(level: number): Promise<DeviceIdentity> {
+    if (this.scanning) throw new Error("A scan is running.");
+    return this.withLink(() => api.readDeviceId(level));
+  }
+
+  /** Finds which addresses of an area answer, over the connection of step 1. */
+  async scanAddresses(scan: AddressScan) {
+    if (this.running || this.scanning) return;
+    this.scanning = true;
+    this.addressHits = null;
+    this.addressArea = scan.area;
+    this.addressProgress = {
+      address: scan.from,
+      done: 0,
+      total: scan.to - scan.from + 1,
+      found: 0,
+    };
+    this.scanError = null;
+    try {
+      this.addressHits = await this.withLink(() => api.scanAddresses(scan));
+    } catch (e) {
+      this.scanError = errorText(e);
+    } finally {
+      this.scanning = false;
+      this.addressProgress = null;
+    }
+  }
+
+  onAddressProgress(p: AddressProgress) {
+    this.addressProgress = p;
+  }
+
+  /** Sets up step 2 to read a range of addresses, and goes there. */
+  readRange(area: Area, start: number, count: number) {
+    const fc = { coil: 1, discrete: 2, holding: 3, input: 4 }[area];
+    this.source = "manual";
+    this.fc = fc;
+    this.address = start;
+    this.setQuantity(
+      Math.min(count, area === "coil" || area === "discrete" ? 2000 : 125),
+    );
+    this.tab = "registers";
+    this.page = "main";
+  }
+
+  /**
+   * Switches one bit of a holding register (read, change the bit, write
+   * back), opening the connection just for it when needed.
+   */
+  async writeBit(address: number, bit: number, on: boolean) {
+    if (settings.readOnly)
+      throw new Error("Read-only mode is on: writes are blocked.");
+    const ok = await this.confirmWrite(
+      `Set bit ${bit} of holding register ${address} to ${on ? 1 : 0}?`,
+    );
+    if (!ok) return;
+    await this.withLink(() =>
+      api.writeValue(
+        {
+          area: "holding",
+          address,
+          type: "bool",
+          byte_order: "ABCD",
+          length: null,
+          bit,
+        },
+        on,
+      ),
+    );
+    // Show the change at once when nothing reads it again.
+    const read = this.read;
+    if (!this.running && read?.data.kind === "registers") {
+      const i = address - read.address;
+      const values = [...read.data.values];
+      if (i >= 0 && i < values.length) {
+        values[i] = on ? values[i] | (1 << bit) : values[i] & ~(1 << bit);
+        this.read = { ...read, data: { kind: "registers", values } };
+      }
+    }
+  }
+
   /** Writes to a map register, opening the connection just for it if needed. */
   async writeMapValue(index: number, value: import("./types").Value) {
     const open = this.map;
@@ -964,6 +1108,7 @@ This writes to the device.`,
     else if (e.startsWith("timed out")) this.counters.timeouts++;
     else this.counters.errors++;
     this.times = addTime(this.times, entry);
+    this.breakdown = addEntry(this.breakdown, entry);
     this.pendingLog.push(entry);
     this.scheduleFlush();
   }
@@ -1047,6 +1192,10 @@ This writes to the device.`,
 
   resetTimes() {
     this.times = NO_TIMES;
+  }
+
+  resetBreakdown() {
+    this.breakdown = NO_BREAKDOWN;
   }
 
   clearLog() {

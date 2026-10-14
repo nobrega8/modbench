@@ -54,3 +54,56 @@ export function average(times: ResponseTimes): number {
 export function ms(value: number): string {
   return value < 100 ? value.toFixed(1) : value.toFixed(0);
 }
+
+/** Why a request failed, as a short name; "OK" when it did not. */
+export function cause(entry: TrafficEntry): string {
+  const e = entry.error;
+  if (e === null) return "OK";
+  if (e.startsWith("timed out")) return "Timeout (no answer)";
+  const ex = /^device exception 0x([0-9A-F]{2}) \((.+)\)$/.exec(e);
+  if (ex) return `Exception ${parseInt(ex[1], 16)}: ${ex[2]}`;
+  if (e.startsWith("protocol error")) return "Bad frame";
+  if (e.startsWith("I/O error") || e.startsWith("serial port error"))
+    return "Connection error";
+  if (e.startsWith("read-only mode")) return "Blocked by read-only mode";
+  return "Other error";
+}
+
+/** Requests of one function code: how many, how many failed, how fast. */
+export interface FunctionStats {
+  count: number;
+  failed: number;
+  times: ResponseTimes;
+}
+
+/** Every request since the last reset, by cause and by function code. */
+export interface Breakdown {
+  total: number;
+  causes: Map<string, number>;
+  functions: Map<number, FunctionStats>;
+}
+
+export const NO_BREAKDOWN: Breakdown = {
+  total: 0,
+  causes: new Map(),
+  functions: new Map(),
+};
+
+/** Adds one request; returns a new value so a change is seen. */
+export function addEntry(b: Breakdown, entry: TrafficEntry): Breakdown {
+  const causes = new Map(b.causes);
+  const c = cause(entry);
+  causes.set(c, (causes.get(c) ?? 0) + 1);
+  const functions = new Map(b.functions);
+  const f = functions.get(entry.function) ?? {
+    count: 0,
+    failed: 0,
+    times: NO_TIMES,
+  };
+  functions.set(entry.function, {
+    count: f.count + 1,
+    failed: f.failed + (entry.error === null ? 0 : 1),
+    times: addTime(f.times, entry),
+  });
+  return { total: b.total + 1, causes, functions };
+}

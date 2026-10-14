@@ -2287,6 +2287,7 @@ dependencies = [
 name = "modbench"
 version = "0.1.8"
 dependencies = [
+ "async-trait",
  "clap",
  "reqwest",
  "rustls",

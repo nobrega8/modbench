@@ -15,6 +15,7 @@
   } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
   import { appliesTo, rangeText, versionText } from "$lib/identity";
+  import { byIndex, check, limitsText } from "$lib/alarms";
   import { diagnosticWhere, type Register } from "$lib/types";
   import AddressFormat from "./AddressFormat.svelte";
   import Select from "./Select.svelte";
@@ -45,6 +46,16 @@
   }
 
   const meta = $derived(open.map.meta);
+  const alarms = $derived(byIndex(bench.alarms, open.map.registers));
+  /** Registers whose value is outside their alarm limits right now. */
+  const inAlarm = $derived.by(() => {
+    const out = new Set<number>();
+    for (const [index, a] of alarms) {
+      const r = bench.mapResults.get(index);
+      if (r && !r.error && !r.sentinel && check(a, r.value)) out.add(index);
+    }
+    return out;
+  });
   const identity = $derived(bench.identity);
   /** The device's firmware, once its firmware registers were read. */
   const fwVersion = $derived(identity?.firmware.version ?? null);
@@ -249,6 +260,20 @@
         · {refs.failed} failed{/if}</span
     >
   {/if}
+  {#if alarms.size}
+    <button
+      class="refs alarms"
+      class:bad={inAlarm.size > 0}
+      title="Alarm limits set on {alarms.size} registers. Click to change them."
+      onclick={() => {
+        bench.tool = "alarms";
+        bench.page = "tools";
+      }}
+      >{inAlarm.size
+        ? `${inAlarm.size} in alarm`
+        : `Alarms ${alarms.size} · OK`}</button
+    >
+  {/if}
   <span class="count">Reading {readCount} of {open.map.registers.length}</span>
   <button
     class="btn small"
@@ -428,7 +453,10 @@
           <td
             class="val mono"
             class:changed={bench.fresh(`m:${index}`)}
-            title={shownTitle}
+            class:alarm={inAlarm.has(index)}
+            title={alarms.has(index)
+              ? `${shownTitle ?? ""}\nAlarm ${limitsText(alarms.get(index)!, reg.unit)}`.trim()
+              : shownTitle}
           >
             {#if reg.access === "W"}<span class="dim">write only</span
               >{:else if r?.sentinel}<span
@@ -820,6 +848,17 @@
   }
 
   /* Lit at once when the value changes, then fades back */
+  td.val.alarm {
+    color: var(--bad);
+    box-shadow: inset 3px 0 0 rgb(var(--alert-rgb));
+  }
+
+  button.alarms {
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+  }
+
   td.val.changed {
     background: var(--changed);
     transition: none;
