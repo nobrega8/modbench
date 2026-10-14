@@ -9,141 +9,88 @@
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri-24C8DB?logo=tauri&logoColor=white)](https://tauri.app)
 [![Supports .mbmap](https://img.shields.io/badge/supports-.mbmap-0A7EA4)](https://github.com/nobrega8/mbmap-library)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/nobrega)
 
-A lightweight Modbus TCP/RTU client for Windows and Linux. Test any address by hand, like a classic Modbus tester, or open a device map and read every register by name, already scaled, with units and labels.
+A lightweight Modbus TCP/RTU client for Windows and Linux. Test any address by hand, or open a device map and read every register by name, already scaled, with units and labels.
+
+![Modbench reading an energy meter through its device map](assets/screenshots/device-map.png)
 
 ## Download
 
-Get the latest installer from [Releases](https://github.com/nobrega8/modbench/releases/latest):
+Get the installer from [Releases](https://github.com/nobrega8/modbench/releases/latest): `Modbench_x.y.z_x64-setup.exe` (or `.msi`) for Windows 10/11, `Modbench_x.y.z_amd64.AppImage` (or `.deb`) for Linux. Modbench offers new versions when it starts.
 
-| System | File |
-|---|---|
-| Windows 10/11 | `Modbench_x.y.z_x64-setup.exe` (or the `.msi`) |
-| Linux | `Modbench_x.y.z_amd64.AppImage` (or the `.deb`) |
+On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod -aG dialout $USER`, then log in again.
 
-Modbench checks for new versions when it starts and installs them when you choose to. On Linux, in-app updates work for the AppImage; the `.deb` updates through apt (below).
-
-### Debian and Ubuntu (APT)
-
-Add the Modbench repository once:
+<details>
+<summary>Install with APT (Debian, Ubuntu)</summary>
 
 ```sh
 curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
-sudo apt update
+sudo apt update && sudo apt install modbench
 ```
 
-Then install it:
-
-```sh
-sudo apt install modbench
-```
-
-New versions arrive with `sudo apt update && sudo apt upgrade`, or on their own if `unattended-upgrades` is set to include third-party repositories.
-
-On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod -aG dialout $USER`, then log in again.
+Updates then arrive with `sudo apt upgrade`.
+</details>
 
 ## Features
 
-- **Three-step workflow**: connection (serial RTU, Modbus TCP or RTU over TCP), request (any function code, or a device map), test (Start/Stop, valid/error/timeout counters, last/min/average/max response time).
-- **Device maps (`.mbmap.json`)**: JSON files that describe a device and all of its registers: types, byte and word order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps. Maps in the deprecated version 1 (CSV-based `.mbmap`) still open, and Modbench offers to convert them.
-- **Write from the map**: writable registers and control commands are listed with the right control for each type. A register can declare the values it accepts (`write_min`, `write_max`) and Modbench refuses anything outside them.
-- **Reconnects by itself**: while a test runs, a lost connection (an I/O error, or over TCP three timeouts in a row) is opened again, with growing pauses up to every 10 seconds. It can be turned off in Settings.
-- **Max registers per request**: for devices that cannot read 125 registers at once. Longer manual reads are split into several requests, and map reads use the smaller of this and the map's `@max_read_registers`.
-- **Read-only mode**: one switch in Settings blocks every write, also on a connection that is already open. The backend refuses the write, so nothing reaches the device.
-- **Find unit IDs**: *Find…* next to Device asks each unit ID for one register and lists the ones that answer. Read-only.
-- **Find serial settings**: on a serial port, *Find… → Serial settings* tries each baud rate, parity and stop bits and asks for one register. Only frames with a valid CRC count, so line noise is not taken for a device. *Use* fills in step 1. Read-only.
-- **Value templates**: save the values read from a device's writable registers to a `.mbtpl` text file, and write them to another device of the same model. Only values that differ are written by default, and the last apply can be undone.
-- **Reference checks**: a map can name registers with a known value; Modbench shows whether they match, which helps spot a wrong address, byte order or type.
-- **Remembers each device**: the registers you switch off, the byte order override and Loop come back for the same map on the same connection and unit ID (see below).
-- **Chart**: plot up to 8 map registers over time, already scaled, with one chart per unit, a hover readout and a time span from the last minute to everything recorded.
-- **Change highlighting**: a value that changes stays highlighted for a while (1 to 30 seconds, set in Settings) in the register grid and the device map, to find what moves on an unknown device.
-- **Address display**: show addresses as sent on the wire (0-based), 1-based like most manuals, or in hexadecimal, in the register grid, the device map and the log.
-- **Raw data**: the exact bytes sent and received, plus a request log you can save as text or CSV.
-- **CSV export and recording**: save the map values on screen to a CSV file, or record one row per reading cycle with a column for each register. The separator (comma or semicolon) is set in Settings.
-- **Device library**: keep your maps in the app, import them from a file or browse and download the shared maps of [mbmap-library](https://github.com/nobrega8/mbmap-library); maps are stored in format version 2, and version 1 maps already in the library are converted when it opens. Double-click a `.mbmap` to open it.
-- **Command line and MCP**: `modbench-cli` reads devices without the UI (see below).
-- **Light and dark (OLED) themes**, a Rust core and small installers (about 2 MB on Windows).
+- **Manual requests**: any function code, address and quantity, over serial RTU, Modbus TCP or RTU over TCP.
+- **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
+- **Checks the device**: reference values catch a wrong address or byte order, and a map can declare which models and firmware versions it fits.
+- **Write safely**: typed controls for writable registers, limits from the map, optional confirmation, and a read-only mode that blocks every write.
+- **Chart, raw bytes and log**: plot registers over time, see the exact frames, export values or record every cycle to CSV.
+- **Find devices**: scan for unit IDs, or for the baud rate, parity and stop bits of a serial device.
+- **Value templates**: copy the settings of one device to another of the same model.
+- **Reconnects by itself** when a link drops during a test.
+- Light and dark themes, adjustable text size, and small installers (about 2 MB on Windows).
 
-## What Modbench remembers
-
-Everything is stored on this computer, in the app's webview storage, and nothing is sent anywhere.
-
-| What | Remembered for | Notes |
+| Chart | Device library | Dark theme |
 |---|---|---|
-| Connection fields (port, baud rate, address, unit ID, timing, max registers per request) | the last test | Settings, "Remember the last connection" |
-| Registers switched off, byte order override, Loop | one **device**: the map file, the connection endpoint and the unit ID | Settings, "Remember register choices for each device" |
-| Theme, confirmations, read-only mode, reconnection, log size, CSV separator, address display, highlight time, update check | the app | Settings |
+| ![Chart of voltages and currents](assets/screenshots/chart.png) | ![Device library with vendor icons](assets/screenshots/library.png) | ![Device map in the dark theme](assets/screenshots/device-map-dark.png) |
 
-A device is identified by the map file, **how it is reached** (host and port for TCP, the serial port name for RTU) and its **unit ID**. Two devices of the same model on different unit IDs or addresses keep separate choices. Registers are remembered by what the map says about them (area, address, type, bit and name), not by their position, so editing a map does not switch the wrong registers off.
+<details>
+<summary>What Modbench remembers</summary>
 
-A device seen for the first time starts with the registers last used with that map (all of them if there are none) and with the map's own byte order. Restoring choices only changes what the screen shows: it never writes to a device or starts a test. "Forget saved device choices" in Settings removes all of them.
-
-## Stack
-
-- [Tauri 2](https://tauri.app) · Rust (`tokio-modbus`, `tokio-serial`)
-- Svelte 5 + TypeScript + Vite
-
-## Development
-
-Requirements: [Rust](https://rustup.rs) (stable), Node.js 22+ and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your OS.
-
-```sh
-npm install
-npm run tauri dev     # run the app in development mode
-npm run tauri build   # build installers (MSI/NSIS on Windows, deb/AppImage on Linux)
-```
-
-To try the app without hardware, run the device simulator. It serves any map file over Modbus TCP, with values that change over time:
-
-```sh
-cd src-tauri
-cargo run --example simulator -- ../vendor/mbmap-library/examples/example-corp/em-100.mbmap 5020
-```
-
-Then connect Modbench to `127.0.0.1`, port `5020`. You can also pass a map to the app on start: `npm run tauri dev -- -- -- path/to/map.mbmap`.
-
-Checks (the same ones CI runs):
-
-```sh
-npm run format:check && npm run check
-cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
-```
+Everything stays on this computer. The last connection is filled in again on start. For each device (map + connection + unit ID), the registers you switched off, the byte order override and Loop come back; restoring them never writes or starts a test. Both can be turned off, and saved device choices forgotten, in Settings.
+</details>
 
 ## Command line and MCP
 
-`modbench-cli` reads devices without the UI. It is read-only: it never writes to a device.
+`modbench-cli` reads devices without the UI. It never writes to a device.
 
 ```sh
-cd src-tauri
-cargo run --bin modbench-cli -- ports
-cargo run --bin modbench-cli -- read --tcp 192.168.1.10 holding 0x0405 1
-cargo run --bin modbench-cli -- read --rtu COM3 --baud 9600 --stop-bits 2 --unit 18 holding 1029 4
-cargo run --bin modbench-cli -- map --rtu COM3 --unit 18 path/to/device.mbmap.json --filter voltage
-cargo run --bin modbench-cli -- scan --rtu COM3 --baud 9600 --from 1 --to 32 --timeout 200
-cargo run --bin modbench-cli -- scan-serial --rtu COM3 --bauds 9600,19200 --parities EN --from 1 --to 5 --first
-cargo run --bin modbench-cli -- validate path/to/device.mbmap.json
-cargo run --bin modbench-cli -- convert path/to/old-device.mbmap   # version 1 -> path/to/old-device.mbmap.json
+modbench-cli read --tcp 192.168.1.10 holding 0x0405 1
+modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
+modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
+modbench-cli validate device.mbmap.json
+modbench-cli convert old-device.mbmap          # version 1 map -> old-device.mbmap.json
 ```
 
-`--max-regs N` splits reads into requests of at most N registers, for devices that cannot read 125 at once. Settings not given on the command line come from the map (`baudrate`, `parity`, `unit_id`…), then from defaults. Add `--json` to `read` and `map` for machine-readable output.
+Run `modbench-cli --help` for every command and option. `modbench-cli mcp` serves the same operations over [MCP](https://modelcontextprotocol.io) (stdio), so AI assistants such as Claude Code can read devices; `.mcp.json` registers it for this project.
 
-`modbench-cli mcp` runs the same operations as an [MCP](https://modelcontextprotocol.io) server over stdio (`list_serial_ports`, `read_registers`, `read_map`, `validate_map`). `.mcp.json` registers it for this project, so MCP clients such as Claude Code can use it.
+## Development
 
-A serial port can only be open in one program at a time: stop reading in the app before using the CLI on the same port.
+Requirements: [Rust](https://rustup.rs), Node.js 22+ and the [Tauri prerequisites](https://tauri.app/start/prerequisites/).
 
-## Releases and updates
+```sh
+npm install
+npm run tauri dev       # run the app
+npm run tauri build     # build the installers
+```
 
-Modbench checks GitHub Releases for a newer version when it starts and offers to install it. Updates are signed; the app only installs packages signed with the project's updater key.
+No hardware? `cargo run --example simulator -- <map> 5020` (in `src-tauri`) serves a map over Modbus TCP on port 5020 with changing values.
 
-To publish a release:
+CI runs `npm run format:check && npm run check && npm test` and, in `src-tauri`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`.
 
-1. Bump `version` in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
-2. Commit, then push a tag: `git tag v0.2.0 && git push origin v0.2.0`.
-3. The `Release` workflow builds the Windows (MSI, NSIS) and Linux (AppImage, deb) installers, signs the update packages with the `TAURI_SIGNING_PRIVATE_KEY` secret and publishes them with `latest.json`.
-
-On Linux, in-app updates work for the AppImage; `.deb` installs are updated through the package manager.
+To release, bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, then push a `v*` tag: the Release workflow builds, signs and publishes the installers and the update manifest.
 
 ## License
 
 [MIT](LICENSE)
+
+## Funding
+
+Modbench is free and open source. If it saves you time, you can support its development on Ko-fi:
+
+<a href="https://ko-fi.com/nobrega"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support Modbench on Ko-fi" height="36"></a>

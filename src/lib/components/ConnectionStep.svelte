@@ -1,7 +1,9 @@
 <script lang="ts">
   import { api } from "$lib/api";
+  import { fieldIn, slidePill } from "$lib/motion";
   import { bench } from "$lib/state.svelte";
   import StepCard from "./StepCard.svelte";
+  import Select from "./Select.svelte";
 
   const baudrates = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
   let ports = $state<string[]>([]);
@@ -30,7 +32,12 @@
   <div class="row">
     <div class="field">
       <span>Interface</span>
-      <div class="segmented" role="tablist" aria-label="Connection type">
+      <div
+        class="segmented"
+        role="tablist"
+        aria-label="Connection type"
+        use:slidePill
+      >
         <button
           role="tab"
           aria-selected={serial}
@@ -48,14 +55,16 @@
       </div>
     </div>
     {#if serial}
-      <label class="field port">
+      <label in:fieldIn class="field port">
         <span>Port</span>
         <span class="with-btn">
-          <select class="input" bind:value={bench.serialPort} disabled={locked}>
-            {#if ports.length === 0}<option value="">No ports found</option
-              >{/if}
-            {#each ports as p (p)}<option value={p}>{p}</option>{/each}
-          </select>
+          <Select
+            bind:value={bench.serialPort}
+            disabled={locked}
+            label="Serial port"
+            placeholder="No ports found"
+            options={ports.map((p) => ({ value: p, label: p }))}
+          />
           <button
             class="btn icon"
             title="Search for serial ports again"
@@ -76,43 +85,66 @@
           </button>
         </span>
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Baud rate</span>
-        <select class="input" bind:value={bench.baudrate} disabled={locked}>
-          {#each baudrates as b (b)}<option value={b}>{b}</option>{/each}
-        </select>
+        <Select
+          bind:value={bench.baudrate}
+          disabled={locked}
+          label="Baud rate"
+          options={baudrates.map((b) => ({ value: b, label: String(b) }))}
+        />
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Data bits</span>
-        <select class="input" bind:value={bench.dataBits} disabled={locked}>
-          <option value={8}>8 bits</option>
-          <option value={7}>7 bits</option>
-        </select>
+        <Select
+          bind:value={bench.dataBits}
+          disabled={locked}
+          label="Data bits"
+          options={[
+            { value: 8, label: "8 bits" },
+            { value: 7, label: "7 bits" },
+          ]}
+        />
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Parity</span>
-        <select class="input" bind:value={bench.parity} disabled={locked}>
-          <option value="N">None</option>
-          <option value="E">Even</option>
-          <option value="O">Odd</option>
-        </select>
+        <Select
+          bind:value={bench.parity}
+          disabled={locked}
+          label="Parity"
+          options={[
+            { value: "N", label: "None" },
+            { value: "E", label: "Even" },
+            { value: "O", label: "Odd" },
+          ]}
+        />
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Stop bits</span>
-        <select class="input" bind:value={bench.stopBits} disabled={locked}>
-          <option value={1}>1 stop bit</option>
-          <option value={2}>2 stop bits</option>
-        </select>
+        <Select
+          bind:value={bench.stopBits}
+          disabled={locked}
+          label="Stop bits"
+          options={[
+            { value: 1, label: "1 stop bit" },
+            { value: 2, label: "2 stop bits" },
+          ]}
+        />
       </label>
     {:else}
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Protocol</span>
-        <select class="input" bind:value={bench.transport} disabled={locked}>
-          <option value="tcp">Modbus TCP</option>
-          <option value="rtuovertcp">Modbus RTU over TCP</option>
-        </select>
+        <Select
+          bind:value={bench.transport}
+          disabled={locked}
+          label="Protocol"
+          options={[
+            { value: "tcp", label: "Modbus TCP" },
+            { value: "rtuovertcp", label: "Modbus RTU over TCP" },
+          ]}
+        />
       </label>
-      <label class="field host">
+      <label in:fieldIn class="field host">
         <span>IP address</span>
         <input
           class="input num"
@@ -121,7 +153,7 @@
           spellcheck="false"
         />
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Port</span>
         <input
           class="input num short"
@@ -185,11 +217,11 @@
     align-items: flex-end;
   }
 
-  .row select {
+  .row :global(.select) {
     min-width: 110px;
   }
 
-  .port select {
+  .port :global(.select) {
     min-width: 120px;
   }
 

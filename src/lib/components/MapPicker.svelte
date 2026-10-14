@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { popIn, popOut } from "$lib/motion";
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import { errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
@@ -308,7 +309,13 @@
   {/if}
 
   {#if isOpen}
-    <div class="panel" role="presentation" onkeydown={onKey}>
+    <div
+      class="panel"
+      role="presentation"
+      onkeydown={onKey}
+      in:popIn
+      out:popOut
+    >
       <input
         bind:this={search}
         class="input find"
@@ -452,14 +459,7 @@
     border-radius: 14px;
     background: var(--card);
     box-shadow: var(--e3);
-    animation: drop 0.16s var(--ease);
-  }
-
-  @keyframes drop {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
+    transform-origin: top left;
   }
 
   .find {

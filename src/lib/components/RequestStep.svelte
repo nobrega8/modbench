@@ -1,11 +1,13 @@
 <script lang="ts">
   import { FUNCTION_NAME } from "$lib/format";
+  import { fieldIn, slidePill } from "$lib/motion";
   import { bench } from "$lib/state.svelte";
   import type { ByteOrder } from "$lib/types";
   import IntInput from "./IntInput.svelte";
   import MapPicker from "./MapPicker.svelte";
   import ScanPanel from "./ScanPanel.svelte";
   import StepCard from "./StepCard.svelte";
+  import Select from "./Select.svelte";
 
   const orders: ByteOrder[] = ["ABCD", "CDAB", "BADC", "DCBA"];
   const locked = $derived(bench.running);
@@ -52,7 +54,12 @@
 
     <div class="field">
       <span>Source</span>
-      <div class="segmented" role="radiogroup" aria-label="Source">
+      <div
+        class="segmented"
+        role="radiogroup"
+        aria-label="Source"
+        use:slidePill
+      >
         <button
           role="radio"
           aria-checked={bench.source === "manual"}
@@ -71,22 +78,21 @@
     </div>
 
     {#if bench.source === "manual"}
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Command</span>
-        <select
-          class="input command"
+        <Select
           bind:value={bench.fc}
-          onchange={onFunction}
+          width="250px"
+          label="Command"
           disabled={locked}
-        >
-          {#each Object.entries(FUNCTION_NAME) as [code, name] (code)}
-            <option value={Number(code)}
-              >{name} ({code.padStart(2, "0")})</option
-            >
-          {/each}
-        </select>
+          options={Object.entries(FUNCTION_NAME).map(([code, name]) => ({
+            value: Number(code),
+            label: `${name} (${code.padStart(2, "0")})`,
+          }))}
+          onchange={onFunction}
+        />
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span
           >{bench.fc <= 2 || bench.fc === 5 || bench.fc === 15
             ? "Address"
@@ -101,7 +107,7 @@
           onchange={(n) => (bench.address = n)}
         />
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Quantity</span>
         <IntInput
           value={bench.quantity}
@@ -114,27 +120,29 @@
         />
       </label>
     {:else}
-      <div class="field">
+      <div in:fieldIn class="field">
         <span>Map</span>
         <MapPicker disabled={locked} />
       </div>
-      <label class="field" title="Read every value with another byte order">
+      <label
+        in:fieldIn
+        class="field"
+        title="Read every value with another byte order"
+      >
         <span>Byte order</span>
-        <select
-          class="input"
+        <Select
           value={bench.orderOverride ?? ""}
-          onchange={(e) =>
-            bench.setOrderOverride(
-              (e.currentTarget.value || null) as ByteOrder | null,
-            )}
-        >
-          <option value=""
-            >From map{bench.map
-              ? ` (${bench.map.map.meta.byte_order ?? "ABCD"})`
-              : ""}</option
-          >
-          {#each orders as o (o)}<option value={o}>{o}</option>{/each}
-        </select>
+          label="Byte order"
+          options={[
+            {
+              value: "",
+              label: `From map${bench.map ? ` (${bench.map.map.meta.byte_order ?? "ABCD"})` : ""}`,
+            },
+            ...orders.map((o) => ({ value: o, label: o })),
+          ]}
+          onchange={(v) =>
+            bench.setOrderOverride((v || null) as ByteOrder | null)}
+        />
       </label>
     {/if}
 
@@ -162,13 +170,9 @@
     align-items: flex-end;
   }
 
-  .command {
-    width: 250px;
-  }
-
   .options {
     margin-left: auto;
-    height: 34px;
+    height: 30px;
     display: flex;
     align-items: center;
   }

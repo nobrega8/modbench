@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from "./Select.svelte";
   import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "$lib/api";
   import {
@@ -352,15 +353,13 @@
                   >
                 {/each}
               {:else if reg.enum.length}
-                <select
-                  class="input wide"
+                <Select
                   bind:value={drafts[index]}
-                  aria-label="Value for {reg.name}"
-                >
-                  <option value={undefined} disabled selected>Choose…</option>
-                  {#each reg.enum as [v, l] (v)}<option value={l}>{l}</option
-                    >{/each}
-                </select>
+                  width="260px"
+                  label="Value for {reg.name}"
+                  placeholder="Choose…"
+                  options={reg.enum.map(([, l]) => ({ value: l, label: l }))}
+                />
                 <button
                   class="btn accent"
                   disabled={busy !== null || !drafts[index]}>Write</button
@@ -545,11 +544,6 @@
   .unit {
     width: 44px;
     margin-left: -2px;
-  }
-
-  .wide {
-    min-width: 260px;
-    max-width: 420px;
   }
 
   .dim {

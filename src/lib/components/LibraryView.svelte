@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { popIn, popOut } from "$lib/motion";
   import { open } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
@@ -139,7 +140,7 @@
       ></button
     >
     {#if menuOpen}
-      <div class="menu" role="menu">
+      <div class="menu" role="menu" in:popIn out:popOut>
         <button role="menuitem" onclick={chooseFiles}>
           <span class="item">From a file…</span>
           <span class="sub">A <code>.mbmap</code> file on this computer</span>
@@ -242,7 +243,14 @@
 </div>
 
 {#if bench.libraryFolder}
-  <p class="folder">Stored in <code>{bench.libraryFolder}</code></p>
+  <div class="folder">
+    <button
+      class="btn"
+      title={bench.libraryFolder}
+      onclick={() => api.libraryOpenFolder().catch(() => {})}
+      >Open folder</button
+    >
+  </div>
 {/if}
 
 <style>
@@ -285,14 +293,7 @@
     border-radius: 12px;
     background: var(--card);
     box-shadow: var(--e3);
-    animation: drop 0.16s var(--ease);
-  }
-
-  @keyframes drop {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
+    transform-origin: top right;
   }
 
   .menu button {
@@ -435,8 +436,6 @@
 
   .folder {
     margin: 8px 0 0;
-    font-size: 12px;
-    color: var(--text-3);
   }
 
   code {

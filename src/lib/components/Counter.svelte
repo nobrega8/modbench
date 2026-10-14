@@ -15,7 +15,7 @@
   const lead = $derived(value === 0 ? 6 : 7 - String(value).length);
 </script>
 
-<div class="counter {tone}" class:hot={tone !== "ok" && value > 0}>
+<div class="counter {tone}" class:hot={value > 0}>
   <span class="label">{label}</span>
   <div class="body">
     <span class="lcd" aria-label="{label}: {value}"
@@ -44,10 +44,24 @@
 </div>
 
 <style>
+  /* Each counter carries its colour: green valid, red errors, amber timeouts */
   .counter {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    --tint: var(--fg-rgb);
+  }
+
+  .ok {
+    --tint: 22 150 82;
+  }
+
+  .bad {
+    --tint: var(--alert-rgb);
+  }
+
+  .warn {
+    --tint: 206 146 0;
   }
 
   .label {
@@ -63,14 +77,15 @@
     gap: 4px;
   }
 
-  /* A sunken readout; errors and timeouts turn red only when they count */
+  /* A sunken readout, tinted with the counter's colour; the digits take the
+     colour once it counts */
   .lcd {
     display: inline-flex;
     align-items: center;
-    height: 34px;
+    height: 30px;
     padding: 0 11px;
     border-radius: 9px;
-    background: var(--lcd);
+    background: rgb(var(--tint) / 0.12);
     color: var(--text);
     font-family: var(--mono);
     font-size: 16px;
@@ -79,9 +94,13 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .hot .label,
   .hot .lcd {
-    color: rgb(var(--alert-rgb));
+    color: rgb(var(--tint));
+  }
+
+  .hot.bad .label,
+  .hot.warn .label {
+    color: rgb(var(--tint));
   }
 
   .off {
@@ -91,8 +110,8 @@
   .reset {
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     padding: 0;
     border: 0;
     border-radius: 9px;

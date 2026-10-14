@@ -79,7 +79,7 @@
     display: inline-flex;
     align-items: center;
     gap: 12px;
-    height: 34px;
+    height: 30px;
     padding: 0 11px;
     border-radius: 9px;
     background: var(--lcd);
@@ -107,8 +107,8 @@
   .reset {
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     padding: 0;
     border: 0;
     border-radius: 9px;

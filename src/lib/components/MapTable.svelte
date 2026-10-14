@@ -17,6 +17,7 @@
   import { appliesTo, rangeText, versionText } from "$lib/identity";
   import { diagnosticWhere, type Register } from "$lib/types";
   import AddressFormat from "./AddressFormat.svelte";
+  import Select from "./Select.svelte";
 
   let { open }: { open: OpenMap } = $props();
 
@@ -290,10 +291,14 @@
   />
   <AddressFormat />
   {#if groups.length}
-    <select class="input" bind:value={group} aria-label="Group">
-      <option value="">All groups</option>
-      {#each groups as g (g)}<option value={g}>{g}</option>{/each}
-    </select>
+    <Select
+      bind:value={group}
+      label="Group"
+      options={[
+        { value: "", label: "All groups" },
+        ...groups.map((g) => ({ value: g, label: g })),
+      ]}
+    />
   {/if}
 </div>
 
@@ -471,11 +476,14 @@
                     >
                   {/each}
                 {:else if reg.enum.length}
-                  <select class="input" bind:value={draft}>
-                    {#each reg.enum as [v, l] (v)}<option value={l}
-                        >{l} ({v})</option
-                      >{/each}
-                  </select>
+                  <Select
+                    bind:value={draft}
+                    label="Value for {reg.name}"
+                    options={reg.enum.map(([v, l]) => ({
+                      value: l,
+                      label: `${l} (${v})`,
+                    }))}
+                  />
                   <button class="btn accent" disabled={busy}>Write</button>
                 {:else}
                   <!-- svelte-ignore a11y_autofocus -->
@@ -672,7 +680,7 @@
   }
 
   td {
-    padding: 5px 10px;
+    padding: 3px 10px;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }

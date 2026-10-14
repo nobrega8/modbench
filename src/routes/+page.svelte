@@ -9,6 +9,7 @@
   import LibraryView from "$lib/components/LibraryView.svelte";
   import SettingsView from "$lib/components/SettingsView.svelte";
   import WindowControls from "$lib/components/WindowControls.svelte";
+  import { slidePill, viewIn } from "$lib/motion";
   import { bench, type Page } from "$lib/state.svelte";
   import { settings } from "$lib/settings.svelte";
   import {
@@ -85,7 +86,7 @@
     <span class="brand" data-tauri-drag-region
       ><img src="/favicon.png" alt="" width="20" height="20" />Modbench</span
     >
-    <nav aria-label="Pages">
+    <nav aria-label="Pages" use:slidePill>
       {#each pages as p (p.id)}
         <button
           class:on={bench.page === p.id}
@@ -99,35 +100,37 @@
   </header>
   <UpdateBanner />
   {#if bench.page === "library"}
-    <section class="page"><LibraryView /></section>
+    <section class="page" in:viewIn><LibraryView /></section>
   {:else if bench.page === "settings"}
-    <section class="page"><SettingsView /></section>
+    <section class="page" in:viewIn><SettingsView /></section>
   {:else}
-    <ConnectionStep />
-    <RequestStep />
-    {#if bench.mapError}
-      <section class="map-error" role="alert">
-        <header>
-          <strong
-            >{fileName(bench.mapError.path)} has errors and was not opened.</strong
-          >
-          Fix these lines in the file, then open it again.
-          <button class="btn" onclick={() => (bench.mapError = null)}
-            >Dismiss</button
-          >
-        </header>
-        <ul>
-          {#each bench.mapError.diagnostics as d, i (i)}
-            <li class={d.severity}>
-              <span class="where">{diagnosticWhere(d)}</span>
-              <span>{d.message}</span>
-              <span class="code">{d.code}</span>
-            </li>
-          {/each}
-        </ul>
-      </section>
-    {/if}
-    <TestStep />
+    <div class="main" in:viewIn>
+      <ConnectionStep />
+      <RequestStep />
+      {#if bench.mapError}
+        <section class="map-error" role="alert">
+          <header>
+            <strong
+              >{fileName(bench.mapError.path)} has errors and was not opened.</strong
+            >
+            Fix these lines in the file, then open it again.
+            <button class="btn" onclick={() => (bench.mapError = null)}
+              >Dismiss</button
+            >
+          </header>
+          <ul>
+            {#each bench.mapError.diagnostics as d, i (i)}
+              <li class={d.severity}>
+                <span class="where">{diagnosticWhere(d)}</span>
+                <span>{d.message}</span>
+                <span class="code">{d.code}</span>
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+      <TestStep />
+    </div>
   {/if}
 </div>
 
@@ -187,10 +190,22 @@
     background: rgb(var(--fg-rgb) / 0.05);
   }
 
+  /* The selected page: the sliding pill (lib/motion.ts) draws its card */
   .topbar nav button.on {
     color: var(--text);
-    background: var(--card);
-    box-shadow: var(--e1);
+    background: none;
+  }
+
+  .topbar nav :global(.pill) {
+    border-radius: 8px;
+  }
+
+  .main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .page {
