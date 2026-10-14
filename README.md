@@ -7,6 +7,7 @@
 [![Downloads](https://img.shields.io/github/downloads/nobrega8/modbench/total)](https://github.com/nobrega8/modbench/releases)
 [![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-informational)](#download)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri-24C8DB?logo=tauri&logoColor=white)](https://tauri.app)
+[![Supports .mbmap](https://img.shields.io/badge/supports-.mbmap-0A7EA4)](https://github.com/nobrega8/mbmap-library)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A lightweight Modbus TCP/RTU client for Windows and Linux. Test any address by hand, like a classic Modbus tester, or open a device map and read every register by name, already scaled, with units and labels.
