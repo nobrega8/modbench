@@ -3,16 +3,35 @@
 
   // One request per website for the whole session; the backend also caches
   // icons on disk, so this only saves round trips.
-  const icons = new Map<string, Promise<string | null>>();
+  const icons = new Map<
+    string,
+    { promise: Promise<string | null>; retryAt: number }
+  >();
+  const retryMissingAfter = 60 * 60 * 1000;
 
   function iconFor(website: string): Promise<string | null> {
     const key = website.trim().toLowerCase();
-    let p = icons.get(key);
-    if (!p) {
-      p = api.vendorIcon(key).catch(() => null);
-      icons.set(key, p);
+    let cached = icons.get(key);
+    if (cached?.retryAt && cached.retryAt <= Date.now()) {
+      icons.delete(key);
+      cached = undefined;
     }
-    return p;
+    if (!cached) {
+      const entry: { promise: Promise<string | null>; retryAt: number } = {
+        promise: Promise.resolve(null),
+        retryAt: 0,
+      };
+      entry.promise = api
+        .vendorIcon(key)
+        .catch(() => null)
+        .then((icon) => {
+          if (!icon) entry.retryAt = Date.now() + retryMissingAfter;
+          return icon;
+        });
+      icons.set(key, entry);
+      cached = entry;
+    }
+    return cached.promise;
   }
 </script>
 

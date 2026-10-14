@@ -11,8 +11,9 @@ const LIBRARY_RAW: &str = "https://raw.githubusercontent.com/nobrega8/mbmap-libr
 const MAX_MAP_BYTES: usize = 4 * 1024 * 1024;
 const MAX_PAGE_BYTES: usize = 1024 * 1024;
 const MAX_ICON_BYTES: usize = 512 * 1024;
-/// A site without a usable icon is asked again after this long.
-const RETRY_MISSING: Duration = Duration::from_secs(7 * 24 * 3600);
+/// Retry missing icons regularly: a network timeout or temporary block should
+/// not leave a vendor without an icon for a week.
+const RETRY_MISSING: Duration = Duration::from_secs(60 * 60);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OnlineEntry {
@@ -311,17 +312,29 @@ pub async fn vendor_icon(cache_dir: &Path, website: &str) -> Option<String> {
 
 async fn fetch_icon(home: &Url) -> Option<(&'static str, Vec<u8>)> {
     let client = client().ok()?;
-    if let Some(found) = icon_from_site(&client, home).await {
-        return Some(found);
+    for origin in site_variants(home) {
+        if let Some(found) = icon_from_site(&client, &origin).await {
+            return Some(found);
+        }
     }
-    // Some sites only answer on www. (e.g. daikin.com)
-    let host = home.host_str()?;
-    if host.starts_with("www.") {
-        return None;
+    None
+}
+
+/// Try both canonical host forms because some vendor domains only serve one.
+fn site_variants(home: &Url) -> Vec<Url> {
+    let mut origins = vec![home.clone()];
+    let Some(host) = home.host_str() else {
+        return origins;
+    };
+    let alternate = host
+        .strip_prefix("www.")
+        .map(str::to_owned)
+        .unwrap_or_else(|| format!("www.{host}"));
+    let mut url = home.clone();
+    if url.set_host(Some(&alternate)).is_ok() && url != *home {
+        origins.push(url);
     }
-    let mut www = home.clone();
-    www.set_host(Some(&format!("www.{host}"))).ok()?;
-    icon_from_site(&client, &www).await
+    origins
 }
 
 async fn icon_from_site(client: &Client, home: &Url) -> Option<(&'static str, Vec<u8>)> {
@@ -336,10 +349,17 @@ async fn icon_from_site(client: &Client, home: &Url) -> Option<(&'static str, Ve
                 .filter_map(|h| page_url.join(h).ok()),
         );
     }
-    if let Ok(ico) = home.join("/favicon.ico") {
-        candidates.push(ico);
+    for path in [
+        "/favicon.ico",
+        "/favicon.png",
+        "/favicon.svg",
+        "/apple-touch-icon.png",
+    ] {
+        if let Ok(url) = home.join(path) {
+            candidates.push(url);
+        }
     }
-    for url in candidates.into_iter().take(4) {
+    for url in candidates.into_iter().take(8) {
         if !matches!(url.scheme(), "http" | "https") {
             continue;
         }
@@ -379,6 +399,27 @@ mod tests {
         assert_eq!(
             (host.as_str(), home.as_str()),
             ("www.daikin.com", "http://www.daikin.com/")
+        );
+    }
+
+    #[test]
+    fn site_variants_try_www_and_bare_hosts() {
+        let bare = Url::parse("https://china-meters.com/").unwrap();
+        assert_eq!(
+            site_variants(&bare)
+                .iter()
+                .map(Url::as_str)
+                .collect::<Vec<_>>(),
+            ["https://china-meters.com/", "https://www.china-meters.com/"]
+        );
+
+        let www = Url::parse("https://www.china-meters.com/").unwrap();
+        assert_eq!(
+            site_variants(&www)
+                .iter()
+                .map(Url::as_str)
+                .collect::<Vec<_>>(),
+            ["https://www.china-meters.com/", "https://china-meters.com/"]
         );
     }
 
