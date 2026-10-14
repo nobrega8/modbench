@@ -188,6 +188,31 @@ async fn read_only_mode_blocks_writes_but_not_reads() {
 }
 
 #[tokio::test]
+async fn long_reads_are_split_into_smaller_requests() {
+    let device = FakeDevice::default();
+    device
+        .holding
+        .lock()
+        .unwrap()
+        .extend((0..50).map(|a| (a, a * 10)));
+    let mut s = Session::connect(&config(start_device(device).await), None)
+        .await
+        .unwrap();
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let seen = requests.clone();
+    s.set_logger(Arc::new(move |e| {
+        seen.lock().unwrap().push((e.address, e.count))
+    }));
+
+    let data = s.read_chunked(Area::Holding, 3, 20, 8).await.unwrap();
+    assert_eq!(data, RawData::Registers((3..23).map(|a| a * 10).collect()));
+    assert_eq!(*requests.lock().unwrap(), vec![(3, 8), (11, 8), (19, 4)]);
+
+    // A failing part fails the read.
+    assert!(s.read_chunked(Area::Holding, 90, 20, 8).await.is_err());
+}
+
+#[tokio::test]
 async fn device_exceptions_are_reported() {
     let mut s = Session::connect(&config(start_device(FakeDevice::default()).await), None)
         .await

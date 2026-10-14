@@ -48,6 +48,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Three-step workflow**: connection (serial RTU, Modbus TCP or RTU over TCP), request (any function code, or a device map), test (Start/Stop, valid/error/timeout counters, last/min/average/max response time).
 - **Device maps (`.mbmap`)**: plain-text, CSV-based files that describe a device and all of its registers: types, byte order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps.
 - **Write from the map**: writable registers and control commands are listed with the right control for each type. A register can declare the values it accepts (`write_min`, `write_max`) and Modbench refuses anything outside them.
+- **Max registers per request**: for devices that cannot read 125 registers at once. Longer manual reads are split into several requests, and map reads use the smaller of this and the map's `@max_read_registers`.
 - **Read-only mode**: one switch in Settings blocks every write, also on a connection that is already open. The backend refuses the write, so nothing reaches the device.
 - **Find unit IDs**: *Find…* next to Device asks each unit ID for one register and lists the ones that answer. Read-only.
 - **Value templates**: save the values read from a device's writable registers to a `.mbtpl` text file, and write them to another device of the same model. Only values that differ are written by default, and the last apply can be undone.
@@ -64,7 +65,7 @@ Everything is stored on this computer, in the app's webview storage, and nothing
 
 | What | Remembered for | Notes |
 |---|---|---|
-| Connection fields (port, baud rate, address, unit ID, timing) | the last test | Settings, "Remember the last connection" |
+| Connection fields (port, baud rate, address, unit ID, timing, max registers per request) | the last test | Settings, "Remember the last connection" |
 | Registers switched off, byte order override, Loop | one **device**: the map file, the connection endpoint and the unit ID | Settings, "Remember register choices for each device" |
 | Theme, confirmations, read-only mode, log size, update check | the app | Settings |
 
@@ -117,7 +118,7 @@ cargo run --bin modbench-cli -- scan --rtu COM3 --baud 9600 --from 1 --to 32 --t
 cargo run --bin modbench-cli -- validate path/to/device.mbmap
 ```
 
-Settings not given on the command line come from the map (`@baudrate`, `@parity`, `@unit_id`…), then from defaults. Add `--json` to `read` and `map` for machine-readable output.
+`--max-regs N` splits reads into requests of at most N registers, for devices that cannot read 125 at once. Settings not given on the command line come from the map (`@baudrate`, `@parity`, `@unit_id`…), then from defaults. Add `--json` to `read` and `map` for machine-readable output.
 
 `modbench-cli mcp` runs the same operations as an [MCP](https://modelcontextprotocol.io) server over stdio (`list_serial_ports`, `read_registers`, `read_map`, `validate_map`). `.mcp.json` registers it for this project, so MCP clients such as Claude Code can use it.
 

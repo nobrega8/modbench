@@ -158,10 +158,14 @@ pub async fn read_raw(
     area: Area,
     address: u16,
     count: u16,
+    max_per_request: Option<u16>,
 ) -> Result<RawData, ModbusError> {
     let mut slot = state.session.lock().await;
     let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
-    session.read(area, address, count).await
+    match max_per_request {
+        Some(max) => session.read_chunked(area, address, count, max).await,
+        None => session.read(area, address, count).await,
+    }
 }
 
 #[tauri::command]

@@ -64,6 +64,7 @@ const CONNECTION_FIELDS = [
   "stopBits",
   "delayMs",
   "timeoutMs",
+  "maxRegisters",
   "unitId",
 ] as const;
 const RAW_LIMIT = 200;
@@ -84,6 +85,8 @@ class Bench {
   stopBits = $state(1);
   delayMs = $state(100);
   timeoutMs = $state(1000);
+  /** Largest register block per read request; longer reads are split. */
+  maxRegisters = $state(125);
 
   // Step 2 — request
   unitId = $state(1);
@@ -409,10 +412,12 @@ This writes to the device.`,
   private async sendOnce() {
     try {
       if (this.isRead) {
+        const area = READ_AREA[this.fc];
         const data = await api.readRaw(
-          READ_AREA[this.fc],
+          area,
           this.address,
           this.quantity,
+          area === "coil" || area === "discrete" ? null : this.maxRegisters,
         );
         this.previous =
           this.read?.address === this.address ? this.read.data : null;
@@ -488,7 +493,7 @@ This writes to the device.`,
       interval_ms: 0,
       delay_ms: this.delayMs,
       limits: {
-        max_registers: m.max_read_registers ?? 125,
+        max_registers: Math.min(m.max_read_registers ?? 125, this.maxRegisters),
         max_bits: m.max_read_bits ?? 2000,
         max_gap: 0,
       },

@@ -318,6 +318,42 @@ impl Session {
         Ok(data)
     }
 
+    /// Reads `count` addresses in requests of at most `max` each, for devices
+    /// that cannot answer a full-size read. The parts are joined in order;
+    /// the first part that fails fails the whole read.
+    pub async fn read_chunked(
+        &mut self,
+        area: Area,
+        address: u16,
+        count: u16,
+        max: u16,
+    ) -> Result<RawData, ModbusError> {
+        let max = max.max(1);
+        if count <= max {
+            return self.read(area, address, count).await;
+        }
+        if u32::from(address) + u32::from(count) > 0x1_0000 {
+            return Err(ModbusError::Invalid(format!(
+                "{count} addresses from {address} go past 65535"
+            )));
+        }
+        let mut data = match area.is_bit() {
+            true => RawData::Bits(Vec::with_capacity(count.into())),
+            false => RawData::Registers(Vec::with_capacity(count.into())),
+        };
+        let mut done = 0;
+        while done < count {
+            let n = max.min(count - done);
+            match (&mut data, self.read(area, address + done, n).await?) {
+                (RawData::Bits(all), RawData::Bits(part)) => all.extend(part),
+                (RawData::Registers(all), RawData::Registers(part)) => all.extend(part),
+                _ => unreachable!("one area returns one kind of data"),
+            }
+            done += n;
+        }
+        Ok(data)
+    }
+
     /// Writes registers: FC06 for a single register, FC16 otherwise.
     pub async fn write_registers(
         &mut self,

@@ -114,6 +114,10 @@ struct Conn {
     #[arg(long, default_value_t = 50)]
     #[serde(default = "default_delay")]
     delay: u64,
+    /// Largest number of registers per read request (default 125, or the
+    /// map's); longer reads are split
+    #[arg(long)]
+    max_regs: Option<u16>,
 }
 
 fn default_timeout() -> u64 {
@@ -252,7 +256,7 @@ async fn read_registers(
         .await
         .map_err(|e| format!("could not connect ({}): {e}", Conn::describe(&cfg)))?;
     let data = session
-        .read(area, address, count)
+        .read_chunked(area, address, count, conn.max_regs.unwrap_or(125))
         .await
         .map_err(|e| e.to_string());
     let _ = session.disconnect().await;
@@ -380,7 +384,9 @@ async fn read_map(
         interval_ms: 0,
         delay_ms: conn.delay,
         limits: PlanLimits {
-            max_registers: map.meta.max_read_registers(),
+            max_registers: conn.max_regs.map_or(map.meta.max_read_registers(), |n| {
+                n.min(map.meta.max_read_registers())
+            }),
             max_bits: map.meta.max_read_bits(),
             max_gap: 0,
         },
@@ -505,7 +511,8 @@ fn conn_schema() -> Json {
         "stop_bits": {"type": "integer"},
         "unit": {"type": "integer", "description": "Unit / slave ID"},
         "timeout": {"type": "integer", "description": "Response timeout, ms (default 1000)"},
-        "delay": {"type": "integer", "description": "Pause between requests, ms (default 50)"}
+        "delay": {"type": "integer", "description": "Pause between requests, ms (default 50)"},
+        "max_regs": {"type": "integer", "description": "Largest number of registers per read request; longer reads are split"}
     })
 }
 

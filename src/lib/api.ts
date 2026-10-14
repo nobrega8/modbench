@@ -26,8 +26,12 @@ export const api = {
   connect: (config: ConnectionConfig) => invoke<void>("connect", { config }),
   disconnect: () => invoke<void>("disconnect"),
   setReadOnly: (on: boolean) => invoke<void>("set_read_only", { on }),
-  readRaw: (area: Area, address: number, count: number) =>
-    invoke<RawData>("read_raw", { area, address, count }),
+  readRaw: (
+    area: Area,
+    address: number,
+    count: number,
+    maxPerRequest: number | null = null,
+  ) => invoke<RawData>("read_raw", { area, address, count, maxPerRequest }),
   writeRegisters: (address: number, words: number[]) =>
     invoke<void>("write_registers", { address, words }),
   writeCoils: (address: number, bits: boolean[]) =>
