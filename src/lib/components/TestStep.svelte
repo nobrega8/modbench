@@ -3,6 +3,7 @@
   import { settings } from "$lib/settings.svelte";
   import { bench, type Tab } from "$lib/state.svelte";
   import ChartView from "./ChartView.svelte";
+  import Icon, { type IconName } from "./Icon.svelte";
   import Counter from "./Counter.svelte";
   import LogView from "./LogView.svelte";
   import MapTable from "./MapTable.svelte";
@@ -13,6 +14,15 @@
   import TimeStat from "./TimeStat.svelte";
   import WriteGrid from "./WriteGrid.svelte";
 
+  const TAB_ICON: Record<Tab, IconName> = {
+    map: "map",
+    chart: "chart",
+    registers: "registers",
+    write: "write",
+    raw: "raw",
+    log: "log",
+  };
+
   const tabs = $derived([
     ...(bench.source === "map"
       ? [
@@ -22,8 +32,8 @@
             label: `Chart${bench.chartSeries.length ? ` (${bench.chartSeries.length})` : ""}`,
           },
         ]
-      : []),
-    { id: "registers", label: "Read registers" },
+      : // A map reads its own registers: the raw grid is for manual reads.
+        [{ id: "registers", label: "Read registers" }]),
     { id: "write", label: "Write values" },
     { id: "raw", label: "Raw data" },
     {
@@ -147,7 +157,8 @@
         role="tab"
         aria-selected={bench.tab === t.id}
         class:on={bench.tab === t.id}
-        onclick={() => (bench.tab = t.id)}>{t.label}</button
+        onclick={() => (bench.tab = t.id)}
+        ><Icon name={TAB_ICON[t.id]} size={14} />{t.label}</button
       >
     {/each}
   </div>
@@ -332,6 +343,12 @@
 
   .bad {
     color: var(--bad);
+  }
+
+  .tabs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .tabs {

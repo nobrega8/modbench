@@ -1,5 +1,6 @@
 <script lang="ts">
   import { viewIn } from "$lib/motion";
+  import Icon from "./Icon.svelte";
   import { sim } from "$lib/simulator.svelte";
   import { bench, type ToolId } from "$lib/state.svelte";
   import AddressScanTool from "./tools/AddressScanTool.svelte";
@@ -92,6 +93,7 @@
           aria-current={bench.tool === t.id ? "page" : undefined}
           onclick={() => (bench.tool = t.id)}
         >
+          <span class="glyph"><Icon name={t.id} size={16} /></span>
           <span class="name"
             >{t.name}{#if busy(t.id)}<span class="dot" aria-hidden="true"
               ></span>{/if}</span
@@ -130,7 +132,7 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 244px 1fr;
     gap: 22px;
   }
 
@@ -150,10 +152,11 @@
   }
 
   nav button {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    column-gap: 10px;
+    row-gap: 1px;
+    align-items: center;
     padding: 7px 10px;
     border: 0;
     border-radius: 9px;
@@ -178,7 +181,19 @@
     font-weight: 500;
   }
 
+  .glyph {
+    grid-row: span 2;
+    align-self: start;
+    margin-top: 2px;
+    color: var(--text-2);
+  }
+
+  nav button.on .glyph {
+    color: var(--text);
+  }
+
   .hint {
+    grid-column: 2;
     font-size: 12px;
     color: var(--text-3);
   }

@@ -9,6 +9,7 @@
   import LibraryView from "$lib/components/LibraryView.svelte";
   import SettingsView from "$lib/components/SettingsView.svelte";
   import ToolsView from "$lib/components/ToolsView.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import WindowControls from "$lib/components/WindowControls.svelte";
   import { slidePill, viewIn } from "$lib/motion";
   import { bench, type Page } from "$lib/state.svelte";
@@ -104,7 +105,8 @@
         <button
           class:on={bench.page === p.id}
           aria-current={bench.page === p.id ? "page" : undefined}
-          onclick={() => (bench.page = p.id)}>{p.label}</button
+          onclick={() => (bench.page = p.id)}
+          ><Icon name={p.id} />{p.label}</button
         >
       {/each}
     </nav>
@@ -192,6 +194,9 @@
   }
 
   .topbar nav button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     height: 30px;
     padding: 0 14px;
     border: 0;
