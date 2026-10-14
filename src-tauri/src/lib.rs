@@ -54,6 +54,7 @@ pub fn run() {
             commands::append_text,
             commands::read_text,
             commands::scan_units,
+            commands::scan_serial,
             commands::cancel_scan,
             commands::startup_file,
             commands::library_folder,

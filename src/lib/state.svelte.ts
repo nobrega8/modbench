@@ -42,6 +42,9 @@ import type {
   PollCycle,
   RawData,
   ScanHit,
+  SerialHit,
+  SerialProgress,
+  SerialScan,
   TrafficEntry,
 } from "./types";
 
@@ -130,6 +133,9 @@ class Bench {
   scanUnit = $state<number | null>(null);
   scanHits = $state.raw<ScanHit[] | null>(null);
   scanError = $state<string | null>(null);
+  /** Serial settings scan: where it is, and what answered. */
+  serialProgress = $state.raw<SerialProgress | null>(null);
+  serialHits = $state.raw<SerialHit[] | null>(null);
 
   // Step 3 — test
   running = $state(false);
@@ -601,6 +607,46 @@ This writes to the device.`,
       this.scanning = false;
       this.scanUnit = null;
     }
+  }
+
+  /**
+   * Tries combinations of baud rate, parity and stop bits on the serial port
+   * of step 1, asking each unit ID for one register. Reads only.
+   */
+  async scanSerial(
+    scan: Omit<SerialScan, "port" | "data_bits">,
+  ): Promise<void> {
+    if (this.running || this.scanning) return;
+    this.scanning = true;
+    this.serialHits = null;
+    this.scanError = null;
+    this.serialProgress = null;
+    try {
+      await this.close();
+      this.serialHits = await api.scanSerial({
+        ...scan,
+        port: this.serialPort,
+        data_bits: this.dataBits,
+      });
+    } catch (e) {
+      this.scanError = errorText(e);
+    } finally {
+      this.scanning = false;
+      this.serialProgress = null;
+    }
+  }
+
+  onSerialProgress(p: SerialProgress) {
+    this.serialProgress = p;
+  }
+
+  /** Uses a serial setting found by a scan. */
+  useSerial(hit: SerialHit) {
+    this.baudrate = hit.baudrate;
+    this.parity = hit.parity;
+    this.dataBits = hit.data_bits;
+    this.stopBits = hit.stop_bits;
+    this.unitId = hit.unit;
   }
 
   cancelScan() {

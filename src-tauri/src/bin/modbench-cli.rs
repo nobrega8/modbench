@@ -74,6 +74,42 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Find the baud rate, parity and stop bits of a serial device
+    ScanSerial {
+        /// Serial port, e.g. COM3 or /dev/ttyUSB0
+        #[arg(long)]
+        rtu: String,
+        /// Baud rates to try, in order
+        #[arg(long, value_delimiter = ',', default_value = "9600,19200,38400,115200")]
+        bauds: Vec<u32>,
+        /// Parities to try, in order: letters from N, E, O
+        #[arg(long, default_value = "ENO")]
+        parities: String,
+        /// Stop bits to try, in order
+        #[arg(long, value_delimiter = ',', default_value = "1,2")]
+        stop_bits: Vec<u8>,
+        /// First unit ID to ask
+        #[arg(long, default_value_t = 1)]
+        from: u8,
+        /// Last unit ID to ask
+        #[arg(long, default_value_t = 1)]
+        to: u8,
+        /// Area of the register to ask for: holding or input
+        #[arg(long, default_value = "holding")]
+        area: String,
+        /// Address of the register to ask for
+        #[arg(long, default_value = "0")]
+        address: String,
+        /// How long to wait for each answer, in milliseconds
+        #[arg(long, default_value_t = 200)]
+        timeout: u64,
+        /// Stop at the first setting that gets an answer
+        #[arg(long)]
+        first: bool,
+        /// Print JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Check a .mbmap file against the spec
     Validate { map: String },
     /// Run as an MCP server over stdio
@@ -715,6 +751,74 @@ async fn run(cli: Cli) -> Result<(), String> {
                 println!("{}", Conn::describe(&cfg));
                 for h in &hits {
                     println!("  unit {:>3}  {}", h.unit, h.response);
+                }
+            }
+        }
+        Command::ScanSerial {
+            rtu,
+            bauds,
+            parities,
+            stop_bits,
+            from,
+            to,
+            area,
+            address,
+            timeout,
+            first,
+            json,
+        } => {
+            let parities = parities
+                .to_uppercase()
+                .chars()
+                .map(|c| match c {
+                    'N' => Ok(Parity::N),
+                    'E' => Ok(Parity::E),
+                    'O' => Ok(Parity::O),
+                    c => Err(format!("parity must be N, E or O, not {c}")),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let scan = modbus::SerialScan {
+                port: rtu.clone(),
+                baudrates: bauds,
+                parities,
+                stop_bits,
+                data_bits: 8,
+                from,
+                to,
+                area: parse_area(&area)?,
+                address: parse_int(&address)?,
+                timeout_ms: timeout,
+                stop_at_first: first,
+            };
+            let cancel = std::sync::atomic::AtomicBool::new(false);
+            let hits = modbus::scan_serial(&scan, &cancel, |p| {
+                if !json {
+                    eprint!(
+                        "\r{} 8{:?}{} unit {:>3}  ({}/{})   ",
+                        p.baudrate,
+                        p.parity,
+                        p.stop_bits,
+                        p.unit,
+                        p.done + 1,
+                        p.total
+                    );
+                }
+            })
+            .await
+            .map_err(|e| format!("{rtu}: {e}"))?;
+            if !json {
+                eprintln!();
+            }
+            if json {
+                println!("{}", serde_json::to_string_pretty(&hits).unwrap());
+            } else if hits.is_empty() {
+                println!("{rtu}: no setting got an answer");
+            } else {
+                for h in &hits {
+                    println!(
+                        "{rtu} {} {}{:?}{}  unit {:>3}  {}",
+                        h.baudrate, h.data_bits, h.parity, h.stop_bits, h.unit, h.response
+                    );
                 }
             }
         }

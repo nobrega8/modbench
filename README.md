@@ -51,6 +51,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Max registers per request**: for devices that cannot read 125 registers at once. Longer manual reads are split into several requests, and map reads use the smaller of this and the map's `@max_read_registers`.
 - **Read-only mode**: one switch in Settings blocks every write, also on a connection that is already open. The backend refuses the write, so nothing reaches the device.
 - **Find unit IDs**: *Find…* next to Device asks each unit ID for one register and lists the ones that answer. Read-only.
+- **Find serial settings**: on a serial port, *Find… → Serial settings* tries each baud rate, parity and stop bits and asks for one register. Only frames with a valid CRC count, so line noise is not taken for a device. *Use* fills in step 1. Read-only.
 - **Value templates**: save the values read from a device's writable registers to a `.mbtpl` text file, and write them to another device of the same model. Only values that differ are written by default, and the last apply can be undone.
 - **Reference checks**: a map can name registers with a known value; Modbench shows whether they match, which helps spot a wrong address, byte order or type.
 - **Remembers each device**: the registers you switch off, the byte order override and Loop come back for the same map on the same connection and unit ID (see below).
@@ -119,6 +120,7 @@ cargo run --bin modbench-cli -- read --tcp 192.168.1.10 holding 0x0405 1
 cargo run --bin modbench-cli -- read --rtu COM3 --baud 9600 --stop-bits 2 --unit 18 holding 1029 4
 cargo run --bin modbench-cli -- map --rtu COM3 --unit 18 path/to/device.mbmap --filter voltage
 cargo run --bin modbench-cli -- scan --rtu COM3 --baud 9600 --from 1 --to 32 --timeout 200
+cargo run --bin modbench-cli -- scan-serial --rtu COM3 --bauds 9600,19200 --parities EN --from 1 --to 5 --first
 cargo run --bin modbench-cli -- validate path/to/device.mbmap
 ```
 

@@ -554,6 +554,28 @@ pub async fn scan_units(
         .await)
 }
 
+/// Looks for the line settings of a serial device. Progress is sent to the
+/// UI as `serial-scan-progress` events; `cancel_scan` stops it.
+#[tauri::command]
+pub async fn scan_serial(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    scan: modbus::SerialScan,
+) -> Result<Vec<modbus::SerialHit>, ModbusError> {
+    state.stop_poller();
+    // The port must be free: close any connection the app holds.
+    if let Some(old) = state.session.lock().await.take() {
+        let _ = old.disconnect().await;
+    }
+    state
+        .scan_cancel
+        .store(false, std::sync::atomic::Ordering::Relaxed);
+    modbus::scan_serial(&scan, &state.scan_cancel, |p| {
+        let _ = app.emit("serial-scan-progress", p);
+    })
+    .await
+}
+
 /// Stops a running scan after the unit ID being asked.
 #[tauri::command]
 pub fn cancel_scan(state: State<'_, AppState>) {

@@ -15,6 +15,8 @@ import type {
   RawData,
   Register,
   ScanHit,
+  SerialHit,
+  SerialScan,
   TypedAddress,
   Value,
 } from "./types";
@@ -74,6 +76,8 @@ export const api = {
   startupFile: () => invoke<string | null>("startup_file"),
   scanUnits: (from: number, to: number, timeoutMs: number) =>
     invoke<ScanHit[]>("scan_units", { from, to, timeoutMs }),
+  scanSerial: (scan: SerialScan) =>
+    invoke<SerialHit[]>("scan_serial", { scan }),
   cancelScan: () => invoke<void>("cancel_scan"),
   readText: (path: string) => invoke<string>("read_text", { path }),
   saveText: (path: string, text: string) =>
