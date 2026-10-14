@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::codec::{ByteOrder, DataType, Value};
+use crate::firmware;
 use crate::modbus::Parity;
 use crate::planner::Area;
 
@@ -75,6 +76,48 @@ impl Access {
     }
 }
 
+/// What an identity register tells about the device (spec section 4.7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    Model,
+    Firmware,
+    Serial,
+}
+
+impl Role {
+    fn parse(text: &str) -> Option<Role> {
+        match text {
+            "model" => Some(Role::Model),
+            "firmware" => Some(Role::Firmware),
+            "serial" => Some(Role::Serial),
+            _ => None,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Role::Model => "model",
+            Role::Firmware => "firmware",
+            Role::Serial => "serial",
+        }
+    }
+}
+
+/// A document the map was built or checked from (spec section 3.3).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Source {
+    pub title: String,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub date: Option<String>,
+    #[serde(default)]
+    pub url: Option<String>,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
 /// File metadata. Optional values keep whether they were present, so a map
 /// is written back as it was read; the accessors apply the spec defaults.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -105,6 +148,21 @@ pub struct Meta {
     /// Free notes about the whole file (`notes`; `#` lines before the v1 header).
     #[serde(default)]
     pub notes: Vec<String>,
+    /// Every model name or code the map applies to; empty means `model` alone.
+    #[serde(default)]
+    pub models: Vec<String>,
+    /// Revision of the map's content, and its date (spec section 3.1).
+    #[serde(default)]
+    pub revision: Option<u32>,
+    #[serde(default)]
+    pub revised: Option<String>,
+    /// Firmware range the map applies to, as written (spec section 3.2).
+    #[serde(default)]
+    pub firmware_min: Option<String>,
+    #[serde(default)]
+    pub firmware_max: Option<String>,
+    #[serde(default)]
+    pub sources: Vec<Source>,
 }
 
 impl Meta {
@@ -140,6 +198,25 @@ impl Meta {
     }
     pub fn max_read_bits(&self) -> u16 {
         self.max_read_bits.unwrap_or(2000)
+    }
+    /// The firmware range the whole map applies to.
+    pub fn firmware_range(&self) -> firmware::Range {
+        range_of(&self.firmware_min, &self.firmware_max)
+    }
+    /// The model names a device may report: `models`, or `model` alone.
+    pub fn model_names(&self) -> Vec<&str> {
+        if self.models.is_empty() {
+            vec![self.model.as_str()]
+        } else {
+            self.models.iter().map(String::as_str).collect()
+        }
+    }
+}
+
+fn range_of(min: &Option<String>, max: &Option<String>) -> firmware::Range {
+    firmware::Range {
+        min: min.as_deref().and_then(firmware::parse),
+        max: max.as_deref().and_then(firmware::parse),
     }
 }
 
@@ -187,9 +264,22 @@ pub struct Register {
     /// Free note about this register (`comment`; `#` lines above a v1 row).
     #[serde(default)]
     pub comment: String,
+    /// Firmware range that has this register, as written (spec section 3.2).
+    #[serde(default)]
+    pub firmware_min: Option<String>,
+    #[serde(default)]
+    pub firmware_max: Option<String>,
+    /// What this register tells about the device, if anything.
+    #[serde(default)]
+    pub role: Option<Role>,
 }
 
 impl Register {
+    /// The firmware range that has this register.
+    pub fn firmware_range(&self) -> firmware::Range {
+        range_of(&self.firmware_min, &self.firmware_max)
+    }
+
     /// Registers (or bits) this value takes.
     pub fn count(&self) -> u16 {
         match self.ty.register_count() {
@@ -762,7 +852,7 @@ pub fn parse(bytes: &[u8]) -> Parsed {
     } else {
         (1, read_v1(text, &mut ck))
     };
-    let map = read.and_then(|(meta, rows)| finish(&mut ck, meta, rows));
+    let map = read.and_then(|(meta, rows)| finish(&mut ck, meta, rows, version));
     if version == 2 {
         // Version 2 names this code after keys, not CSV cells.
         for d in &mut ck.out {
@@ -979,16 +1069,20 @@ fn read_v1(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> {
 }
 
 /// Checks the rows of either version and builds the map, if nothing is wrong.
-fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>) -> Option<DeviceMap> {
+fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>, version: u8) -> Option<DeviceMap> {
     if rows.is_empty() {
         ck.warn(None, "no-rows", "no register rows".into());
     }
 
     let base = i64::from(meta.address_base());
-    let mut names: HashMap<String, Loc> = HashMap::new();
+    // Registers of different firmware versions may share a name.
+    let mut names: HashMap<String, Vec<(Loc, firmware::Range)>> = HashMap::new();
     // (area, start, end, row index, name) for the overlap check
     let mut spans: Vec<(&'static str, i64, i64, usize, String)> = Vec::new();
     let mut locs: Vec<Loc> = Vec::new();
+    let mut ranges: Vec<firmware::Range> = Vec::new();
+    let file_range = meta.firmware_range();
+    let mut roles_seen: Vec<Role> = Vec::new();
     let mut registers = Vec::new();
     // (location, register index) of rows that name a scale factor register
     let mut scaled: Vec<(Loc, usize)> = Vec::new();
@@ -1021,15 +1115,33 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>) -> Option<DeviceMap> 
         }
 
         let name = cell("name").to_string();
-        if let Some(first) = names.get(&name) {
+        let (firmware_min, firmware_max, fw) = if version == 2 {
+            check_firmware(
+                ck,
+                line,
+                cell("firmware_min"),
+                cell("firmware_max"),
+                &file_range,
+            )
+        } else {
+            (None, None, firmware::Range::default())
+        };
+        ranges.resize(row_index + 1, firmware::Range::default());
+        ranges[row_index] = fw.clone();
+        let same = names
+            .get(&name)
+            .and_then(|seen| seen.iter().find(|(_, other)| other.meets(&fw)));
+        if let Some((first, _)) = same {
             ck.warn(
                 line,
                 "duplicate-name",
                 format!("name {name:?} already used at {}", first.describe()),
             );
-        } else {
-            names.insert(name.clone(), at.clone());
         }
+        names
+            .entry(name.clone())
+            .or_default()
+            .push((at.clone(), fw));
 
         let Some(area) = parse_area(cell("area")) else {
             ck.error(line, "bad-area", format!("unknown area {:?}", cell("area")));
@@ -1258,6 +1370,44 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>) -> Option<DeviceMap> 
             Some(canonical_reference(ty, bits, reference_text))
         };
 
+        let role_text = if version == 2 { cell("role") } else { "" };
+        let role = if role_text.is_empty() {
+            None
+        } else {
+            match Role::parse(role_text) {
+                None => {
+                    ck.error(
+                        line,
+                        "bad-role",
+                        format!(
+                            "role must be \"model\", \"firmware\" or \"serial\", not {role_text:?}"
+                        ),
+                    );
+                    None
+                }
+                Some(_) if access == Access::W => {
+                    ck.error(
+                        line,
+                        "bad-role",
+                        "a register with a role must be readable".into(),
+                    );
+                    None
+                }
+                Some(r) if r != Role::Firmware && roles_seen.contains(&r) => {
+                    ck.error(
+                        line,
+                        "bad-role",
+                        format!("only one register can have the role {:?}", r.name()),
+                    );
+                    None
+                }
+                Some(r) => {
+                    roles_seen.push(r);
+                    Some(r)
+                }
+            }
+        };
+
         let enum_text = cell("enum");
         let mut enum_ref = None;
         let enum_labels = if let Some(table) = enum_table {
@@ -1326,6 +1476,9 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>) -> Option<DeviceMap> 
             description: cell("description").to_string(),
             extra,
             comment,
+            firmware_min,
+            firmware_max,
+            role,
         });
     }
 
@@ -1370,8 +1523,14 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>) -> Option<DeviceMap> 
         if let Some((_, _, _, first_index, first_name)) = spans[..i]
             .iter()
             .rev()
-            // Rows starting at the same address are alternative readings.
-            .find(|(a, s, end, _, _)| *a == area && *s != start && start < *end)
+            // Rows starting at the same address are alternative readings,
+            // and rows of different firmware versions never meet.
+            .find(|(a, s, end, other, _)| {
+                *a == area
+                    && *s != start
+                    && start < *end
+                    && ranges[*other].meets(&ranges[row_index])
+            })
         {
             ck.warn(
                 &locs[row_index],
@@ -1385,6 +1544,52 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>) -> Option<DeviceMap> 
     }
 
     (ck.error_count() == 0).then_some(DeviceMap { meta, registers })
+}
+
+/// A register's firmware range (spec section 3.2): the bounds as written,
+/// when valid, and the parsed range (open where a bound is invalid).
+fn check_firmware(
+    ck: &mut Checker,
+    at: &Loc,
+    min: &str,
+    max: &str,
+    file_range: &firmware::Range,
+) -> (Option<String>, Option<String>, firmware::Range) {
+    let mut bound = |key: &str, text: &str| {
+        if text.is_empty() {
+            return None;
+        }
+        let v = firmware::parse(text);
+        if v.is_none() {
+            ck.error(
+                at,
+                "bad-version",
+                format!("{key} {text:?} is not a version like 2.1"),
+            );
+        }
+        v.map(|v| (text.to_string(), v))
+    };
+    let (lo, hi) = (bound("firmware_min", min), bound("firmware_max", max));
+    let range = firmware::Range {
+        min: lo.as_ref().map(|(_, v)| v.clone()),
+        max: hi.as_ref().map(|(_, v)| v.clone()),
+    };
+    if range.is_inverted() {
+        ck.error(
+            at,
+            "bad-firmware-range",
+            format!("firmware_min {min} is after firmware_max {max}"),
+        );
+        return (None, None, firmware::Range::default());
+    }
+    if !range.is_open() && !range.meets(file_range) {
+        ck.warn(
+            at,
+            "firmware-outside-map",
+            "this register's firmware range is outside the map's, so it never applies".into(),
+        );
+    }
+    (lo.map(|(t, _)| t), hi.map(|(t, _)| t), range)
 }
 
 /// Version 2 `byte_order` and `word_order` of a version 1 byte order (SPEC §9.3).
@@ -1445,6 +1650,21 @@ fn json_table<V: std::fmt::Display>(entries: impl Iterator<Item = (V, String)>) 
     format!("{{{}}}", pairs.join(", "))
 }
 
+fn source_json(s: &Source) -> String {
+    let mut fields = vec![format!("\"title\": {}", json_str(&s.title))];
+    for (key, value) in [
+        ("version", &s.version),
+        ("date", &s.date),
+        ("url", &s.url),
+        ("note", &s.note),
+    ] {
+        if let Some(v) = value {
+            fields.push(format!("{}: {}", json_str(key), json_str(v)));
+        }
+    }
+    format!("{{{}}}", fields.join(", "))
+}
+
 fn reference_json(r: &Register, text: &str) -> String {
     if r.bits.is_some() || sentinel_range(r.ty).is_some() {
         return json_integer(text);
@@ -1468,6 +1688,10 @@ pub fn to_string(map: &DeviceMap) -> String {
         ("vendor".into(), json_str(&m.vendor)),
         ("model".into(), json_str(&m.model)),
     ];
+    if !m.models.is_empty() {
+        let names: Vec<String> = m.models.iter().map(|n| json_str(n)).collect();
+        top.push(("models".into(), format!("[{}]", names.join(", "))));
+    }
     let mut text = |key: &str, value: &Option<String>| {
         if let Some(v) = value {
             top.push((key.into(), json_str(v)));
@@ -1475,8 +1699,27 @@ pub fn to_string(map: &DeviceMap) -> String {
     };
     text("vendor_website", &m.vendor_website);
     text("description", &m.description);
+    if let Some(r) = m.revision {
+        top.push(("revision".into(), r.to_string()));
+    }
+    let mut text = |key: &str, value: &Option<String>| {
+        if let Some(v) = value {
+            top.push((key.into(), json_str(v)));
+        }
+    };
+    text("revised", &m.revised);
     text("firmware", &m.firmware);
+    text("firmware_min", &m.firmware_min);
+    text("firmware_max", &m.firmware_max);
     text("source", &m.source);
+    if !m.sources.is_empty() {
+        let lines: Vec<String> = m
+            .sources
+            .iter()
+            .map(|s| format!("    {}", source_json(s)))
+            .collect();
+        top.push(("sources".into(), format!("[\n{}\n  ]", lines.join(",\n"))));
+    }
     if !m.notes.is_empty() {
         let lines: Vec<String> = m
             .notes
@@ -1610,6 +1853,15 @@ pub fn to_string(map: &DeviceMap) -> String {
             }
             if let Some(text) = &r.reference {
                 f.push(("reference", reference_json(r, text)));
+            }
+            if let Some(v) = &r.firmware_min {
+                f.push(("firmware_min", json_str(v)));
+            }
+            if let Some(v) = &r.firmware_max {
+                f.push(("firmware_max", json_str(v)));
+            }
+            if let Some(role) = r.role {
+                f.push(("role", json_str(role.name())));
             }
             if !r.description.is_empty() {
                 f.push(("description", json_str(&r.description)));

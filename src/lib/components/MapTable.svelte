@@ -14,6 +14,7 @@
     valueTitle,
   } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
+  import { appliesTo, rangeText, versionText } from "$lib/identity";
   import { diagnosticWhere, type Register } from "$lib/types";
   import AddressFormat from "./AddressFormat.svelte";
 
@@ -43,6 +44,22 @@
   }
 
   const meta = $derived(open.map.meta);
+  const identity = $derived(bench.identity);
+  /** The device's firmware, once its firmware registers were read. */
+  const fwVersion = $derived(identity?.firmware.version ?? null);
+  const modelNames = $derived(
+    (meta.models?.length ? meta.models : [meta.model]).join(", "),
+  );
+  const mapRange = $derived(rangeText(meta.firmware_min, meta.firmware_max));
+  const mismatch = $derived(
+    identity?.model.status === "mismatch" ||
+      identity?.firmware.status === "mismatch",
+  );
+  const recognised = $derived(
+    !mismatch &&
+      (identity?.model.status === "match" ||
+        identity?.firmware.status === "match"),
+  );
   const base = $derived(meta.address_base ?? 0);
   const groups = $derived([
     ...new Set(open.map.registers.map((r) => r.group).filter(Boolean)),
@@ -51,6 +68,8 @@
     open.map.registers
       .map((reg, index) => ({ reg, index }))
       .filter(({ reg }) => {
+        // Registers the device's firmware does not have are left out.
+        if (!appliesTo(reg, fwVersion)) return false;
         if (group && reg.group !== group) return false;
         const q = search.trim().toLowerCase();
         return (
@@ -184,6 +203,12 @@
 <div class="toolbar">
   <div class="title">
     <strong>{meta.vendor} {meta.model}</strong>
+    {#if meta.revision}<span
+        class="rev"
+        title="Revision {meta.revision} of this map{meta.revised
+          ? `, ${meta.revised}`
+          : ''}">rev {meta.revision}</span
+      >{/if}
     {#if meta.description}<span class="desc" title={meta.description}
         >{meta.description}</span
       >{/if}
@@ -193,6 +218,24 @@
       class="refs bad"
       title="This map was converted from another catalogue and has not been checked against the manufacturer's documentation. Check a value on the device before relying on the rest."
       >Unverified</span
+    >
+  {/if}
+  {#if recognised && identity}
+    <span
+      class="refs ok"
+      title={[
+        identity.model.found && `Model ${identity.model.found}`,
+        fwVersion && `firmware ${versionText(fwVersion)}`,
+        identity.serial && `serial number ${identity.serial}`,
+      ]
+        .filter(Boolean)
+        .join(", ")}>Device recognised</span
+    >
+  {:else if mapRange && !fwVersion}
+    <span
+      class="refs"
+      title="This map is for firmware {mapRange}. The device's firmware is not known, so it was not checked."
+      >Firmware {mapRange}</span
     >
   {/if}
   {#if refs.total}
@@ -253,6 +296,24 @@
     </select>
   {/if}
 </div>
+
+{#if mismatch && identity}
+  <div class="mismatch" role="alert">
+    <strong>The connected device does not match this map.</strong>
+    {#if identity.model.status === "mismatch"}<span
+        >The map is for {modelNames}; the device reports {identity.model
+          .found}.</span
+      >{/if}
+    {#if identity.firmware.status === "mismatch" && fwVersion}<span
+        >The map is for firmware {mapRange}; the device reports {versionText(
+          fwVersion,
+        )}.</span
+      >{/if}
+    <span class="dim"
+      >Values may be wrong. Writes ask for confirmation first.</span
+    >
+  </div>
+{/if}
 
 {#if open.version === 1}
   <div class="deprecated">
@@ -335,6 +396,13 @@
           <td class="name" title={reg.description || undefined}
             >{reg.name}{#if reg.group && !group}<span class="grp"
                 >{reg.group}</span
+              >{/if}{#if !fwVersion && (reg.firmware_min || reg.firmware_max)}<span
+                class="grp"
+                title="Only on firmware {rangeText(
+                  reg.firmware_min,
+                  reg.firmware_max,
+                )}. The device's firmware is not known, so it is read anyway."
+                >fw {rangeText(reg.firmware_min, reg.firmware_max)}</span
               >{/if}{#if reg.reference}<span
                 class="refmark"
                 class:ok={r?.reference === "match"}
@@ -504,6 +572,34 @@
   .warnings {
     margin: 0 0 8px;
     font-size: 13px;
+  }
+
+  .rev {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+
+  .refs.ok {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  .mismatch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    background: rgb(var(--alert-rgb) / 0.12);
+    color: rgb(var(--alert-rgb));
+    font-size: 13px;
+  }
+
+  .mismatch .dim {
+    color: var(--text-2);
   }
 
   .deprecated {

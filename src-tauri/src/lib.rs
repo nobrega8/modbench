@@ -2,6 +2,7 @@ use tauri::{Emitter, Manager};
 
 pub mod codec;
 mod commands;
+pub mod firmware;
 pub mod library;
 pub mod mbmap;
 mod mbmap_v2;

@@ -328,6 +328,9 @@ fn register(name: &str, area: Area, address: u16, ty: DataType) -> modbench_lib:
         description: String::new(),
         extra: Vec::new(),
         comment: String::new(),
+        firmware_min: None,
+        firmware_max: None,
+        role: None,
     }
 }
 
