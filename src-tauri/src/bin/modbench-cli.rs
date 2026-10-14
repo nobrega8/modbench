@@ -110,8 +110,15 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
-    /// Check a .mbmap file against the spec
+    /// Check a map file (.mbmap.json, or a deprecated version 1 .mbmap) against the spec
     Validate { map: String },
+    /// Convert a version 1 .mbmap file to version 2 (.mbmap.json)
+    Convert {
+        map: String,
+        /// Where to write the result (default: next to the file, as <name>.mbmap.json)
+        #[arg(long)]
+        out: Option<String>,
+    },
     /// Run as an MCP server over stdio
     Mcp,
 }
@@ -262,7 +269,7 @@ fn load_map(path: &str) -> Result<DeviceMap, String> {
     let parsed = mbmap::parse(&bytes);
     let errors = parsed
         .errors()
-        .map(|d| format!("line {:?}: {} [{}]", d.line, d.message, d.code))
+        .map(|d| format!("{}: {} [{}]", d.location(), d.message, d.code))
         .collect::<Vec<_>>()
         .join(
             "
@@ -511,8 +518,18 @@ fn validate_text(path: &str) -> Result<String, String> {
         } else {
             "warning"
         };
-        let at = d.line.map_or("file".to_string(), |l| format!("line {l}"));
-        out.push_str(&format!("{sev}: {at}: {} [{}]\n", d.message, d.code));
+        out.push_str(&format!(
+            "{sev}: {}: {} [{}]\n",
+            d.location(),
+            d.message,
+            d.code
+        ));
+    }
+    if parsed.version == Some(1) {
+        out.push_str(&format!(
+            "note: {} (modbench-cli convert {path})\n",
+            mbmap::V1_DEPRECATED
+        ));
     }
     match &parsed.map {
         Some(m) => out.push_str(&format!(
@@ -560,7 +577,7 @@ fn tools() -> Json {
     read_props["address"] = json!({"type": "integer", "minimum": 0, "maximum": 65535});
     read_props["count"] = json!({"type": "integer", "minimum": 1, "maximum": 125});
     let mut map_props = conn_schema();
-    map_props["map_path"] = json!({"type": "string", "description": "Path to a .mbmap file"});
+    map_props["map_path"] = json!({"type": "string", "description": "Path to a .mbmap.json (or version 1 .mbmap) file"});
     map_props["filter"] = json!({"type": "string", "description": "Only registers whose name or group contains this text"});
     json!([
         {
@@ -580,7 +597,7 @@ fn tools() -> Json {
         },
         {
             "name": "validate_map",
-            "description": "Check a .mbmap file against the format spec.",
+            "description": "Check a device map file (.mbmap.json, or a deprecated version 1 .mbmap) against the format spec.",
             "inputSchema": {"type": "object", "properties": {"map_path": {"type": "string"}}, "required": ["map_path"]}
         }
     ])
@@ -699,6 +716,13 @@ async fn run(cli: Cli) -> Result<(), String> {
             if text.ends_with("The file has errors.\n") {
                 return Err("invalid map".into());
             }
+        }
+        Command::Convert { map, out } => {
+            let parsed = load_map(&map)?;
+            let target = out.unwrap_or_else(|| mbmap::v2_file_name(&map));
+            std::fs::write(&target, mbmap::to_string(&parsed))
+                .map_err(|e| format!("{target}: {e}"))?;
+            println!("{map} -> {target}");
         }
         Command::Read {
             conn,

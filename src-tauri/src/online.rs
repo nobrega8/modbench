@@ -86,7 +86,7 @@ pub async fn index() -> Result<Vec<OnlineEntry>, String> {
         .collect())
 }
 
-/// Only `maps/<vendor>/<model>.mbmap` slugs are downloaded, so the index
+/// Only `maps/<vendor>/<model>.mbmap(.json)` slugs are downloaded, so the index
 /// cannot point the app anywhere else.
 pub fn is_library_path(path: &str) -> bool {
     let parts: Vec<&str> = path.split('/').collect();
@@ -98,7 +98,10 @@ pub fn is_library_path(path: &str) -> bool {
     parts.len() == 3
         && parts[0] == "maps"
         && slug(parts[1])
-        && parts[2].strip_suffix(".mbmap").is_some_and(slug)
+        && parts[2]
+            .strip_suffix(".mbmap.json")
+            .or_else(|| parts[2].strip_suffix(".mbmap"))
+            .is_some_and(slug)
 }
 
 /// Downloads one map of the online library.
@@ -356,6 +359,9 @@ mod tests {
     #[test]
     fn library_paths() {
         assert!(is_library_path("maps/deep-sea-electronics/dse335.mbmap"));
+        assert!(is_library_path(
+            "maps/deep-sea-electronics/dse335.mbmap.json"
+        ));
         assert!(!is_library_path("maps/../secrets.mbmap"));
         assert!(!is_library_path("examples/x/y.mbmap"));
         assert!(!is_library_path("maps/a/b.txt"));

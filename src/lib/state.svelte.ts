@@ -57,6 +57,8 @@ export interface OpenMap {
   path: string;
   map: DeviceMap;
   warnings: Diagnostic[];
+  /** Format version of the file; 1 is deprecated. */
+  version: number | null;
 }
 
 export interface Exchange {
@@ -282,12 +284,30 @@ This writes to the device.`,
       path,
       map: parsed.map,
       warnings: parsed.diagnostics.filter((d) => d.severity === "warning"),
+      version: parsed.version,
     };
     const existing = this.maps.findIndex((m) => m.path === path);
     if (existing >= 0) this.maps[existing] = entry;
     else this.maps.push(entry);
     this.selectMap(existing >= 0 ? existing : this.maps.length - 1);
     if (!this.running) this.applyDefaults(entry.map);
+  }
+
+  /** Converts an open version 1 map to version 2 and opens the new file in
+   * its place. The original file is kept. */
+  async convertMap(index: number) {
+    const old = this.maps[index];
+    if (!old) return;
+    const path = await api.convertMap(old.path);
+    const parsed = await api.openMap(path);
+    if (!parsed.map) return;
+    this.maps[index] = {
+      path,
+      map: parsed.map,
+      warnings: parsed.diagnostics.filter((d) => d.severity === "warning"),
+      version: parsed.version,
+    };
+    if (this.activeMap === index) this.selectMap(index);
   }
 
   selectMap(index: number) {

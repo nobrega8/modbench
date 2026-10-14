@@ -4,6 +4,7 @@ pub mod codec;
 mod commands;
 pub mod library;
 pub mod mbmap;
+mod mbmap_v2;
 pub mod modbus;
 pub mod online;
 pub mod planner;
@@ -16,11 +17,7 @@ pub fn run() {
         // Must be registered first: a second launch (e.g. double-clicking a
         // .mbmap) hands its file to the running window and exits.
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            if let Some(path) = argv
-                .iter()
-                .skip(1)
-                .find(|a| a.to_lowercase().ends_with(".mbmap"))
-            {
+            if let Some(path) = argv.iter().skip(1).find(|a| mbmap::is_map_file(a)) {
                 let _ = app.emit("open-file", path);
             }
             if let Some(window) = app.get_webview_window("main") {
@@ -48,6 +45,7 @@ pub fn run() {
             commands::write_value,
             commands::open_map,
             commands::save_map,
+            commands::convert_map,
             commands::start_polling,
             commands::stop_polling,
             commands::poll_map_once,

@@ -46,7 +46,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 ## Features
 
 - **Three-step workflow**: connection (serial RTU, Modbus TCP or RTU over TCP), request (any function code, or a device map), test (Start/Stop, valid/error/timeout counters, last/min/average/max response time).
-- **Device maps (`.mbmap`)**: plain-text, CSV-based files that describe a device and all of its registers: types, byte order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps.
+- **Device maps (`.mbmap.json`)**: JSON files that describe a device and all of its registers: types, byte and word order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps. Maps in the deprecated version 1 (CSV-based `.mbmap`) still open, and Modbench offers to convert them.
 - **Write from the map**: writable registers and control commands are listed with the right control for each type. A register can declare the values it accepts (`write_min`, `write_max`) and Modbench refuses anything outside them.
 - **Reconnects by itself**: while a test runs, a lost connection (an I/O error, or over TCP three timeouts in a row) is opened again, with growing pauses up to every 10 seconds. It can be turned off in Settings.
 - **Max registers per request**: for devices that cannot read 125 registers at once. Longer manual reads are split into several requests, and map reads use the smaller of this and the map's `@max_read_registers`.
@@ -61,7 +61,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Address display**: show addresses as sent on the wire (0-based), 1-based like most manuals, or in hexadecimal, in the register grid, the device map and the log.
 - **Raw data**: the exact bytes sent and received, plus a request log you can save as text or CSV.
 - **CSV export and recording**: save the map values on screen to a CSV file, or record one row per reading cycle with a column for each register. The separator (comma or semicolon) is set in Settings.
-- **Device library**: keep your maps in the app, import them from a file or browse and download the shared maps of [mbmap-library](https://github.com/nobrega8/mbmap-library); double-click a `.mbmap` to open it.
+- **Device library**: keep your maps in the app, import them from a file or browse and download the shared maps of [mbmap-library](https://github.com/nobrega8/mbmap-library); maps are stored in format version 2, and version 1 maps already in the library are converted when it opens. Double-click a `.mbmap` to open it.
 - **Command line and MCP**: `modbench-cli` reads devices without the UI (see below).
 - **Light and dark (OLED) themes**, a Rust core and small installers (about 2 MB on Windows).
 
@@ -94,7 +94,7 @@ npm run tauri dev     # run the app in development mode
 npm run tauri build   # build installers (MSI/NSIS on Windows, deb/AppImage on Linux)
 ```
 
-To try the app without hardware, run the device simulator. It serves any `.mbmap` file over Modbus TCP, with values that change over time:
+To try the app without hardware, run the device simulator. It serves any map file over Modbus TCP, with values that change over time:
 
 ```sh
 cd src-tauri
@@ -119,13 +119,14 @@ cd src-tauri
 cargo run --bin modbench-cli -- ports
 cargo run --bin modbench-cli -- read --tcp 192.168.1.10 holding 0x0405 1
 cargo run --bin modbench-cli -- read --rtu COM3 --baud 9600 --stop-bits 2 --unit 18 holding 1029 4
-cargo run --bin modbench-cli -- map --rtu COM3 --unit 18 path/to/device.mbmap --filter voltage
+cargo run --bin modbench-cli -- map --rtu COM3 --unit 18 path/to/device.mbmap.json --filter voltage
 cargo run --bin modbench-cli -- scan --rtu COM3 --baud 9600 --from 1 --to 32 --timeout 200
 cargo run --bin modbench-cli -- scan-serial --rtu COM3 --bauds 9600,19200 --parities EN --from 1 --to 5 --first
-cargo run --bin modbench-cli -- validate path/to/device.mbmap
+cargo run --bin modbench-cli -- validate path/to/device.mbmap.json
+cargo run --bin modbench-cli -- convert path/to/old-device.mbmap   # version 1 -> path/to/old-device.mbmap.json
 ```
 
-`--max-regs N` splits reads into requests of at most N registers, for devices that cannot read 125 at once. Settings not given on the command line come from the map (`@baudrate`, `@parity`, `@unit_id`…), then from defaults. Add `--json` to `read` and `map` for machine-readable output.
+`--max-regs N` splits reads into requests of at most N registers, for devices that cannot read 125 at once. Settings not given on the command line come from the map (`baudrate`, `parity`, `unit_id`…), then from defaults. Add `--json` to `read` and `map` for machine-readable output.
 
 `modbench-cli mcp` runs the same operations as an [MCP](https://modelcontextprotocol.io) server over stdio (`list_serial_ports`, `read_registers`, `read_map`, `validate_map`). `.mcp.json` registers it for this project, so MCP clients such as Claude Code can use it.
 

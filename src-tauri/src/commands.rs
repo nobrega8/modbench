@@ -397,14 +397,14 @@ async fn read_exponent(
     Ok(exp as i32)
 }
 
-/// Reads and checks a `.mbmap` file.
+/// Reads and checks a map file of either version.
 #[tauri::command]
 pub async fn open_map(path: String) -> Result<Parsed, ModbusError> {
     let bytes = tokio::fs::read(&path).await?;
     Ok(mbmap::parse(&bytes))
 }
 
-/// Writes a map to a `.mbmap` file.
+/// Writes a map to a file, in format version 2.
 #[tauri::command]
 pub async fn save_map(path: String, map: DeviceMap) -> Result<(), ModbusError> {
     tokio::fs::write(&path, mbmap::to_string(&map)).await?;
@@ -467,12 +467,16 @@ pub fn open_link(link: String) -> Result<(), ModbusError> {
 #[tauri::command]
 pub async fn library_list(app: AppHandle) -> Result<Vec<LibraryEntry>, ModbusError> {
     let root = library_root(&app)?;
-    Ok(tokio::task::spawn_blocking(move || library::list(&root))
-        .await
-        .map_err(|e| ModbusError::Invalid(e.to_string()))??)
+    Ok(tokio::task::spawn_blocking(move || {
+        // Maps stored by older releases are in the deprecated version 1.
+        library::upgrade(&root)?;
+        library::list(&root)
+    })
+    .await
+    .map_err(|e| ModbusError::Invalid(e.to_string()))??)
 }
 
-/// Copies `.mbmap` files into the library (invalid ones are reported, not copied).
+/// Copies map files into the library as version 2 (invalid ones are reported, not copied).
 #[tauri::command]
 pub async fn library_import(
     app: AppHandle,
@@ -524,9 +528,22 @@ pub async fn vendor_icon(app: AppHandle, website: String) -> Option<String> {
 /// A `.mbmap` passed on the command line (e.g. by double-clicking a file).
 #[tauri::command]
 pub fn startup_file() -> Option<String> {
-    std::env::args()
-        .skip(1)
-        .find(|a| a.to_lowercase().ends_with(".mbmap"))
+    std::env::args().skip(1).find(|a| mbmap::is_map_file(a))
+}
+
+/// Converts a version 1 map file to version 2, next to it (`x.mbmap` ->
+/// `x.mbmap.json`). Returns the new path; the original is kept.
+#[tauri::command]
+pub async fn convert_map(path: String) -> Result<String, ModbusError> {
+    let parsed = mbmap::parse(&tokio::fs::read(&path).await?);
+    let Some(map) = parsed.map else {
+        return Err(ModbusError::Invalid(
+            "the map has errors; fix them before converting it".into(),
+        ));
+    };
+    let target = mbmap::v2_file_name(&path);
+    tokio::fs::write(&target, mbmap::to_string(&map)).await?;
+    Ok(target)
 }
 
 /// Writes text to a file chosen by the user (traffic log export).

@@ -105,3 +105,49 @@ fn library_examples_are_valid() {
     }
     assert!(count > 0);
 }
+
+/// Every map of the library reads the same after conversion to version 2,
+/// with the same warnings.
+#[test]
+fn library_maps_survive_conversion_to_version_2() {
+    let maps = fixtures_dir().join("../maps");
+    let mut count = 0;
+    for vendor in std::fs::read_dir(&maps).unwrap() {
+        let vendor = vendor.unwrap().path();
+        if !vendor.is_dir() {
+            continue;
+        }
+        for file in std::fs::read_dir(vendor).unwrap() {
+            let path = file.unwrap().path();
+            let parsed = mbmap::parse(&std::fs::read(&path).unwrap());
+            let Some(map) = parsed.map.clone() else {
+                panic!("{}: {:?}", path.display(), parsed.diagnostics);
+            };
+            let text = mbmap::to_string(&map);
+            let again = mbmap::parse(text.as_bytes());
+            assert_eq!(again.version, Some(2));
+            let codes = |p: &mbmap::Parsed| {
+                let mut c: Vec<_> = p.diagnostics.iter().map(|d| d.code).collect();
+                c.sort();
+                c
+            };
+            assert_eq!(codes(&again), codes(&parsed), "{}", path.display());
+            assert_eq!(again.map.as_ref(), Some(&map), "{}", path.display());
+            count += 1;
+        }
+    }
+    assert!(count > 100, "only {count} maps found");
+}
+
+/// The library's version 2 prototype (written by its tools/migrate.py) reads
+/// as the same map as the version 1 example it was made from.
+#[test]
+fn library_prototype_matches_its_version_1_source() {
+    let dir = fixtures_dir().join("../examples/example-corp");
+    let v2 = dir.join("em-100.mbmap.json");
+    if !v2.exists() {
+        return; // library checkout from before version 2
+    }
+    let read = |p: PathBuf| mbmap::parse(&std::fs::read(p).unwrap()).map.unwrap();
+    assert_eq!(read(v2), read(dir.join("em-100.mbmap")));
+}

@@ -2,6 +2,7 @@
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import { errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
+  import { MAP_EXTENSIONS } from "$lib/types";
   import VendorIcon from "./VendorIcon.svelte";
 
   interface Props {
@@ -170,7 +171,7 @@
     const path = await openDialog({
       multiple: false,
       directory: false,
-      filters: [{ name: "Modbus map", extensions: ["mbmap"] }],
+      filters: [{ name: "Modbus map", extensions: MAP_EXTENSIONS }],
     });
     if (typeof path !== "string") return;
     failure = null;
