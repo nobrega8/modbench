@@ -48,6 +48,19 @@ jobs:
 
       - run: npm ci
 
+      # A universal build joins only the app's own binary for both
+      # architectures; the bundle also holds modbench-cli, so join it first.
+      - name: Universal modbench-cli
+        if: runner.os == 'macOS'
+        working-directory: src-tauri
+        run: |
+          cargo build --release --bin modbench-cli --target aarch64-apple-darwin
+          cargo build --release --bin modbench-cli --target x86_64-apple-darwin
+          mkdir -p target/universal-apple-darwin/release
+          lipo -create -output target/universal-apple-darwin/release/modbench-cli \
+            target/aarch64-apple-darwin/release/modbench-cli \
+            target/x86_64-apple-darwin/release/modbench-cli
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
