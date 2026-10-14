@@ -34,7 +34,29 @@ pub struct PollRequest {
     /// read to scale the others, never reported.
     #[serde(default)]
     pub scale_registers: Vec<Register>,
+    /// Open the link again, with growing pauses, when it is lost.
+    #[serde(default)]
+    pub reconnect: bool,
 }
+
+/// Change in the link while polling, for the UI.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "state", rename_all = "lowercase")]
+pub enum LinkEvent {
+    /// The link is lost; the next attempt to open it is `retry_ms` away.
+    /// `error` is why the last attempt failed (none before the first).
+    Reconnecting {
+        attempt: u32,
+        retry_ms: u64,
+        error: Option<String>,
+    },
+    /// The link is open again.
+    Restored,
+}
+
+/// Pauses between attempts to open a lost link: quick at first, then
+/// every 10 s, so a device that is gone for long is not flooded.
+const BACKOFF_MS: [u64; 5] = [500, 1_000, 2_000, 5_000, 10_000];
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PointResult {
@@ -276,11 +298,14 @@ fn apply_scale_factors(regs: &[&Register], decoded: &mut [(usize, PointResult)])
 }
 
 /// Polls until the task is aborted, calling `report` after every cycle.
-/// Stops by itself when there is no session.
+/// Stops by itself when there is no session. With `req.reconnect`, a lost
+/// link is opened again (see [`Session::link_lost`]) and `link` hears about
+/// it.
 pub async fn run(
     session: Arc<Mutex<Option<Session>>>,
     req: PollRequest,
     report: impl Fn(Result<PollCycle, String>),
+    link: impl Fn(LinkEvent),
 ) {
     let interval = Duration::from_millis(req.interval_ms);
     let delay = Duration::from_millis(req.delay_ms);
@@ -290,11 +315,11 @@ pub async fn run(
         let outcome = {
             let mut slot = session.lock().await;
             match slot.as_mut() {
-                Some(s) => Some(poll_once(s, &req).await),
+                Some(s) => Some((poll_once(s, &req).await, s.link_lost())),
                 None => None,
             }
         };
-        let Some((results, requests)) = outcome else {
+        let Some(((results, requests), lost)) = outcome else {
             report(Err("not connected".into()));
             return;
         };
@@ -305,6 +330,10 @@ pub async fn run(
             requests,
             results,
         }));
+        if req.reconnect && lost && !reopen(&session, &link).await {
+            report(Err("not connected".into()));
+            return;
+        }
         // The pause between requests also separates the last request of a
         // cycle from the first of the next; never spin without a pause.
         let pause = interval
@@ -313,4 +342,31 @@ pub async fn run(
             .max(Duration::from_millis(10));
         tokio::time::sleep(pause).await;
     }
+}
+
+/// Opens a lost link again, waiting longer between attempts, until it
+/// opens. False when the session is gone (the user disconnected).
+async fn reopen(session: &Mutex<Option<Session>>, link: &impl Fn(LinkEvent)) -> bool {
+    let mut error = None;
+    for attempt in 1.. {
+        let retry_ms = BACKOFF_MS[(attempt as usize - 1).min(BACKOFF_MS.len() - 1)];
+        link(LinkEvent::Reconnecting {
+            attempt,
+            retry_ms,
+            error: error.take(),
+        });
+        tokio::time::sleep(Duration::from_millis(retry_ms)).await;
+        let mut slot = session.lock().await;
+        let Some(s) = slot.as_mut() else {
+            return false;
+        };
+        match s.reconnect().await {
+            Ok(()) => {
+                link(LinkEvent::Restored);
+                return true;
+            }
+            Err(e) => error = Some(e.to_string()),
+        }
+    }
+    unreachable!("the attempts never run out")
 }

@@ -39,6 +39,8 @@ pub fn run() {
             commands::connect,
             commands::disconnect,
             commands::set_read_only,
+            commands::link_lost,
+            commands::reconnect,
             commands::read_raw,
             commands::write_registers,
             commands::write_coils,

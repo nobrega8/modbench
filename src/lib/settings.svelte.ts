@@ -11,6 +11,7 @@ interface Stored {
   rememberDevices: boolean;
   confirmWrites: boolean;
   readOnly: boolean;
+  autoReconnect: boolean;
   logLimit: number;
   csvSeparator: CsvSeparator;
   addressFormat: AddressFormat;
@@ -25,6 +26,7 @@ const DEFAULTS: Stored = {
   rememberDevices: true,
   confirmWrites: false,
   readOnly: false,
+  autoReconnect: true,
   logLimit: 1000,
   csvSeparator: ",",
   addressFormat: "base0",
@@ -51,6 +53,8 @@ class Settings {
   confirmWrites = $state(false);
   /** Blocks every write; the backend refuses them while this is on. */
   readOnly = $state(false);
+  /** Opens a lost connection again while a test runs. */
+  autoReconnect = $state(true);
   logLimit = $state(1000);
   /** Comma, or semicolon for spreadsheets set up for a decimal comma. */
   csvSeparator = $state<CsvSeparator>(",");
@@ -71,6 +75,7 @@ class Settings {
       rememberDevices: this.rememberDevices,
       confirmWrites: this.confirmWrites,
       readOnly: this.readOnly,
+      autoReconnect: this.autoReconnect,
       logLimit: this.logLimit,
       csvSeparator: this.csvSeparator,
       addressFormat: this.addressFormat,

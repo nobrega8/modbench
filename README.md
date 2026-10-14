@@ -48,6 +48,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 - **Three-step workflow**: connection (serial RTU, Modbus TCP or RTU over TCP), request (any function code, or a device map), test (Start/Stop, valid/error/timeout counters, last/min/average/max response time).
 - **Device maps (`.mbmap`)**: plain-text, CSV-based files that describe a device and all of its registers: types, byte order, scaling, units, bit fields, translation tables for state codes and sentinel values such as "unimplemented". The format is open and specified in [mbmap-library](https://github.com/nobrega8/mbmap-library), which also hosts shared maps.
 - **Write from the map**: writable registers and control commands are listed with the right control for each type. A register can declare the values it accepts (`write_min`, `write_max`) and Modbench refuses anything outside them.
+- **Reconnects by itself**: while a test runs, a lost connection (an I/O error, or over TCP three timeouts in a row) is opened again, with growing pauses up to every 10 seconds. It can be turned off in Settings.
 - **Max registers per request**: for devices that cannot read 125 registers at once. Longer manual reads are split into several requests, and map reads use the smaller of this and the map's `@max_read_registers`.
 - **Read-only mode**: one switch in Settings blocks every write, also on a connection that is already open. The backend refuses the write, so nothing reaches the device.
 - **Find unit IDs**: *Find…* next to Device asks each unit ID for one register and lists the ones that answer. Read-only.
@@ -72,7 +73,7 @@ Everything is stored on this computer, in the app's webview storage, and nothing
 |---|---|---|
 | Connection fields (port, baud rate, address, unit ID, timing, max registers per request) | the last test | Settings, "Remember the last connection" |
 | Registers switched off, byte order override, Loop | one **device**: the map file, the connection endpoint and the unit ID | Settings, "Remember register choices for each device" |
-| Theme, confirmations, read-only mode, log size, CSV separator, address display, highlight time, update check | the app | Settings |
+| Theme, confirmations, read-only mode, reconnection, log size, CSV separator, address display, highlight time, update check | the app | Settings |
 
 A device is identified by the map file, **how it is reached** (host and port for TCP, the serial port name for RTU) and its **unit ID**. Two devices of the same model on different unit IDs or addresses keep separate choices. Registers are remembered by what the map says about them (area, address, type, bit and name), not by their position, so editing a map does not switch the wrong registers off.
 

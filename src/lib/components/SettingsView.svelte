@@ -223,6 +223,23 @@
         </label>
         <label class="setting">
           <div class="text">
+            <span class="name">Reconnect when the connection is lost</span>
+            <span class="hint"
+              >While a test runs, a connection that fails (an I/O error, or over
+              TCP three timeouts in a row) is opened again, after 0.5 s and then
+              less often, up to every 10 s.</span
+            >
+          </div>
+          <input
+            type="checkbox"
+            class="switch"
+            role="switch"
+            bind:checked={settings.autoReconnect}
+            onchange={changed}
+          />
+        </label>
+        <label class="setting">
+          <div class="text">
             <span class="name">Read-only mode</span>
             <span class="hint"
               >Blocks every write, also on a connection that is already open.

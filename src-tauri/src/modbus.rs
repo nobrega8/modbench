@@ -140,6 +140,58 @@ async fn with_timeout<T>(
         .map_err(|_| ModbusError::Timeout(ms))???)
 }
 
+/// Opens the transport a configuration describes.
+async fn open(config: &ConnectionConfig, raw: Option<RawSink>) -> Result<Context, ModbusError> {
+    let wait = Duration::from_millis(config.timeout_ms.max(1));
+    let slave = Slave(config.unit_id);
+    let ctx = match &config.transport {
+        Transport::Tcp { host, port } => {
+            let addr = resolve(host, *port)?;
+            let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
+                .await
+                .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
+            tcp::attach_slave(Tap::new(stream, raw), slave)
+        }
+        Transport::RtuOverTcp { host, port } => {
+            let addr = resolve(host, *port)?;
+            let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
+                .await
+                .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
+            rtu::attach_slave(Tap::new(stream, raw), slave)
+        }
+        Transport::Rtu {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => {
+            let builder = tokio_serial::new(port, *baudrate)
+                .parity(match parity {
+                    Parity::N => tokio_serial::Parity::None,
+                    Parity::E => tokio_serial::Parity::Even,
+                    Parity::O => tokio_serial::Parity::Odd,
+                })
+                .data_bits(match data_bits {
+                    7 => tokio_serial::DataBits::Seven,
+                    8 => tokio_serial::DataBits::Eight,
+                    n => {
+                        return Err(ModbusError::Invalid(format!("unsupported data bits: {n}")));
+                    }
+                })
+                .stop_bits(match stop_bits {
+                    1 => tokio_serial::StopBits::One,
+                    2 => tokio_serial::StopBits::Two,
+                    n => {
+                        return Err(ModbusError::Invalid(format!("unsupported stop bits: {n}")));
+                    }
+                });
+            rtu::attach_slave(Tap::new(builder.open_native_async()?, raw), slave)
+        }
+    };
+    Ok(ctx)
+}
+
 /// One request as seen on the bus, for the traffic log.
 #[derive(Debug, Clone, Serialize)]
 pub struct TrafficEntry {
@@ -300,6 +352,14 @@ pub struct ScanHit {
 
 pub struct Session {
     ctx: Context,
+    /// How the session was opened, to open it again after a lost link.
+    config: ConnectionConfig,
+    raw: Option<RawSink>,
+    /// The last request failed with an I/O error (or, over TCP, a garbled
+    /// frame): the link is gone until it is opened again.
+    broken: bool,
+    /// Timeouts since the last answer.
+    timeouts_in_row: u32,
     unit: u8,
     timeout: Duration,
     logger: Option<TrafficLogger>,
@@ -314,64 +374,57 @@ impl Session {
         config: &ConnectionConfig,
         raw: Option<RawSink>,
     ) -> Result<Self, ModbusError> {
-        let wait = Duration::from_millis(config.timeout_ms.max(1));
-        let slave = Slave(config.unit_id);
-        let ctx = match &config.transport {
-            Transport::Tcp { host, port } => {
-                let addr = resolve(host, *port)?;
-                let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
-                    .await
-                    .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
-                tcp::attach_slave(Tap::new(stream, raw), slave)
-            }
-            Transport::RtuOverTcp { host, port } => {
-                let addr = resolve(host, *port)?;
-                let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
-                    .await
-                    .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
-                rtu::attach_slave(Tap::new(stream, raw), slave)
-            }
-            Transport::Rtu {
-                port,
-                baudrate,
-                parity,
-                data_bits,
-                stop_bits,
-            } => {
-                let builder = tokio_serial::new(port, *baudrate)
-                    .parity(match parity {
-                        Parity::N => tokio_serial::Parity::None,
-                        Parity::E => tokio_serial::Parity::Even,
-                        Parity::O => tokio_serial::Parity::Odd,
-                    })
-                    .data_bits(match data_bits {
-                        7 => tokio_serial::DataBits::Seven,
-                        8 => tokio_serial::DataBits::Eight,
-                        n => {
-                            return Err(ModbusError::Invalid(format!(
-                                "unsupported data bits: {n}"
-                            )));
-                        }
-                    })
-                    .stop_bits(match stop_bits {
-                        1 => tokio_serial::StopBits::One,
-                        2 => tokio_serial::StopBits::Two,
-                        n => {
-                            return Err(ModbusError::Invalid(format!(
-                                "unsupported stop bits: {n}"
-                            )));
-                        }
-                    });
-                rtu::attach_slave(Tap::new(builder.open_native_async()?, raw), slave)
-            }
-        };
+        let ctx = open(config, raw.clone()).await?;
         Ok(Self {
             ctx,
+            config: config.clone(),
+            raw,
+            broken: false,
+            timeouts_in_row: 0,
             unit: config.unit_id,
-            timeout: wait,
+            timeout: Duration::from_millis(config.timeout_ms.max(1)),
             logger: None,
             read_only: None,
         })
+    }
+
+    /// Whether the link looks lost: an I/O error, or over TCP a garbled
+    /// frame or three timeouts in a row (a TCP link can die without an
+    /// error). Opening it again with [`Session::reconnect`] may help; for a
+    /// serial port, timeouts only mean the device is silent.
+    pub fn link_lost(&self) -> bool {
+        self.broken || (self.over_network() && self.timeouts_in_row >= 3)
+    }
+
+    fn over_network(&self) -> bool {
+        !matches!(self.config.transport, Transport::Rtu { .. })
+    }
+
+    /// Closes the link and opens it again with the same settings, keeping
+    /// the logger, the read-only switch and the unit ID.
+    pub async fn reconnect(&mut self) -> Result<(), ModbusError> {
+        // A dead link can hang on close; do not wait long for it.
+        let _ = timeout(self.timeout, self.ctx.disconnect()).await;
+        let mut ctx = open(&self.config, self.raw.clone()).await?;
+        ctx.set_slave(Slave(self.unit));
+        self.ctx = ctx;
+        self.broken = false;
+        self.timeouts_in_row = 0;
+        Ok(())
+    }
+
+    /// Updates the link health after a request.
+    fn track<T>(&mut self, result: &Result<T, ModbusError>) {
+        match result {
+            Ok(_) | Err(ModbusError::Exception { .. }) => {
+                self.broken = false;
+                self.timeouts_in_row = 0;
+            }
+            Err(ModbusError::Timeout(_)) => self.timeouts_in_row += 1,
+            Err(ModbusError::Io(_)) => self.broken = true,
+            Err(ModbusError::Protocol(_)) if self.over_network() => self.broken = true,
+            Err(_) => {}
+        }
     }
 
     pub fn set_logger(&mut self, logger: TrafficLogger) {
@@ -446,6 +499,7 @@ impl Session {
             Area::Input => 4,
         };
         self.log(function, address, count, started, &result);
+        self.track(&result);
         let mut data = result?;
         // Coil responses are padded to a whole byte; keep only what was asked.
         if let RawData::Bits(bits) = &mut data {
@@ -511,6 +565,7 @@ impl Session {
             ),
         };
         self.log(function, address, words.len() as u16, started, &result);
+        self.track(&result);
         result
     }
 
@@ -531,6 +586,7 @@ impl Session {
             ),
         };
         self.log(function, address, bits.len() as u16, started, &result);
+        self.track(&result);
         result
     }
 

@@ -125,6 +125,8 @@ export interface PollRequest {
   sentinels: [DataType, [number, string][]][];
   /** Scale factor registers the request needs but does not report. */
   scale_registers: Register[];
+  /** Open the link again when it is lost. */
+  reconnect: boolean;
 }
 
 export type ReferenceOutcome = "match" | "mismatch";
@@ -139,6 +141,16 @@ export interface PointResult {
   /** Set when the raw value is a reserved one, e.g. "Unimplemented". */
   sentinel: string | null;
 }
+
+/** Change in the link while reading, sent by the backend. */
+export type LinkEvent =
+  | {
+      state: "reconnecting";
+      attempt: number;
+      retry_ms: number;
+      error: string | null;
+    }
+  | { state: "restored" };
 
 export interface PollCycle {
   cycle: number;
