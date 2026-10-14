@@ -48,6 +48,15 @@ jobs:
 
       - run: npm ci
 
+      # Xcode 26 compiles the Icon Composer icon (Liquid Glass) into
+      # Assets.car; with an older Xcode the bundler keeps only the .icns.
+      - name: Use Xcode 26
+        if: runner.os == 'macOS'
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$xcode" ]; then sudo xcode-select -s "$xcode"; fi
+          xcrun actool --version --output-format human-readable-text
+
       # A universal build joins only the app's own binary for both
       # architectures; the bundle also holds modbench-cli, so join it first.
       - name: Universal modbench-cli
