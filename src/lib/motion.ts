@@ -118,6 +118,28 @@ export function fieldIn(
   };
 }
 
+/** A popover (menu, dropdown list, picker) opening: fade, drop and grow from
+ * the edge it is attached to. */
+export function popIn(
+  _node: Element,
+  { above = false }: { above?: boolean } = {},
+): TransitionConfig {
+  if (reduced()) return { duration: 0 };
+  const dir = above ? 1 : -1;
+  return {
+    duration: 160,
+    easing: cubicOut,
+    css: (t) =>
+      `opacity: ${t}; transform: translateY(${(1 - t) * 4 * dir}px) scale(${0.98 + 0.02 * t})`,
+  };
+}
+
+/** A popover closing: a quick fade. */
+export function popOut(_node: Element): TransitionConfig {
+  if (reduced()) return { duration: 0 };
+  return { duration: 100, css: (t) => `opacity: ${t}` };
+}
+
 /** A view that replaces another (a tab or a page): a quick fade. */
 export function viewIn(_node: Element): TransitionConfig {
   if (reduced()) return { duration: 0 };

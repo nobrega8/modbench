@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from "./Select.svelte";
   import { formatAddress, hex } from "$lib/format";
   import { settings } from "$lib/settings.svelte";
   import AddressFormat from "./AddressFormat.svelte";
@@ -129,17 +130,20 @@
   {#if read?.data.kind !== "bits"}
     <label class="inline">
       <span>Show as</span>
-      <select class="input" bind:value={format}>
-        {#each formats as f (f.id)}<option value={f.id}>{f.label}</option
-          >{/each}
-      </select>
+      <Select
+        bind:value={format}
+        label="Show as"
+        options={formats.map((f) => ({ value: f.id, label: f.label }))}
+      />
     </label>
     {#if wide}
       <label class="inline">
         <span>Byte order</span>
-        <select class="input" bind:value={order}>
-          {#each orders as o (o)}<option value={o}>{o}</option>{/each}
-        </select>
+        <Select
+          bind:value={order}
+          label="Byte order"
+          options={orders.map((o) => ({ value: o, label: o }))}
+        />
       </label>
     {/if}
   {/if}

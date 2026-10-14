@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from "./Select.svelte";
   import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
   import {
@@ -188,14 +189,12 @@
                   an unknown device.</span
                 >
               </div>
-              <select
-                class="input"
+              <Select
                 bind:value={settings.highlightSeconds}
+                label="Highlight changed values"
+                options={holds.map((h) => ({ value: h.s, label: h.label }))}
                 onchange={changed}
-              >
-                {#each holds as h (h.s)}<option value={h.s}>{h.label}</option
-                  >{/each}
-              </select>
+              />
             </label>
           </div>
         </section>
@@ -376,29 +375,30 @@
                   semicolon if your spreadsheet expects a decimal comma.</span
                 >
               </div>
-              <select
-                class="input"
+              <Select
                 bind:value={settings.csvSeparator}
+                label="CSV separator"
+                options={[
+                  { value: ",", label: "Comma ( , )" },
+                  { value: ";", label: "Semicolon ( ; )" },
+                ]}
                 onchange={changed}
-              >
-                <option value=",">Comma ( , )</option>
-                <option value=";">Semicolon ( ; )</option>
-              </select>
+              />
             </label>
             <label class="setting">
               <div class="text">
                 <span class="name">Requests kept in the log</span>
                 <span class="hint">Older requests are dropped first.</span>
               </div>
-              <select
-                class="input"
+              <Select
                 bind:value={settings.logLimit}
+                label="Requests kept in the log"
+                options={logLimits.map((n) => ({
+                  value: n,
+                  label: n.toLocaleString("en"),
+                }))}
                 onchange={changed}
-              >
-                {#each logLimits as n (n)}<option value={n}
-                    >{n.toLocaleString("en")}</option
-                  >{/each}
-              </select>
+              />
             </label>
           </div>
         </section>
@@ -590,7 +590,7 @@
     gap: 6px;
   }
 
-  select {
+  .setting :global(.select) {
     flex: none;
   }
 

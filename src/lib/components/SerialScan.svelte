@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from "./Select.svelte";
   import { bench } from "$lib/state.svelte";
   import type { Area, Parity, SerialHit } from "$lib/types";
   import IntInput from "./IntInput.svelte";
@@ -146,10 +147,15 @@
   </label>
   <label class="field">
     <span>Ask for</span>
-    <select class="input" bind:value={area} disabled={busy}>
-      <option value="holding">Holding register</option>
-      <option value="input">Input register</option>
-    </select>
+    <Select
+      bind:value={area}
+      disabled={busy}
+      label="Ask for"
+      options={[
+        { value: "holding", label: "Holding register" },
+        { value: "input", label: "Input register" },
+      ]}
+    />
   </label>
   <label class="field">
     <span>Address</span>

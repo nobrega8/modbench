@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ADDRESS_FORMATS } from "$lib/format";
   import { settings } from "$lib/settings.svelte";
+  import Select from "./Select.svelte";
 </script>
 
 <label
@@ -8,14 +9,12 @@
   title="How addresses are shown. Fields where you type an address always take the address sent on the wire (0-based)."
 >
   <span>Addresses</span>
-  <select
-    class="input"
+  <Select
     bind:value={settings.addressFormat}
+    options={ADDRESS_FORMATS.map((f) => ({ value: f.id, label: f.label }))}
+    label="Addresses"
     onchange={() => settings.save()}
-  >
-    {#each ADDRESS_FORMATS as f (f.id)}<option value={f.id}>{f.label}</option
-      >{/each}
-  </select>
+  />
 </label>
 
 <style>

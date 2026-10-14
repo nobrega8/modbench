@@ -1,5 +1,6 @@
 <script lang="ts">
   import { bench, type OpenMap } from "$lib/state.svelte";
+  import Select from "./Select.svelte";
   import { MAX_SERIES, chartable, groupByUnit } from "$lib/trend";
   import TrendChart, { type Line } from "./TrendChart.svelte";
 
@@ -13,6 +14,8 @@
     { ms: 0, label: "Everything" },
   ];
   let windowMs = $state(5 * 60_000);
+  /** The "add a register" menu; it goes back to its prompt after a pick. */
+  let pick = $state(-1);
 
   const registers = $derived(open.map.registers);
   const full = $derived(bench.chartSeries.length >= MAX_SERIES);
@@ -50,36 +53,32 @@
     })),
   );
 
-  function add(e: Event & { currentTarget: HTMLSelectElement }) {
-    const value = e.currentTarget.value;
-    e.currentTarget.value = "";
-    if (value !== "") bench.addToChart(Number(value));
+  function add(index: number) {
+    bench.addToChart(index);
+    pick = -1;
   }
 </script>
 
 <div class="toolbar">
-  <select
-    class="input add"
-    aria-label="Add a register to the chart"
+  <Select
+    bind:value={pick}
+    width="280px"
+    label="Add a register to the chart"
+    placeholder={full
+      ? `Up to ${MAX_SERIES} registers`
+      : "Add a register to the chart…"}
     disabled={full || !options.length}
+    options={options.map(({ reg, index }) => ({
+      value: index,
+      label: `${reg.name}${reg.unit ? ` (${reg.unit})` : ""}${reg.group ? ` · ${reg.group}` : ""}`,
+    }))}
     onchange={add}
-  >
-    <option value=""
-      >{full
-        ? `Up to ${MAX_SERIES} registers`
-        : "Add a register to the chart…"}</option
-    >
-    {#each options as { reg, index } (index)}
-      <option value={index}
-        >{reg.name}{reg.unit ? ` (${reg.unit})` : ""}{reg.group
-          ? ` · ${reg.group}`
-          : ""}</option
-      >
-    {/each}
-  </select>
-  <select class="input" bind:value={windowMs} aria-label="Time span">
-    {#each windows as w (w.ms)}<option value={w.ms}>{w.label}</option>{/each}
-  </select>
+  />
+  <Select
+    bind:value={windowMs}
+    label="Time span"
+    options={windows.map((w) => ({ value: w.ms, label: w.label }))}
+  />
   <span class="spacer"></span>
   <span class="dim">One chart per unit</span>
   <button
@@ -121,10 +120,6 @@
     gap: 10px;
     flex-wrap: wrap;
     padding-bottom: 10px;
-  }
-
-  .add {
-    width: 280px;
   }
 
   .spacer {

@@ -7,6 +7,7 @@
   import MapPicker from "./MapPicker.svelte";
   import ScanPanel from "./ScanPanel.svelte";
   import StepCard from "./StepCard.svelte";
+  import Select from "./Select.svelte";
 
   const orders: ByteOrder[] = ["ABCD", "CDAB", "BADC", "DCBA"];
   const locked = $derived(bench.running);
@@ -79,18 +80,17 @@
     {#if bench.source === "manual"}
       <label in:fieldIn class="field">
         <span>Command</span>
-        <select
-          class="input command"
+        <Select
           bind:value={bench.fc}
-          onchange={onFunction}
+          width="250px"
+          label="Command"
           disabled={locked}
-        >
-          {#each Object.entries(FUNCTION_NAME) as [code, name] (code)}
-            <option value={Number(code)}
-              >{name} ({code.padStart(2, "0")})</option
-            >
-          {/each}
-        </select>
+          options={Object.entries(FUNCTION_NAME).map(([code, name]) => ({
+            value: Number(code),
+            label: `${name} (${code.padStart(2, "0")})`,
+          }))}
+          onchange={onFunction}
+        />
       </label>
       <label in:fieldIn class="field">
         <span
@@ -130,21 +130,19 @@
         title="Read every value with another byte order"
       >
         <span>Byte order</span>
-        <select
-          class="input"
+        <Select
           value={bench.orderOverride ?? ""}
-          onchange={(e) =>
-            bench.setOrderOverride(
-              (e.currentTarget.value || null) as ByteOrder | null,
-            )}
-        >
-          <option value=""
-            >From map{bench.map
-              ? ` (${bench.map.map.meta.byte_order ?? "ABCD"})`
-              : ""}</option
-          >
-          {#each orders as o (o)}<option value={o}>{o}</option>{/each}
-        </select>
+          label="Byte order"
+          options={[
+            {
+              value: "",
+              label: `From map${bench.map ? ` (${bench.map.map.meta.byte_order ?? "ABCD"})` : ""}`,
+            },
+            ...orders.map((o) => ({ value: o, label: o })),
+          ]}
+          onchange={(v) =>
+            bench.setOrderOverride((v || null) as ByteOrder | null)}
+        />
       </label>
     {/if}
 
@@ -170,10 +168,6 @@
     flex-wrap: wrap;
     gap: 10px 14px;
     align-items: flex-end;
-  }
-
-  .command {
-    width: 250px;
   }
 
   .options {
