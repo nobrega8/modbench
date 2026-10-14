@@ -242,7 +242,14 @@
 </div>
 
 {#if bench.libraryFolder}
-  <p class="folder">Stored in <code>{bench.libraryFolder}</code></p>
+  <div class="folder">
+    <button
+      class="btn"
+      title={bench.libraryFolder}
+      onclick={() => api.libraryOpenFolder().catch(() => {})}
+      >Open folder</button
+    >
+  </div>
 {/if}
 
 <style>
@@ -435,8 +442,6 @@
 
   .folder {
     margin: 8px 0 0;
-    font-size: 12px;
-    color: var(--text-3);
   }
 
   code {

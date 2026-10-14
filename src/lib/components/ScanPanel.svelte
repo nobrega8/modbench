@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { slidePill } from "$lib/motion";
   import { bench } from "$lib/state.svelte";
   import IntInput from "./IntInput.svelte";
   import SerialScan from "./SerialScan.svelte";
@@ -27,7 +28,12 @@
 <div class="panel">
   <div class="head">
     {#if bench.transport === "rtu"}
-      <div class="segmented" role="tablist" aria-label="What to find">
+      <div
+        class="segmented"
+        role="tablist"
+        aria-label="What to find"
+        use:slidePill
+      >
         <button
           role="tab"
           aria-selected={!serial}

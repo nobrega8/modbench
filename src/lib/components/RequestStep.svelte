@@ -1,5 +1,6 @@
 <script lang="ts">
   import { FUNCTION_NAME } from "$lib/format";
+  import { fieldIn, slidePill } from "$lib/motion";
   import { bench } from "$lib/state.svelte";
   import type { ByteOrder } from "$lib/types";
   import IntInput from "./IntInput.svelte";
@@ -52,7 +53,12 @@
 
     <div class="field">
       <span>Source</span>
-      <div class="segmented" role="radiogroup" aria-label="Source">
+      <div
+        class="segmented"
+        role="radiogroup"
+        aria-label="Source"
+        use:slidePill
+      >
         <button
           role="radio"
           aria-checked={bench.source === "manual"}
@@ -71,7 +77,7 @@
     </div>
 
     {#if bench.source === "manual"}
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Command</span>
         <select
           class="input command"
@@ -86,7 +92,7 @@
           {/each}
         </select>
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span
           >{bench.fc <= 2 || bench.fc === 5 || bench.fc === 15
             ? "Address"
@@ -101,7 +107,7 @@
           onchange={(n) => (bench.address = n)}
         />
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Quantity</span>
         <IntInput
           value={bench.quantity}
@@ -114,11 +120,15 @@
         />
       </label>
     {:else}
-      <div class="field">
+      <div in:fieldIn class="field">
         <span>Map</span>
         <MapPicker disabled={locked} />
       </div>
-      <label class="field" title="Read every value with another byte order">
+      <label
+        in:fieldIn
+        class="field"
+        title="Read every value with another byte order"
+      >
         <span>Byte order</span>
         <select
           class="input"
@@ -168,7 +178,7 @@
 
   .options {
     margin-left: auto;
-    height: 34px;
+    height: 30px;
     display: flex;
     align-items: center;
   }

@@ -141,7 +141,7 @@
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
   font-family: var(--ui);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   font-feature-settings:
     "cv05" 1,
@@ -187,7 +187,7 @@ select {
 
 /* A filled control: translucent grey, no stroke, ink ring on focus */
 .input {
-  height: 34px;
+  height: 30px;
   padding: 0 11px;
   border: 0;
   border-radius: 9px;
@@ -245,7 +245,7 @@ select.input option {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .field > span {
@@ -260,8 +260,8 @@ select.input option {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  height: 34px;
-  padding: 0 15px;
+  height: 30px;
+  padding: 0 13px;
   border: 0;
   border-radius: 8px;
   background: rgb(var(--fg-rgb) / 0.07);
@@ -431,7 +431,7 @@ input[type="checkbox"]:focus-visible {
   border: 0;
   background: none;
   padding: 0 12px;
-  height: 28px;
+  height: 26px;
   border-radius: 7px;
   font-weight: 500;
   color: var(--text-2);
@@ -495,5 +495,46 @@ input[type="checkbox"]:focus-visible {
   * {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* ───────────── motion ───────────── */
+
+/* A pill that slides under the selected option (lib/motion.ts slidePill) */
+.sliding {
+  position: relative;
+  isolation: isolate;
+}
+
+.sliding > .pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  border-radius: 7px;
+  background: var(--card);
+  box-shadow: var(--e1);
+  pointer-events: none;
+  transition:
+    transform 0.28s var(--ease),
+    width 0.28s var(--ease),
+    height 0.28s var(--ease),
+    opacity 0.15s var(--ease);
+}
+
+.sliding > button.on {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* A container that eases to its new height (lib/motion.ts smoothHeight) */
+.smooth-height {
+  transition: height 0.26s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sliding > .pill,
+  .smooth-height {
+    transition: none;
   }
 }

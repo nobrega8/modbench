@@ -1,5 +1,6 @@
 <script lang="ts">
   import { api } from "$lib/api";
+  import { fieldIn, slidePill } from "$lib/motion";
   import { bench } from "$lib/state.svelte";
   import StepCard from "./StepCard.svelte";
 
@@ -30,7 +31,12 @@
   <div class="row">
     <div class="field">
       <span>Interface</span>
-      <div class="segmented" role="tablist" aria-label="Connection type">
+      <div
+        class="segmented"
+        role="tablist"
+        aria-label="Connection type"
+        use:slidePill
+      >
         <button
           role="tab"
           aria-selected={serial}
@@ -48,7 +54,7 @@
       </div>
     </div>
     {#if serial}
-      <label class="field port">
+      <label in:fieldIn class="field port">
         <span>Port</span>
         <span class="with-btn">
           <select class="input" bind:value={bench.serialPort} disabled={locked}>
@@ -76,20 +82,20 @@
           </button>
         </span>
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Baud rate</span>
         <select class="input" bind:value={bench.baudrate} disabled={locked}>
           {#each baudrates as b (b)}<option value={b}>{b}</option>{/each}
         </select>
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Data bits</span>
         <select class="input" bind:value={bench.dataBits} disabled={locked}>
           <option value={8}>8 bits</option>
           <option value={7}>7 bits</option>
         </select>
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Parity</span>
         <select class="input" bind:value={bench.parity} disabled={locked}>
           <option value="N">None</option>
@@ -97,7 +103,7 @@
           <option value="O">Odd</option>
         </select>
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Stop bits</span>
         <select class="input" bind:value={bench.stopBits} disabled={locked}>
           <option value={1}>1 stop bit</option>
@@ -105,14 +111,14 @@
         </select>
       </label>
     {:else}
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Protocol</span>
         <select class="input" bind:value={bench.transport} disabled={locked}>
           <option value="tcp">Modbus TCP</option>
           <option value="rtuovertcp">Modbus RTU over TCP</option>
         </select>
       </label>
-      <label class="field host">
+      <label in:fieldIn class="field host">
         <span>IP address</span>
         <input
           class="input num"
@@ -121,7 +127,7 @@
           spellcheck="false"
         />
       </label>
-      <label class="field">
+      <label in:fieldIn class="field">
         <span>Port</span>
         <input
           class="input num short"

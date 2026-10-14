@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { smoothHeight } from "$lib/motion";
 
   let {
     step,
@@ -19,15 +20,23 @@
     <span class="num">{step}</span>
     <span class="title">{title}</span>
   </header>
-  <div class="body">
-    {@render children()}
-  </div>
+  {#if grow}
+    <div class="body">
+      {@render children()}
+    </div>
+  {:else}
+    <div class="clip" use:smoothHeight>
+      <div class="body">
+        {@render children()}
+      </div>
+    </div>
+  {/if}
 </section>
 
 <style>
   .step {
     display: grid;
-    grid-template-columns: 92px 1fr;
+    grid-template-columns: 80px 1fr;
     background: var(--card);
     border-radius: 14px;
     box-shadow: var(--e2);
@@ -44,7 +53,7 @@
     align-items: center;
     justify-content: flex-start;
     gap: 6px;
-    padding: 16px 6px;
+    padding: 12px 6px;
   }
 
   .num {
@@ -69,8 +78,12 @@
     text-align: center;
   }
 
+  .clip {
+    min-width: 0;
+  }
+
   .body {
-    padding: 14px 18px 16px 4px;
+    padding: 10px 16px 12px 4px;
     min-width: 0;
     min-height: 0;
     display: flex;

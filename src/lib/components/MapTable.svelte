@@ -672,7 +672,7 @@
   }
 
   td {
-    padding: 5px 10px;
+    padding: 3px 10px;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }

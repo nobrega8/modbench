@@ -257,7 +257,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px 12px;
-    min-height: 34px;
+    min-height: 30px;
     align-items: center;
   }
 
@@ -278,7 +278,7 @@
   }
 
   .stop {
-    height: 34px;
+    height: 30px;
   }
 
   .status {

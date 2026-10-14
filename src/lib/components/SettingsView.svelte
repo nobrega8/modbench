@@ -1,7 +1,12 @@
 <script lang="ts">
   import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
-  import { settings, type Theme } from "$lib/settings.svelte";
+  import {
+    settings,
+    TEXT_SCALE_MAX,
+    TEXT_SCALE_MIN,
+    type Theme,
+  } from "$lib/settings.svelte";
   import { forgetAll } from "$lib/profiles";
   import { APT_UPGRADE, updates } from "$lib/updates.svelte";
 
@@ -105,258 +110,300 @@
 
     {#if problem}<p class="problem" role="alert">{problem}</p>{/if}
 
-    <section>
-      <h2 class="key">Appearance</h2>
-      <div class="group">
-        <div class="setting theme-row">
-          <span class="name">Theme</span>
-          <div class="themes" role="radiogroup" aria-label="Theme">
-            {#each themes as t (t.id)}
-              <button
-                class="theme"
-                role="radio"
-                aria-checked={settings.theme === t.id}
-                class:on={settings.theme === t.id}
-                onclick={() => {
-                  settings.theme = t.id;
-                  changed();
-                }}
+    <div class="cols">
+      <div class="col">
+        <section>
+          <h2 class="key">Appearance</h2>
+          <div class="group">
+            <div class="setting theme-row">
+              <span class="name">Theme</span>
+              <div class="themes" role="radiogroup" aria-label="Theme">
+                {#each themes as t (t.id)}
+                  <button
+                    class="theme"
+                    role="radio"
+                    aria-checked={settings.theme === t.id}
+                    class:on={settings.theme === t.id}
+                    onclick={() => {
+                      settings.theme = t.id;
+                      changed();
+                    }}
+                  >
+                    <span class="preview {t.id}" aria-hidden="true">
+                      <span class="layer light"><i></i><b></b><b></b></span>
+                      <span class="layer dark"><i></i><b></b><b></b></span>
+                    </span>
+                    <span class="label">{t.label}</span>
+                  </button>
+                {/each}
+              </div>
+            </div>
+            <div class="setting">
+              <div class="text">
+                <span class="name">Text size</span>
+                <span class="hint"
+                  >Smaller to see more at once, larger to read from further
+                  away. Text and controls scale together.</span
+                >
+              </div>
+              <div class="scale">
+                <input
+                  type="range"
+                  min={TEXT_SCALE_MIN * 100}
+                  max={TEXT_SCALE_MAX * 100}
+                  step="10"
+                  value={Math.round(settings.textScale * 100)}
+                  aria-label="Text size"
+                  oninput={(e) => {
+                    settings.textScale = Number(e.currentTarget.value) / 100;
+                    settings.applyTextScale();
+                  }}
+                  onchange={changed}
+                />
+                <span class="mono pct"
+                  >{Math.round(settings.textScale * 100)}%</span
+                >
+                <button
+                  class="btn"
+                  disabled={settings.textScale === 1}
+                  onclick={() => {
+                    settings.textScale = 1;
+                    settings.applyTextScale();
+                    changed();
+                  }}>Reset</button
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+        <section>
+          <h2 class="key">Values</h2>
+          <div class="group">
+            <label class="setting">
+              <div class="text">
+                <span class="name">Highlight changed values</span>
+                <span class="hint"
+                  >A value that changes stays highlighted this long, in the
+                  register grid and the device map. Helps to find what moves on
+                  an unknown device.</span
+                >
+              </div>
+              <select
+                class="input"
+                bind:value={settings.highlightSeconds}
+                onchange={changed}
               >
-                <span class="preview {t.id}" aria-hidden="true">
-                  <span class="layer light"><i></i><b></b><b></b></span>
-                  <span class="layer dark"><i></i><b></b><b></b></span>
-                </span>
-                <span class="label">{t.label}</span>
-              </button>
-            {/each}
+                {#each holds as h (h.s)}<option value={h.s}>{h.label}</option
+                  >{/each}
+              </select>
+            </label>
           </div>
-        </div>
+        </section>
+        <section>
+          <h2 class="key">Device library</h2>
+          <div class="group">
+            <div class="setting">
+              <div class="text">
+                <span class="name">Library folder</span>
+                <span class="hint path" title={bench.libraryFolder}
+                  >{bench.libraryFolder || "—"}</span
+                >
+              </div>
+              <div class="buttons">
+                <button
+                  class="btn"
+                  onclick={copyFolder}
+                  disabled={!bench.libraryFolder}
+                  >{copied ? "Copied" : "Copy path"}</button
+                >
+                <button
+                  class="btn"
+                  onclick={() => run(() => api.libraryOpenFolder())}
+                  >Open folder</button
+                >
+              </div>
+            </div>
+            <div class="setting">
+              <div class="text">
+                <span class="name">Shared maps</span>
+                <span class="hint"
+                  >The <span class="mono">.mbmap</span> format and the maps other
+                  users share live in the mbmap-library repository.</span
+                >
+              </div>
+              <div class="buttons">
+                <button
+                  class="btn"
+                  onclick={() => run(() => api.openLink("spec"))}
+                  >Format {@render external()}</button
+                >
+                <button
+                  class="btn"
+                  onclick={() => run(() => api.openLink("library"))}
+                  >Repository {@render external()}</button
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+        <section>
+          <h2 class="key">Updates</h2>
+          <div class="group">
+            <label class="setting">
+              <div class="text">
+                <span class="name">Check for updates when Modbench starts</span>
+                <span class="hint"
+                  >{#if updates.viaApt}Installed with apt: updates install with
+                    <span class="mono">{APT_UPGRADE}</span>{:else}You choose
+                    when to install.{/if}</span
+                >
+              </div>
+              <input
+                type="checkbox"
+                class="switch"
+                role="switch"
+                bind:checked={settings.checkUpdates}
+                onchange={changed}
+              />
+            </label>
+          </div>
+        </section>
       </div>
-    </section>
-
-    <section>
-      <h2 class="key">Values</h2>
-      <div class="group">
-        <label class="setting">
-          <div class="text">
-            <span class="name">Highlight changed values</span>
-            <span class="hint"
-              >A value that changes stays highlighted this long, in the register
-              grid and the device map. Helps to find what moves on an unknown
-              device.</span
-            >
+      <div class="col">
+        <section>
+          <h2 class="key">Connection</h2>
+          <div class="group">
+            <label class="setting">
+              <div class="text">
+                <span class="name">Remember the last connection</span>
+                <span class="hint"
+                  >Port, baud rate, address, device and timing are filled in
+                  again the next time Modbench opens.</span
+                >
+              </div>
+              <input
+                type="checkbox"
+                class="switch"
+                role="switch"
+                bind:checked={settings.rememberConnection}
+                onchange={changed}
+              />
+            </label>
+            <label class="setting">
+              <div class="text">
+                <span class="name"
+                  >Remember register choices for each device</span
+                >
+                <span class="hint"
+                  >Which registers are read, the byte order and Loop come back
+                  when you pick the same map on the same connection and unit ID.
+                  Nothing is sent to the device when they are restored.</span
+                >
+              </div>
+              <input
+                type="checkbox"
+                class="switch"
+                role="switch"
+                bind:checked={settings.rememberDevices}
+                onchange={changed}
+              />
+            </label>
+            <div class="setting">
+              <div class="text">
+                <span class="name">Forget saved device choices</span>
+                <span class="hint"
+                  >{forgotten === null
+                    ? "Every device goes back to reading all registers."
+                    : `Forgot ${forgotten} device${forgotten === 1 ? "" : "s"}.`}</span
+                >
+              </div>
+              <button class="btn" onclick={forgetDevices}>Forget</button>
+            </div>
+            <label class="setting">
+              <div class="text">
+                <span class="name">Confirm before writing to a device</span>
+                <span class="hint"
+                  >Asks before every write: write commands, map values and
+                  control commands.</span
+                >
+              </div>
+              <input
+                type="checkbox"
+                class="switch"
+                role="switch"
+                bind:checked={settings.confirmWrites}
+                onchange={changed}
+              />
+            </label>
+            <label class="setting">
+              <div class="text">
+                <span class="name">Reconnect when the connection is lost</span>
+                <span class="hint"
+                  >While a test runs, a connection that fails (an I/O error, or
+                  over TCP three timeouts in a row) is opened again, after 0.5 s
+                  and then less often, up to every 10 s.</span
+                >
+              </div>
+              <input
+                type="checkbox"
+                class="switch"
+                role="switch"
+                bind:checked={settings.autoReconnect}
+                onchange={changed}
+              />
+            </label>
+            <label class="setting">
+              <div class="text">
+                <span class="name">Read-only mode</span>
+                <span class="hint"
+                  >Blocks every write, also on a connection that is already
+                  open. Reading is not affected. Use it on a plant in operation.</span
+                >
+              </div>
+              <input
+                type="checkbox"
+                class="switch"
+                role="switch"
+                bind:checked={settings.readOnly}
+                onchange={changed}
+              />
+            </label>
+            <label class="setting">
+              <div class="text">
+                <span class="name">CSV separator</span>
+                <span class="hint"
+                  >For saved logs, exported values and recordings. Use a
+                  semicolon if your spreadsheet expects a decimal comma.</span
+                >
+              </div>
+              <select
+                class="input"
+                bind:value={settings.csvSeparator}
+                onchange={changed}
+              >
+                <option value=",">Comma ( , )</option>
+                <option value=";">Semicolon ( ; )</option>
+              </select>
+            </label>
+            <label class="setting">
+              <div class="text">
+                <span class="name">Requests kept in the log</span>
+                <span class="hint">Older requests are dropped first.</span>
+              </div>
+              <select
+                class="input"
+                bind:value={settings.logLimit}
+                onchange={changed}
+              >
+                {#each logLimits as n (n)}<option value={n}
+                    >{n.toLocaleString("en")}</option
+                  >{/each}
+              </select>
+            </label>
           </div>
-          <select
-            class="input"
-            bind:value={settings.highlightSeconds}
-            onchange={changed}
-          >
-            {#each holds as h (h.s)}<option value={h.s}>{h.label}</option
-              >{/each}
-          </select>
-        </label>
+        </section>
       </div>
-    </section>
-
-    <section>
-      <h2 class="key">Connection</h2>
-      <div class="group">
-        <label class="setting">
-          <div class="text">
-            <span class="name">Remember the last connection</span>
-            <span class="hint"
-              >Port, baud rate, address, device and timing are filled in again
-              the next time Modbench opens.</span
-            >
-          </div>
-          <input
-            type="checkbox"
-            class="switch"
-            role="switch"
-            bind:checked={settings.rememberConnection}
-            onchange={changed}
-          />
-        </label>
-        <label class="setting">
-          <div class="text">
-            <span class="name">Remember register choices for each device</span>
-            <span class="hint"
-              >Which registers are read, the byte order and Loop come back when
-              you pick the same map on the same connection and unit ID. Nothing
-              is sent to the device when they are restored.</span
-            >
-          </div>
-          <input
-            type="checkbox"
-            class="switch"
-            role="switch"
-            bind:checked={settings.rememberDevices}
-            onchange={changed}
-          />
-        </label>
-        <div class="setting">
-          <div class="text">
-            <span class="name">Forget saved device choices</span>
-            <span class="hint"
-              >{forgotten === null
-                ? "Every device goes back to reading all registers."
-                : `Forgot ${forgotten} device${forgotten === 1 ? "" : "s"}.`}</span
-            >
-          </div>
-          <button class="btn" onclick={forgetDevices}>Forget</button>
-        </div>
-        <label class="setting">
-          <div class="text">
-            <span class="name">Confirm before writing to a device</span>
-            <span class="hint"
-              >Asks before every write: write commands, map values and control
-              commands.</span
-            >
-          </div>
-          <input
-            type="checkbox"
-            class="switch"
-            role="switch"
-            bind:checked={settings.confirmWrites}
-            onchange={changed}
-          />
-        </label>
-        <label class="setting">
-          <div class="text">
-            <span class="name">Reconnect when the connection is lost</span>
-            <span class="hint"
-              >While a test runs, a connection that fails (an I/O error, or over
-              TCP three timeouts in a row) is opened again, after 0.5 s and then
-              less often, up to every 10 s.</span
-            >
-          </div>
-          <input
-            type="checkbox"
-            class="switch"
-            role="switch"
-            bind:checked={settings.autoReconnect}
-            onchange={changed}
-          />
-        </label>
-        <label class="setting">
-          <div class="text">
-            <span class="name">Read-only mode</span>
-            <span class="hint"
-              >Blocks every write, also on a connection that is already open.
-              Reading is not affected. Use it on a plant in operation.</span
-            >
-          </div>
-          <input
-            type="checkbox"
-            class="switch"
-            role="switch"
-            bind:checked={settings.readOnly}
-            onchange={changed}
-          />
-        </label>
-        <label class="setting">
-          <div class="text">
-            <span class="name">CSV separator</span>
-            <span class="hint"
-              >For saved logs, exported values and recordings. Use a semicolon
-              if your spreadsheet expects a decimal comma.</span
-            >
-          </div>
-          <select
-            class="input"
-            bind:value={settings.csvSeparator}
-            onchange={changed}
-          >
-            <option value=",">Comma ( , )</option>
-            <option value=";">Semicolon ( ; )</option>
-          </select>
-        </label>
-        <label class="setting">
-          <div class="text">
-            <span class="name">Requests kept in the log</span>
-            <span class="hint">Older requests are dropped first.</span>
-          </div>
-          <select
-            class="input"
-            bind:value={settings.logLimit}
-            onchange={changed}
-          >
-            {#each logLimits as n (n)}<option value={n}
-                >{n.toLocaleString("en")}</option
-              >{/each}
-          </select>
-        </label>
-      </div>
-    </section>
-
-    <section>
-      <h2 class="key">Device library</h2>
-      <div class="group">
-        <div class="setting">
-          <div class="text">
-            <span class="name">Library folder</span>
-            <span class="hint path" title={bench.libraryFolder}
-              >{bench.libraryFolder || "—"}</span
-            >
-          </div>
-          <div class="buttons">
-            <button
-              class="btn"
-              onclick={copyFolder}
-              disabled={!bench.libraryFolder}
-              >{copied ? "Copied" : "Copy path"}</button
-            >
-            <button
-              class="btn"
-              onclick={() => run(() => api.libraryOpenFolder())}
-              >Open folder</button
-            >
-          </div>
-        </div>
-        <div class="setting">
-          <div class="text">
-            <span class="name">Shared maps</span>
-            <span class="hint"
-              >The <span class="mono">.mbmap</span> format and the maps other users
-              share live in the mbmap-library repository.</span
-            >
-          </div>
-          <div class="buttons">
-            <button class="btn" onclick={() => run(() => api.openLink("spec"))}
-              >Format {@render external()}</button
-            >
-            <button
-              class="btn"
-              onclick={() => run(() => api.openLink("library"))}
-              >Repository {@render external()}</button
-            >
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2 class="key">Updates</h2>
-      <div class="group">
-        <label class="setting">
-          <div class="text">
-            <span class="name">Check for updates when Modbench starts</span>
-            <span class="hint"
-              >{#if updates.viaApt}Installed with apt: updates install with
-                <span class="mono">{APT_UPGRADE}</span>{:else}You choose when to
-                install.{/if}</span
-            >
-          </div>
-          <input
-            type="checkbox"
-            class="switch"
-            role="switch"
-            bind:checked={settings.checkUpdates}
-            onchange={changed}
-          />
-        </label>
-      </div>
-    </section>
+    </div>
   </div>
 </div>
 
@@ -370,8 +417,45 @@
   }
 
   .column {
-    max-width: 680px;
+    max-width: 1180px;
     margin: 0 auto;
+  }
+
+  /* Two columns of sections; one on a narrow window */
+  .cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 22px;
+    align-items: start;
+    margin-top: 26px;
+  }
+
+  @media (max-width: 900px) {
+    .cols {
+      grid-template-columns: 1fr;
+    }
+
+    .col + .col {
+      margin-top: 26px;
+    }
+  }
+
+  .scale {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .scale input {
+    width: 140px;
+    accent-color: rgb(var(--fg-rgb));
+  }
+
+  .pct {
+    width: 40px;
+    text-align: right;
+    color: var(--text-2);
   }
 
   /* ── About ── */

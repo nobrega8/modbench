@@ -1,5 +1,6 @@
 // User preferences, kept in this machine's webview storage.
 
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { AddressFormat } from "./format";
 
 export type Theme = "system" | "light" | "dark";
@@ -17,6 +18,7 @@ interface Stored {
   addressFormat: AddressFormat;
   highlightSeconds: number;
   checkUpdates: boolean;
+  textScale: number;
 }
 
 const KEY = "modbench.settings";
@@ -32,7 +34,12 @@ const DEFAULTS: Stored = {
   addressFormat: "base0",
   highlightSeconds: 2,
   checkUpdates: true,
+  textScale: 1,
 };
+
+/** Smallest and largest text size, as a zoom factor of the whole window. */
+export const TEXT_SCALE_MIN = 0.5;
+export const TEXT_SCALE_MAX = 3;
 
 function load(): Stored {
   try {
@@ -63,6 +70,8 @@ class Settings {
   /** How long a changed value stays highlighted; 0 turns it off. */
   highlightSeconds = $state(2);
   checkUpdates = $state(true);
+  /** Size of text and controls, 0.5 to 3 (1 = normal). */
+  textScale = $state(1);
 
   constructor() {
     Object.assign(this, load());
@@ -81,11 +90,26 @@ class Settings {
       addressFormat: this.addressFormat,
       highlightSeconds: this.highlightSeconds,
       checkUpdates: this.checkUpdates,
+      textScale: this.textScale,
     };
     try {
       localStorage.setItem(KEY, JSON.stringify(data));
     } catch {
       // Storage unavailable: settings last for this session only.
+    }
+  }
+
+  /** Zooms the window's content to the text size. The webview's own zoom
+   * keeps the layout right, where CSS zoom would break viewport units. */
+  async applyTextScale() {
+    const scale = Math.min(
+      TEXT_SCALE_MAX,
+      Math.max(TEXT_SCALE_MIN, this.textScale || 1),
+    );
+    try {
+      await getCurrentWebview().setZoom(scale);
+    } catch {
+      // Not running in Tauri (tests): nothing to zoom.
     }
   }
 
