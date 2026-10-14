@@ -261,8 +261,8 @@
             <span class="name">Check for updates when Modbench starts</span>
             <span class="hint"
               >{#if updates.viaApt}Installed with apt: updates install with
-                <span class="mono">{APT_UPGRADE}</span>{:else}You choose when
-                to install.{/if}</span
+                <span class="mono">{APT_UPGRADE}</span>{:else}You choose when to
+                install.{/if}</span
             >
           </div>
           <input
