@@ -11,6 +11,7 @@
     formatValue,
     parseForRegister,
     limitError,
+    valueTitle,
   } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
   import { diagnosticWhere, type Register } from "$lib/types";
@@ -305,6 +306,8 @@
           reg.access === "W" || r?.sentinel
             ? null
             : formatValue(reg, r?.value ?? null)}
+        {@const shownTitle =
+          shown === null ? undefined : valueTitle(reg, r?.value ?? null)}
         <tr class:err={!!r?.error} class:off>
           <td class="read">
             {#if reg.access !== "W"}
@@ -352,7 +355,7 @@
           <td
             class="val mono"
             class:changed={bench.fresh(`m:${index}`)}
-            title={shown || undefined}
+            title={shownTitle}
           >
             {#if reg.access === "W"}<span class="dim">write only</span
               >{:else if r?.sentinel}<span

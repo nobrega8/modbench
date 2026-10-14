@@ -115,17 +115,35 @@ export function limitHint(reg: Register): string | null {
   return null;
 }
 
+/** The raw value and its label, when the register's enum has a label for
+ * this value. Labels match the raw value, before scale and offset. */
+export function enumValue(
+  reg: Register,
+  value: Value | null,
+): { raw: number; label: string } | null {
+  if (value === null || value === undefined || typeof value === "string")
+    return null;
+  const raw =
+    typeof value === "boolean"
+      ? Number(value)
+      : Math.round((value - reg.offset) / reg.scale);
+  const label = reg.enum.find(([v]) => v === raw);
+  return label ? { raw, label: label[1] } : null;
+}
+
+/** Tooltip of a value: the full text, plus the real value behind an enum label. */
+export function valueTitle(reg: Register, value: Value | null): string {
+  const labelled = enumValue(reg, value);
+  if (labelled) return `${labelled.label}\nValue: ${labelled.raw}`;
+  return formatValue(reg, value);
+}
+
 export function formatValue(reg: Register, value: Value | null): string {
   if (value === null || value === undefined) return "—";
-  if (typeof value === "boolean") {
-    const label = reg.enum.find(([v]) => v === (value ? 1 : 0));
-    return label ? label[1] : value ? "ON" : "OFF";
-  }
+  const labelled = enumValue(reg, value);
+  if (labelled) return labelled.label;
+  if (typeof value === "boolean") return value ? "ON" : "OFF";
   if (typeof value === "string") return value;
-  // Labels match the raw value, before scale and offset.
-  const raw = Math.round((value - reg.offset) / reg.scale);
-  const label = reg.enum.find(([v]) => v === raw);
-  if (label) return label[1];
   if (Number.isInteger(value)) return value.toString();
   // Enough digits for the scale, without float noise.
   const decimals =
