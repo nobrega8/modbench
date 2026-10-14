@@ -139,6 +139,14 @@ pub struct Register {
     pub offset: f64,
     pub unit: String,
     pub access: Access,
+    /// Smallest / largest value a write accepts, in engineering units.
+    #[serde(default)]
+    pub write_min: Option<f64>,
+    #[serde(default)]
+    pub write_max: Option<f64>,
+    /// Raw value a healthy device holds here (spec section 4.6), as written.
+    #[serde(default)]
+    pub reference: Option<String>,
     /// Overrides the file's `@byte_order` when set.
     pub byte_order: Option<ByteOrder>,
     /// Bit index, only for bool in input/holding registers.
@@ -212,7 +220,7 @@ impl Parsed {
 
 const REQUIRED_META: [&str; 3] = ["mbmap", "vendor", "model"];
 const REQUIRED_COLUMNS: [&str; 4] = ["name", "area", "address", "type"];
-const KNOWN_COLUMNS: [&str; 16] = [
+const KNOWN_COLUMNS: [&str; 19] = [
     "name",
     "group",
     "area",
@@ -224,10 +232,13 @@ const KNOWN_COLUMNS: [&str; 16] = [
     "offset",
     "unit",
     "access",
+    "write_min",
+    "write_max",
     "byte_order",
     "bit",
     "bits",
     "enum",
+    "reference",
     "description",
 ];
 
@@ -283,6 +294,61 @@ fn is_website(text: &str) -> bool {
             .iter()
             .all(|l| !l.is_empty() && l.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-'))
         && !path.chars().any(char::is_whitespace)
+}
+
+/// Decimal or 0x hex integer of any supported width (up to uint64).
+pub(crate) fn parse_i128(text: &str) -> Option<i128> {
+    let (negative, digits) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text.strip_prefix('+').unwrap_or(text)),
+    };
+    let n = match digits.get(..2) {
+        Some("0x" | "0X") => i128::from_str_radix(&digits[2..], 16).ok()?,
+        _ if !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()) => {
+            digits.parse::<i128>().ok()?
+        }
+        _ => return None,
+    };
+    Some(if negative { -n } else { n })
+}
+
+/// Whether `text` is a raw value that a row of this type can hold.
+fn valid_reference(ty: DataType, bits: Option<u8>, text: &str, length: Option<u16>) -> bool {
+    if let Some(width) = bits {
+        return parse_i128(text).is_some_and(|n| (0..1i128 << width).contains(&n));
+    }
+    match ty {
+        DataType::Bool => matches!(
+            text.to_ascii_lowercase().as_str(),
+            "0" | "1" | "true" | "false"
+        ),
+        DataType::String => length.is_none_or(|n| text.chars().count() <= 2 * usize::from(n)),
+        DataType::Float32 | DataType::Float64 => parse_number(text).is_some(),
+        _ => match sentinel_range(ty) {
+            Some((lo, hi)) => parse_i128(text).is_some_and(|n| (lo..=hi).contains(&n)),
+            None => false,
+        },
+    }
+}
+
+/// Compares a decoded raw value with the row's `reference` (spec 4.6):
+/// `Some(true)` match, `Some(false)` mismatch, `None` when the row has none.
+pub fn reference_matches(reg: &Register, raw: &Value) -> Option<bool> {
+    let text = reg.reference.as_deref()?;
+    Some(match raw {
+        Value::Bool(b) => matches!(text.to_ascii_lowercase().as_str(), "1" | "true") == *b,
+        Value::Int(n) => parse_i128(text) == Some(i128::from(*n)),
+        Value::Uint(n) => parse_i128(text) == Some(i128::from(*n)),
+        Value::Float(f) => match (reg.ty, parse_number(text)) {
+            (DataType::Float32, Some(r)) => (r as f32) == (*f as f32),
+            (_, Some(r)) => r == *f,
+            _ => false,
+        },
+        Value::Text(t) => {
+            let trim = |s: &str| s.trim_end_matches(['\0', ' ']).to_string();
+            trim(t) == trim(text)
+        }
+    })
 }
 
 fn parse_number(text: &str) -> Option<f64> {
@@ -596,7 +662,7 @@ pub fn parse(bytes: &[u8]) -> Parsed {
     let mut meta = Meta::default();
     let mut seen_meta: Vec<String> = Vec::new();
     let mut header: Option<Vec<String>> = None;
-    let mut sep = ',';
+    let sep = ',';
     let mut rows: Vec<RawRow> = Vec::new();
 
     for (index, raw) in text.lines().enumerate() {
@@ -677,11 +743,8 @@ pub fn parse(bytes: &[u8]) -> Parsed {
         }
 
         let Some(columns) = &header else {
-            sep = match (line.find(','), line.find(';')) {
-                (Some(c), Some(s)) if s < c => ';',
-                (None, Some(_)) => ';',
-                _ => ',',
-            };
+            // The separator is always a comma; a ';' line gets a hint below.
+            let semicolon_hint = line.contains(';') && !line.contains(',');
             let cols: Vec<String> = split_csv(line, sep)
                 .into_iter()
                 .map(|c| c.to_lowercase())
@@ -700,7 +763,14 @@ pub fn parse(bytes: &[u8]) -> Parsed {
                     ck.error(
                         Some(lineno),
                         "missing-column",
-                        format!("header is missing required column {col:?}"),
+                        format!(
+                            "header is missing required column {col:?}{}",
+                            if semicolon_hint {
+                                " (fields are separated by commas; this line uses ';')"
+                            } else {
+                                ""
+                            }
+                        ),
                     );
                 }
             }
@@ -975,6 +1045,69 @@ pub fn parse(bytes: &[u8]) -> Parsed {
         };
         let scale = number("scale", 1.0);
         let offset = number("offset", 0.0);
+        let mut limit = |col: &str| -> Option<f64> {
+            let text = cell(col);
+            if text.is_empty() {
+                return None;
+            }
+            let v = parse_number(text);
+            if v.is_none() {
+                ck.error(
+                    line,
+                    "bad-number",
+                    format!("{col} is not a number: {text:?}"),
+                );
+            }
+            v
+        };
+        let write_min = limit("write_min");
+        let write_max = limit("write_max");
+        if let (Some(lo), Some(hi)) = (write_min, write_max)
+            && lo > hi
+        {
+            ck.error(
+                line,
+                "bad-write-limit",
+                format!("write_min {lo} is greater than write_max {hi}"),
+            );
+        }
+        if (!cell("write_min").is_empty() || !cell("write_max").is_empty())
+            && (matches!(ty, DataType::Bool | DataType::String) || access == Access::R)
+        {
+            ck.warn(
+                line,
+                "unused-write-limit",
+                "write_min/write_max have no effect on this row".into(),
+            );
+        }
+        let reference_text = cell("reference");
+        let reference = if reference_text.is_empty() {
+            None
+        } else if access == Access::W {
+            ck.error(
+                line,
+                "bad-reference",
+                "reference on a row that cannot be read".into(),
+            );
+            None
+        } else if !valid_reference(
+            ty,
+            bits,
+            reference_text,
+            length_ok.then_some(length).flatten(),
+        ) {
+            ck.error(
+                line,
+                "bad-reference",
+                format!(
+                    "invalid reference {reference_text:?} for type {}",
+                    type_name(ty)
+                ),
+            );
+            None
+        } else {
+            Some(reference_text.to_string())
+        };
 
         let enum_text = cell("enum");
         let mut enum_ref = None;
@@ -1029,6 +1162,9 @@ pub fn parse(bytes: &[u8]) -> Parsed {
             offset,
             unit: cell("unit").to_string(),
             access,
+            write_min,
+            write_max,
+            reference,
             byte_order,
             bit,
             bits,
@@ -1189,10 +1325,16 @@ pub fn to_string(map: &DeviceMap) -> String {
             }
         }
     }
-    // The scale_factor column is only written when a register uses it.
-    let with_sf = map.registers.iter().any(|r| r.scale_factor.is_some());
-    let keep = |col: &&str| with_sf || *col != "scale_factor";
-    let mut header: Vec<&str> = KNOWN_COLUMNS.iter().copied().filter(keep).collect();
+    // Optional columns are only written when a register uses them.
+    let used = |col: &str| match col {
+        "scale_factor" => map.registers.iter().any(|r| r.scale_factor.is_some()),
+        "write_min" => map.registers.iter().any(|r| r.write_min.is_some()),
+        "write_max" => map.registers.iter().any(|r| r.write_max.is_some()),
+        "reference" => map.registers.iter().any(|r| r.reference.is_some()),
+        _ => true,
+    };
+    let mut header: Vec<&str> = KNOWN_COLUMNS.iter().copied().filter(|c| used(c)).collect();
+    let known = header.len();
     header.extend(&extra_cols);
     out.push('\n');
     out.push_str(&header.join(","));
@@ -1204,35 +1346,31 @@ pub fn to_string(map: &DeviceMap) -> String {
             Some(name) => format!("@{name}"),
             None => enum_pairs(&r.enum_labels),
         };
-        let mut fields = vec![
-            r.name.clone(),
-            r.group.clone(),
-            area_name(r.area).to_string(),
-            (u32::from(r.address) + base).to_string(),
-            type_name(r.ty).to_string(),
-            r.length.map(|n| n.to_string()).unwrap_or_default(),
-            if r.scale == 1.0 {
-                String::new()
-            } else {
-                fmt_number(r.scale)
-            },
-            r.scale_factor.clone().unwrap_or_default(),
-            if r.offset == 0.0 {
-                String::new()
-            } else {
-                fmt_number(r.offset)
-            },
-            r.unit.clone(),
-            format!("{:?}", r.access),
-            r.byte_order.map(|b| format!("{b:?}")).unwrap_or_default(),
-            r.bit.map(|b| b.to_string()).unwrap_or_default(),
-            r.bits.map(|b| b.to_string()).unwrap_or_default(),
-            enum_text,
-            r.description.clone(),
-        ];
-        if !with_sf {
-            fields.remove(7);
-        }
+        let value = |col: &str| -> String {
+            match col {
+                "name" => r.name.clone(),
+                "group" => r.group.clone(),
+                "area" => area_name(r.area).to_string(),
+                "address" => (u32::from(r.address) + base).to_string(),
+                "type" => type_name(r.ty).to_string(),
+                "length" => r.length.map(|n| n.to_string()).unwrap_or_default(),
+                "scale" if r.scale != 1.0 => fmt_number(r.scale),
+                "scale_factor" => r.scale_factor.clone().unwrap_or_default(),
+                "offset" if r.offset != 0.0 => fmt_number(r.offset),
+                "unit" => r.unit.clone(),
+                "access" => format!("{:?}", r.access),
+                "write_min" => r.write_min.map(fmt_number).unwrap_or_default(),
+                "write_max" => r.write_max.map(fmt_number).unwrap_or_default(),
+                "byte_order" => r.byte_order.map(|b| format!("{b:?}")).unwrap_or_default(),
+                "bit" => r.bit.map(|b| b.to_string()).unwrap_or_default(),
+                "bits" => r.bits.map(|b| b.to_string()).unwrap_or_default(),
+                "enum" => enum_text.clone(),
+                "reference" => r.reference.clone().unwrap_or_default(),
+                "description" => r.description.clone(),
+                _ => String::new(),
+            }
+        };
+        let mut fields: Vec<String> = header[..known].iter().map(|c| value(c)).collect();
         for col in &extra_cols {
             let value = r
                 .extra
@@ -1266,6 +1404,92 @@ mod tests {
             parsed.diagnostics
         );
         parsed.map.unwrap()
+    }
+
+    #[test]
+    fn write_limits_and_references_round_trip() {
+        let cols = "name,area,address,type,scale,unit,access,write_min,write_max,reference\n";
+        let map = ok(&format!(
+            "{HEAD}{cols}Setpoint,holding,100,uint16,0.1,C,RW,5,30,\nCode,holding,101,uint16,,,R,,,0x016A\n"
+        ));
+        let r = &map.registers[0];
+        assert_eq!((r.write_min, r.write_max), (Some(5.0), Some(30.0)));
+        assert_eq!(map.registers[1].reference.as_deref(), Some("0x016A"));
+        let text = to_string(&map);
+        assert!(
+            text.contains("write_min") && text.contains("reference"),
+            "{text}"
+        );
+        assert_eq!(parse(text.as_bytes()).map.unwrap(), map);
+        // Columns nobody uses are not written.
+        let plain = ok(&format!(
+            "{HEAD}name,area,address,type\nA,holding,0,int16\n"
+        ));
+        let written = to_string(&plain);
+        assert!(!written.contains("write_min") && !written.contains("reference"));
+
+        let codes = |body: &str| {
+            parse(format!("{HEAD}{cols}{body}").as_bytes())
+                .diagnostics
+                .iter()
+                .map(|d| d.code)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            codes("A,holding,0,uint16,,,RW,30,5,\n"),
+            ["bad-write-limit"]
+        );
+        assert_eq!(codes("A,holding,0,uint16,,,RW,low,,\n"), ["bad-number"]);
+        assert_eq!(
+            codes("A,holding,0,uint16,,,R,0,10,\n"),
+            ["unused-write-limit"]
+        );
+        assert_eq!(codes("A,holding,0,uint16,,,R,,,70000\n"), ["bad-reference"]);
+        assert_eq!(codes("A,holding,0,uint16,,,W,,,5\n"), ["bad-reference"]);
+        assert!(codes("A,holding,0,uint16,,,R,,,0xFFFF\n").is_empty());
+    }
+
+    #[test]
+    fn reference_comparison() {
+        let mut reg =
+            parse(format!("{HEAD}name,area,address,type\nA,holding,0,uint16\n").as_bytes())
+                .map
+                .unwrap()
+                .registers
+                .remove(0);
+        assert_eq!(reference_matches(&reg, &Value::Uint(1)), None);
+        reg.reference = Some("0x16A".into());
+        assert_eq!(reference_matches(&reg, &Value::Uint(362)), Some(true));
+        assert_eq!(reference_matches(&reg, &Value::Uint(363)), Some(false));
+        reg.ty = DataType::Float32;
+        reg.reference = Some("0.1".into());
+        assert_eq!(
+            reference_matches(&reg, &Value::Float(0.1f32 as f64)),
+            Some(true)
+        );
+        reg.ty = DataType::String;
+        reg.reference = Some("SIM-1".into());
+        assert_eq!(
+            reference_matches(&reg, &Value::Text("SIM-1  ".into())),
+            Some(true)
+        );
+        reg.ty = DataType::Bool;
+        reg.reference = Some("true".into());
+        assert_eq!(reference_matches(&reg, &Value::Bool(false)), Some(false));
+    }
+
+    #[test]
+    fn only_comma_separates_fields() {
+        let parsed = parse(format!("{HEAD}name;area;address;type\nA;holding;0;int16\n").as_bytes());
+        assert!(parsed.map.is_none());
+        let first = parsed.errors().next().unwrap();
+        assert_eq!(first.code, "missing-column");
+        assert!(first.message.contains("commas"), "{}", first.message);
+        // A semicolon inside a field is just text.
+        let map = ok(&format!(
+            "{HEAD}name,area,address,type,description\nA;B,holding,0,int16,x;y\n"
+        ));
+        assert_eq!(map.registers[0].name, "A;B");
     }
 
     #[test]

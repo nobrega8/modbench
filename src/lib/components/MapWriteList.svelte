@@ -1,6 +1,12 @@
 <script lang="ts">
   import { errorText } from "$lib/api";
-  import { AREA_TAG, formatValue, parseForRegister } from "$lib/format";
+  import {
+    AREA_TAG,
+    formatValue,
+    limitError,
+    limitHint,
+    parseForRegister,
+  } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
   import type { Register } from "$lib/types";
 
@@ -40,6 +46,11 @@
     const parsed = parseForRegister(reg, text);
     if ("error" in parsed) {
       notes[index] = { ok: false, text: parsed.error };
+      return;
+    }
+    const outside = limitError(reg, parsed.value);
+    if (outside) {
+      notes[index] = { ok: false, text: outside };
       return;
     }
     if (!(await bench.confirmWrite(`Write ${text} to ${reg.name}?`))) return;
@@ -138,7 +149,12 @@
                   class="input num"
                   bind:value={drafts[index]}
                   spellcheck="false"
-                  placeholder={reg.type === "string" ? "Text" : "Value"}
+                  placeholder={reg.type === "string"
+                    ? "Text"
+                    : (limitHint(reg) ?? "Value")}
+                  title={limitHint(reg)
+                    ? `Accepted range: ${limitHint(reg)}${reg.unit ? " " + reg.unit : ""}`
+                    : undefined}
                   aria-label="Value for {reg.name}"
                 />
                 <span class="dim unit">{reg.unit}</span>

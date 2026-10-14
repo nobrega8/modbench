@@ -6,6 +6,7 @@
     formatRaw,
     formatValue,
     parseForRegister,
+    limitError,
   } from "$lib/format";
   import { bench, type OpenMap } from "$lib/state.svelte";
   import type { Register } from "$lib/types";
@@ -46,6 +47,21 @@
   );
   const readCount = $derived(open.map.registers.length - bench.skipped.size);
 
+  /** Outcome of the map's reference checks (spec 4.6), from the last cycle. */
+  const refs = $derived.by(() => {
+    const out = { total: 0, match: 0, mismatch: 0, failed: 0 };
+    open.map.registers.forEach((reg, i) => {
+      if (!reg.reference) return;
+      out.total++;
+      const r = bench.mapResults.get(i);
+      if (bench.skipped.has(i) || !r) return;
+      if (r.error) out.failed++;
+      else if (r.reference === "match") out.match++;
+      else if (r.reference === "mismatch") out.mismatch++;
+    });
+    return out;
+  });
+
   function typeLabel(reg: Register): string {
     if (reg.type === "string") return `string[${reg.length}]`;
     if (reg.type === "bool" && reg.bit !== null) return `bit ${reg.bit}`;
@@ -75,6 +91,11 @@
       note = { index, ok: false, text: parsed.error };
       return;
     }
+    const outside = limitError(reg, parsed.value);
+    if (outside) {
+      note = { index, ok: false, text: outside };
+      return;
+    }
     if (!(await bench.confirmWrite(`Write ${text} to ${reg.name}?`))) return;
     busy = true;
     try {
@@ -96,6 +117,16 @@
         >{meta.description}</span
       >{/if}
   </div>
+  {#if refs.total}
+    <span
+      class="refs"
+      class:bad={refs.mismatch > 0 || refs.failed > 0}
+      title="Registers with a known value in the map. A mismatch points to a wrong map or wrong settings (address, byte order, type); a failed read to a connection or address problem."
+      >Reference {refs.match}/{refs.total}{#if refs.mismatch}
+        · {refs.mismatch} differ{/if}{#if refs.failed}
+        · {refs.failed} failed{/if}</span
+    >
+  {/if}
   <span class="count">Reading {readCount} of {open.map.registers.length}</span>
   <button
     class="btn small"
@@ -181,6 +212,15 @@
           <td class="name" title={reg.description || undefined}
             >{reg.name}{#if reg.group && !group}<span class="grp"
                 >{reg.group}</span
+              >{/if}{#if reg.reference}<span
+                class="refmark"
+                class:ok={r?.reference === "match"}
+                class:bad={r?.reference === "mismatch"}
+                title={r?.reference === "match"
+                  ? `Matches the reference value ${reg.reference}`
+                  : r?.reference === "mismatch"
+                    ? `Differs from the reference value ${reg.reference}`
+                    : `Reference value ${reg.reference}`}>ref</span
               >{/if}</td
           >
           <td
@@ -432,6 +472,43 @@
   /* Registers that are not read: greyed out, at the end of the list */
   tr.off td:not(.read) {
     opacity: 0.4;
+  }
+
+  .refs {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--field);
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+
+  .refs.bad {
+    background: rgb(var(--alert-rgb) / 0.12);
+    color: rgb(var(--alert-rgb));
+  }
+
+  .refmark {
+    margin-left: 8px;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: var(--field);
+    color: var(--text-3);
+  }
+
+  .refmark.ok {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .refmark.bad {
+    background: rgb(var(--alert-rgb));
+    color: rgb(var(--alert-fg-rgb));
   }
 
   .count {

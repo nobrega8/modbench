@@ -229,6 +229,7 @@ pub async fn write_map_value(
         bit: register.bit,
         bits: register.bits,
     };
+    check_write_limits(&register, &value)?;
     let mut slot = state.session.lock().await;
     let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
     // A value with a scale factor is converted with the factor the device
@@ -243,6 +244,72 @@ pub async fn write_map_value(
     }
     let raw = codec::from_engineering(value, scale, register.offset);
     write_typed(session, &target, &raw).await
+}
+
+/// Refuses a write outside the register's declared limits (spec 4.5). The
+/// limits are in engineering units, like the value.
+fn check_write_limits(register: &Register, value: &Value) -> Result<(), ModbusError> {
+    let v = match value {
+        Value::Int(n) => *n as f64,
+        Value::Uint(n) => *n as f64,
+        Value::Float(f) => *f,
+        _ => return Ok(()),
+    };
+    let unit = if register.unit.is_empty() {
+        String::new()
+    } else {
+        format!(" {}", register.unit)
+    };
+    if let Some(lo) = register.write_min
+        && v < lo
+    {
+        return Err(ModbusError::Invalid(format!(
+            "{} cannot be below {lo}{unit} (asked for {v})",
+            register.name
+        )));
+    }
+    if let Some(hi) = register.write_max
+        && v > hi
+    {
+        return Err(ModbusError::Invalid(format!(
+            "{} cannot be above {hi}{unit} (asked for {v})",
+            register.name
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod limit_tests {
+    use super::*;
+
+    fn limited(lo: Option<f64>, hi: Option<f64>) -> Register {
+        let text =
+            "@mbmap=1\n@vendor=T\n@model=T\nname,area,address,type,access\nA,holding,0,uint16,RW\n";
+        let mut r = mbmap::parse(text.as_bytes())
+            .map
+            .unwrap()
+            .registers
+            .remove(0);
+        r.write_min = lo;
+        r.write_max = hi;
+        r.unit = "C".into();
+        r
+    }
+
+    #[test]
+    fn write_limits_are_inclusive_and_optional() {
+        let r = limited(Some(5.0), Some(30.0));
+        assert!(check_write_limits(&r, &Value::Float(5.0)).is_ok());
+        assert!(check_write_limits(&r, &Value::Float(30.0)).is_ok());
+        let below = check_write_limits(&r, &Value::Float(4.9)).unwrap_err();
+        assert!(below.to_string().contains("below 5 C"), "{below}");
+        let above = check_write_limits(&r, &Value::Uint(31)).unwrap_err();
+        assert!(above.to_string().contains("above 30 C"), "{above}");
+        // One side open, and non-numeric values are not limited.
+        assert!(check_write_limits(&limited(Some(0.0), None), &Value::Int(1_000)).is_ok());
+        assert!(check_write_limits(&r, &Value::Bool(true)).is_ok());
+    }
 }
 
 /// Reads a scale factor register and returns its exponent.

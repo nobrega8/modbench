@@ -211,6 +211,9 @@ fn register(name: &str, area: Area, address: u16, ty: DataType) -> modbench_lib:
         offset: 0.0,
         unit: String::new(),
         access: modbench_lib::mbmap::Access::R,
+        write_min: None,
+        write_max: None,
+        reference: None,
         byte_order: None,
         bit: None,
         bits: None,
@@ -324,6 +327,49 @@ async fn poller_flags_sentinels_unless_an_enum_names_the_value() {
     assert_eq!(results[1].sentinel, None);
     assert_eq!(results[2].sentinel, None);
     assert_eq!(results[2].value, Some(Value::Uint(230)));
+}
+
+#[tokio::test]
+async fn poller_reports_reference_checks() {
+    use modbench_lib::planner::PlanLimits;
+    use modbench_lib::poller::{PollRequest, poll_once};
+
+    let device = FakeDevice::default();
+    device
+        .holding
+        .lock()
+        .unwrap()
+        .extend([(0, 0x016A), (1, 0x0001), (99, 5)]);
+    let mut s = Session::connect(&config(start_device(device).await), None)
+        .await
+        .unwrap();
+
+    let mut good = register("Code", Area::Holding, 0, DataType::Uint16);
+    good.reference = Some("0x016A".into());
+    let mut wrong = register("Other", Area::Holding, 1, DataType::Uint16);
+    wrong.reference = Some("2".into());
+    let none = register("Plain", Area::Holding, 99, DataType::Uint16);
+    let mut unread = register("Gone", Area::Holding, 100, DataType::Uint16);
+    unread.reference = Some("1".into());
+    let request = PollRequest {
+        registers: vec![good, wrong, none, unread],
+        byte_order: ByteOrder::ABCD,
+        byte_order_override: None,
+        interval_ms: 0,
+        delay_ms: 0,
+        limits: PlanLimits::default(),
+        indexes: Vec::new(),
+        sentinels: Vec::new(),
+        scale_registers: Vec::new(),
+    };
+    let (mut results, _) = poll_once(&mut s, &request).await;
+    results.sort_by_key(|r| r.index);
+    assert_eq!(results[0].reference, Some("match"));
+    assert_eq!(results[1].reference, Some("mismatch"));
+    assert_eq!(results[2].reference, None);
+    // A failed read is reported as an error, not as a mismatch.
+    assert!(results[3].error.is_some());
+    assert_eq!(results[3].reference, None);
 }
 
 #[tokio::test]

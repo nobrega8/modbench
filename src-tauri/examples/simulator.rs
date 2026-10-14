@@ -136,6 +136,24 @@ fn sample(ty: DataType, i: usize, t: f64) -> Value {
     }
 }
 
+/// The raw value a register's `reference` column names, for its type.
+fn reference_value(r: &modbench_lib::mbmap::Register) -> Option<Value> {
+    let text = r.reference.as_deref()?;
+    let int = || -> Option<i128> {
+        match text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
+            Some(hex) => i128::from_str_radix(hex, 16).ok(),
+            None => text.parse().ok(),
+        }
+    };
+    Some(match r.ty {
+        DataType::Bool => Value::Bool(matches!(text, "1" | "true")),
+        DataType::Float32 | DataType::Float64 => Value::Float(text.parse().ok()?),
+        DataType::String => Value::Text(text.to_string()),
+        DataType::Int16 | DataType::Int32 | DataType::Int64 => Value::Int(int()? as i64),
+        _ => Value::Uint(int()? as u64),
+    })
+}
+
 fn refresh(map: &DeviceMap, memory: &Mutex<Memory>, t: f64, first: bool) {
     let mut m = memory.lock().unwrap();
     for (i, r) in map.registers.iter().enumerate() {
@@ -151,6 +169,9 @@ fn refresh(map: &DeviceMap, memory: &Mutex<Memory>, t: f64, first: bool) {
             .any(|x| x.scale_factor.as_deref() == Some(r.name.as_str()));
         let value = if is_factor {
             Value::Int(-((i % 3) as i64))
+        } else if let Some(raw) = reference_value(r) {
+            // A register with a reference value holds exactly that.
+            codec::to_engineering(raw, r.scale, r.offset)
         } else {
             sample(r.ty, i, t)
         };

@@ -75,6 +75,11 @@ export interface Register {
   offset: number;
   unit: string;
   access: Access;
+  /** Limits for writes, in engineering units. */
+  write_min: number | null;
+  write_max: number | null;
+  /** Raw value a healthy device holds here, as written in the map. */
+  reference: string | null;
   byte_order: ByteOrder | null;
   bit: number | null;
   /** Width of a uint16 bit field starting at `bit`. */
@@ -122,8 +127,12 @@ export interface PollRequest {
   scale_registers: Register[];
 }
 
+export type ReferenceOutcome = "match" | "mismatch";
+
 export interface PointResult {
   index: number;
+  /** Result of the register's reference check, when it has one. */
+  reference: ReferenceOutcome | null;
   value: Value | null;
   raw: RawData | null;
   error: string | null;

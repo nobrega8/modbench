@@ -292,6 +292,9 @@ struct MapRow {
     unit: String,
     raw: Option<String>,
     error: Option<String>,
+    /// "match" or "mismatch" for registers with a reference value.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reference: Option<&'static str>,
 }
 
 fn format_value(reg: &Register, value: &Value) -> String {
@@ -393,6 +396,7 @@ async fn read_map(
                 unit: reg.unit.clone(),
                 raw: r.raw.as_ref().map(format_raw),
                 error: r.error,
+                reference: r.reference,
             }
         })
         .collect();
@@ -414,12 +418,27 @@ fn map_text(where_: &str, path: &str, rows: &[MapRow]) -> String {
             (Some(v), None) => format!("{v} {}", r.unit).trim_end().to_string(),
             (None, None) => "-".into(),
         };
+        let mark = match r.reference {
+            Some("match") => "  [reference ok]",
+            Some(_) => "  [reference MISMATCH]",
+            None => "",
+        };
         out.push_str(&format!(
-            "{:>5}  {:<name_w$}  {:<24}  {}\n",
+            "{:>5}  {:<name_w$}  {:<24}  {}{mark}\n",
             r.address,
             r.name,
             value,
             r.raw.as_deref().unwrap_or("")
+        ));
+    }
+    let matched = rows.iter().filter(|r| r.reference == Some("match")).count();
+    let differ = rows
+        .iter()
+        .filter(|r| r.reference == Some("mismatch"))
+        .count();
+    if matched + differ > 0 {
+        out.push_str(&format!(
+            "Reference checks: {matched} match, {differ} differ\n"
         ));
     }
     out

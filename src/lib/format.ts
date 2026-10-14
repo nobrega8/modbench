@@ -72,6 +72,26 @@ export function parseForRegister(
   return { error: "Type a number, e.g. 12.5, 0x1F or 1Fh." };
 }
 
+/** Why a numeric write value is outside the register's declared limits. */
+export function limitError(reg: Register, value: Value): string | null {
+  if (typeof value !== "number") return null;
+  const unit = reg.unit ? ` ${reg.unit}` : "";
+  if (reg.write_min !== null && value < reg.write_min)
+    return `Below the minimum of ${reg.write_min}${unit}.`;
+  if (reg.write_max !== null && value > reg.write_max)
+    return `Above the maximum of ${reg.write_max}${unit}.`;
+  return null;
+}
+
+/** The accepted range as short text, or null when the register has none. */
+export function limitHint(reg: Register): string | null {
+  const { write_min: lo, write_max: hi } = reg;
+  if (lo !== null && hi !== null) return `${lo} – ${hi}`;
+  if (lo !== null) return `≥ ${lo}`;
+  if (hi !== null) return `≤ ${hi}`;
+  return null;
+}
+
 export function formatValue(reg: Register, value: Value | null): string {
   if (value === null || value === undefined) return "—";
   if (typeof value === "boolean") {

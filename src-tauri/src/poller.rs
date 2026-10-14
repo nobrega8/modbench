@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use crate::codec::{self, ByteOrder, DataType, Value};
-use crate::mbmap::{Register, find_sentinel};
+use crate::mbmap::{Register, find_sentinel, reference_matches};
 use crate::modbus::{ModbusError, RawData, Session};
 use crate::planner::{self, Block, PlanLimits, Point};
 
@@ -48,6 +48,9 @@ pub struct PointResult {
     /// Sentinel label when the raw value is a reserved one (e.g.
     /// "Unimplemented"); `value` is then not a measurement.
     pub sentinel: Option<String>,
+    /// "match" or "mismatch" when the register has a reference value and was
+    /// read; `None` otherwise (a failed read has an `error` instead).
+    pub reference: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -86,12 +89,15 @@ fn decode_point(
                 .then(|| find_sentinel(sentinels, reg.ty, &v))
                 .flatten()
                 .map(str::to_string);
+            let reference =
+                reference_matches(reg, &v).map(|ok| if ok { "match" } else { "mismatch" });
             PointResult {
                 index: 0,
                 value: Some(codec::to_engineering(v, reg.scale, reg.offset)),
                 raw: Some(data),
                 error: None,
                 sentinel,
+                reference,
             }
         }
         Err(e) => PointResult {
@@ -100,6 +106,7 @@ fn decode_point(
             raw: Some(data),
             error: Some(e.to_string()),
             sentinel: None,
+            reference: None,
         },
     }
 }
@@ -210,6 +217,7 @@ fn failed(error: String) -> PointResult {
         raw: None,
         error: Some(error),
         sentinel: None,
+        reference: None,
     }
 }
 
