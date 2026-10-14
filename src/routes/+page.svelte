@@ -166,7 +166,7 @@
 
   /* Room for the traffic lights, which sit over the title bar */
   .topbar.mac {
-    padding-left: 84px;
+    padding-left: 94px;
   }
 
   .topbar nav {
