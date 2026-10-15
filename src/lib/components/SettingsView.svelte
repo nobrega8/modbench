@@ -602,11 +602,16 @@
   .panel {
     min-width: 0;
     min-height: 0;
-    max-width: 760px;
     display: flex;
     flex-direction: column;
     gap: 14px;
     overflow: auto;
+  }
+
+  /* Sections keep their height; the panel scrolls instead */
+  .panel > :global(*) {
+    flex-shrink: 0;
+    max-width: 760px;
   }
 
   .head h1 {
