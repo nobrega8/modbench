@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { bench, type OpenMap } from "$lib/state.svelte";
+  import { bench, type OpenMap } from "#lib/state.svelte.ts";
   import Select from "./Select.svelte";
-  import { MAX_SERIES, chartable, groupByUnit } from "$lib/trend";
+  import { MAX_SERIES, chartable, groupByUnit } from "#lib/trend.ts";
   import TrendChart, { type Line } from "./TrendChart.svelte";
 
   let { open }: { open: OpenMap } = $props();

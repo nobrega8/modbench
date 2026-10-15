@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { popIn, popOut } from "$lib/motion";
+  import { popIn, popOut } from "#lib/motion.ts";
   import { open } from "@tauri-apps/plugin-dialog";
-  import { api, errorText } from "$lib/api";
-  import { bench } from "$lib/state.svelte";
-  import { MAP_EXTENSIONS } from "$lib/types";
+  import { api, errorText } from "#lib/api.ts";
+  import { bench } from "#lib/state.svelte.ts";
+  import { MAP_EXTENSIONS } from "#lib/types.ts";
   import MapStatus from "./MapStatus.svelte";
   import OnlineLibrary from "./OnlineLibrary.svelte";
   import VendorIcon from "./VendorIcon.svelte";

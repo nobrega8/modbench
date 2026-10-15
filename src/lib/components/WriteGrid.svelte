@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { hex, parseInteger } from "$lib/format";
-  import { bench } from "$lib/state.svelte";
+  import { hex, parseInteger } from "#lib/format.ts";
+  import { bench } from "#lib/state.svelte.ts";
 
   const PER_ROW = 10;
   const bits = $derived(bench.fc === 5 || bench.fc === 15);

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { viewIn } from "$lib/motion";
+  import { viewIn } from "#lib/motion.ts";
   import Icon from "./Icon.svelte";
-  import { sim } from "$lib/simulator.svelte";
-  import { bench, type ToolId } from "$lib/state.svelte";
+  import { sim } from "#lib/simulator.svelte.ts";
+  import { bench, type ToolId } from "#lib/state.svelte.ts";
   import AddressScanTool from "./tools/AddressScanTool.svelte";
   import AlarmsTool from "./tools/AlarmsTool.svelte";
   import DataDecoderTool from "./tools/DataDecoderTool.svelte";

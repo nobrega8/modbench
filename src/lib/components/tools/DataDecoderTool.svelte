@@ -5,9 +5,9 @@
 </script>
 
 <script lang="ts">
-  import { ORDERS, parseWords, wideRows, wordRows } from "$lib/decoder";
-  import { slidePill } from "$lib/motion";
-  import { bench } from "$lib/state.svelte";
+  import { ORDERS, parseWords, wideRows, wordRows } from "#lib/decoder.ts";
+  import { slidePill } from "#lib/motion.ts";
+  import { bench } from "#lib/state.svelte.ts";
 
   const words = $derived(parseWords(input, decimal));
   const wide = $derived(words ? wideRows(words) : []);

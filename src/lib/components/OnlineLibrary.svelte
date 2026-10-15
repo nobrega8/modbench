@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { api, errorText } from "$lib/api";
-  import { slideIn, smoothResize } from "$lib/motion";
-  import { bench } from "$lib/state.svelte";
-  import type { OnlineEntry } from "$lib/types";
+  import { api, errorText } from "#lib/api.ts";
+  import { slideIn, smoothResize } from "#lib/motion.ts";
+  import { bench } from "#lib/state.svelte.ts";
+  import type { OnlineEntry } from "#lib/types.ts";
   import { fade } from "svelte/transition";
   import Icon from "./Icon.svelte";
   import MapStatus from "./MapStatus.svelte";

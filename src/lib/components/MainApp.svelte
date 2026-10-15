@@ -1,20 +1,20 @@
 <script lang="ts">
   import { listen } from "@tauri-apps/api/event";
   import { untrack } from "svelte";
-  import { api } from "$lib/api";
-  import ConnectionStep from "$lib/components/ConnectionStep.svelte";
-  import RequestStep from "$lib/components/RequestStep.svelte";
-  import TestStep from "$lib/components/TestStep.svelte";
-  import UpdateBanner from "$lib/components/UpdateBanner.svelte";
-  import LibraryView from "$lib/components/LibraryView.svelte";
-  import SettingsView from "$lib/components/SettingsView.svelte";
-  import ToolsView from "$lib/components/ToolsView.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import WindowControls from "$lib/components/WindowControls.svelte";
-  import { slidePill, viewIn } from "$lib/motion";
-  import { bench, type Page } from "$lib/state.svelte";
-  import { settings } from "$lib/settings.svelte";
-  import { sim } from "$lib/simulator.svelte";
+  import { api } from "#lib/api.ts";
+  import ConnectionStep from "#lib/components/ConnectionStep.svelte";
+  import RequestStep from "#lib/components/RequestStep.svelte";
+  import TestStep from "#lib/components/TestStep.svelte";
+  import UpdateBanner from "#lib/components/UpdateBanner.svelte";
+  import LibraryView from "#lib/components/LibraryView.svelte";
+  import SettingsView from "#lib/components/SettingsView.svelte";
+  import ToolsView from "#lib/components/ToolsView.svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import WindowControls from "#lib/components/WindowControls.svelte";
+  import { slidePill, viewIn } from "#lib/motion.ts";
+  import { bench, type Page } from "#lib/state.svelte.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { sim } from "#lib/simulator.svelte.ts";
   import {
     diagnosticWhere,
     type AddressProgress,
@@ -22,7 +22,7 @@
     type PollCycle,
     type SerialProgress,
     type TrafficEntry,
-  } from "$lib/types";
+  } from "#lib/types.ts";
 
   interface RawChunk {
     time_ms: number;

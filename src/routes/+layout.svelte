@@ -1,6 +1,6 @@
 <script lang="ts">
   import "../app.css";
-  import { settings } from "$lib/settings.svelte";
+  import { settings } from "#lib/settings.svelte.ts";
 
   $effect(() => settings.applyTheme());
   $effect(() => {

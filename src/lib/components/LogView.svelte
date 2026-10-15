@@ -1,12 +1,12 @@
 <script lang="ts">
   import { save } from "@tauri-apps/plugin-dialog";
-  import { api, errorText } from "$lib/api";
-  import { FUNCTION_NAME, clock, formatAddress } from "$lib/format";
+  import { api, errorText } from "#lib/api.ts";
+  import { FUNCTION_NAME, clock, formatAddress } from "#lib/format.ts";
   import AddressFormat from "./AddressFormat.svelte";
-  import { logCsv } from "$lib/csv";
-  import { settings } from "$lib/settings.svelte";
-  import { bench } from "$lib/state.svelte";
-  import type { TrafficEntry } from "$lib/types";
+  import { logCsv } from "#lib/csv.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { bench } from "#lib/state.svelte.ts";
+  import type { TrafficEntry } from "#lib/types.ts";
 
   let errorsOnly = $state(false);
   let saveError = $state<string | null>(null);

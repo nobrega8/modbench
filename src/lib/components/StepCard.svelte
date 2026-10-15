@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { smoothHeight } from "$lib/motion";
+  import { smoothHeight } from "#lib/motion.ts";
 
   let {
     step,

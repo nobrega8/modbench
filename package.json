@@ -3,6 +3,9 @@
   "version": "0.1.9",
   "description": "Lightweight Modbus TCP/RTU client with device map (.mbmap) support",
   "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -33,7 +36,7 @@
     "svelte-check": "^4.6.0",
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
-    "vitest": "^3.2.7"
+    "vitest": "^5.0.4"
   },
   "private": true,
   "repository": {

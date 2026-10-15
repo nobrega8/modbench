@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Decoded } from "$lib/frames";
+  import type { Decoded } from "#lib/frames.ts";
 
   let { decoded, compact = false }: { decoded: Decoded; compact?: boolean } =
     $props();

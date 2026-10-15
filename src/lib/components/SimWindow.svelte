@@ -3,7 +3,7 @@
   backend holds the simulator's state; both windows follow it.
 -->
 <script lang="ts">
-  import { sim } from "$lib/simulator.svelte";
+  import { sim } from "#lib/simulator.svelte.ts";
   import ToolsView from "./ToolsView.svelte";
   import WindowControls from "./WindowControls.svelte";
 

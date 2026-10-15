@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { Area } from "$lib/types";
+  import type { Area } from "#lib/types.ts";
 
   // Kept while other tools are shown.
   let area = $state<Area>("holding");
@@ -9,16 +9,16 @@
 </script>
 
 <script lang="ts">
-  import { api, errorText } from "$lib/api";
-  import { clock, formatAddress, hex, parseInteger } from "$lib/format";
-  import { functionName } from "$lib/frames";
-  import { span } from "$lib/generators";
-  import { slidePill } from "$lib/motion";
-  import { settings } from "$lib/settings.svelte";
-  import { IN_SIM_WINDOW, sim } from "$lib/simulator.svelte";
+  import { api, errorText } from "#lib/api.ts";
+  import { clock, formatAddress, hex, parseInteger } from "#lib/format.ts";
+  import { functionName } from "#lib/frames.ts";
+  import { span } from "#lib/generators.ts";
+  import { slidePill } from "#lib/motion.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { IN_SIM_WINDOW, sim } from "#lib/simulator.svelte.ts";
   import Icon from "../Icon.svelte";
-  import { bench } from "$lib/state.svelte";
-  import { MAP_EXTENSIONS, type SimEvent, type SimView } from "$lib/types";
+  import { bench } from "#lib/state.svelte.ts";
+  import { MAP_EXTENSIONS, type SimEvent, type SimView } from "#lib/types.ts";
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import AddressFormat from "../AddressFormat.svelte";
   import IntInput from "../IntInput.svelte";

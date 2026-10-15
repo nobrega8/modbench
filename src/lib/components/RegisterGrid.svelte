@@ -1,10 +1,10 @@
 <script lang="ts">
   import Select from "./Select.svelte";
-  import { formatAddress, hex } from "$lib/format";
-  import { settings } from "$lib/settings.svelte";
+  import { formatAddress, hex } from "#lib/format.ts";
+  import { settings } from "#lib/settings.svelte.ts";
   import AddressFormat from "./AddressFormat.svelte";
-  import { bench } from "$lib/state.svelte";
-  import type { ByteOrder } from "$lib/types";
+  import { bench } from "#lib/state.svelte.ts";
+  import type { ByteOrder } from "#lib/types.ts";
 
   type Format =
     | "unsigned"

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { slidePill, viewIn } from "$lib/motion";
-  import { settings } from "$lib/settings.svelte";
-  import { bench, type Tab } from "$lib/state.svelte";
+  import { slidePill, viewIn } from "#lib/motion.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { bench, type Tab } from "#lib/state.svelte.ts";
   import ChartView from "./ChartView.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
   import Counter from "./Counter.svelte";

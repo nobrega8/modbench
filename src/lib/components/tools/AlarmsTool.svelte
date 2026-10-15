@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { byIndex, check, type Alarm } from "$lib/alarms";
-  import { formatValue } from "$lib/format";
-  import { registerId } from "$lib/profiles";
-  import { bench } from "$lib/state.svelte";
+  import { byIndex, check, type Alarm } from "#lib/alarms.ts";
+  import { formatValue } from "#lib/format.ts";
+  import { registerId } from "#lib/profiles.ts";
+  import { bench } from "#lib/state.svelte.ts";
   import Select from "../Select.svelte";
 
   const open = $derived(bench.map);

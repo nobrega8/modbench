@@ -1,23 +1,23 @@
 <script lang="ts">
   import Select from "./Select.svelte";
   import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
-  import { api, errorText } from "$lib/api";
+  import { api, errorText } from "#lib/api.ts";
   import {
     AREA_TAG,
     formatValue,
     limitError,
     limitHint,
     parseForRegister,
-  } from "$lib/format";
-  import { bench, type OpenMap } from "$lib/state.svelte";
+  } from "#lib/format.ts";
+  import { bench, type OpenMap } from "#lib/state.svelte.ts";
   import {
     collect,
     parse,
     plan,
     serialize,
     type ParsedTemplate,
-  } from "$lib/template";
-  import type { Register, Value } from "$lib/types";
+  } from "#lib/template.ts";
+  import type { Register, Value } from "#lib/types.ts";
 
   let { open }: { open: OpenMap } = $props();
 

@@ -4,19 +4,19 @@
   to see what the map says about it and give it a generator.
 -->
 <script lang="ts">
-  import { api, errorText } from "$lib/api";
+  import { api, errorText } from "#lib/api.ts";
   import {
     AREA_TAG,
     formatAddress,
     formatValue,
     parseForRegister,
     valueTitle,
-  } from "$lib/format";
-  import { registerOf } from "$lib/generators";
-  import { popIn, popOut } from "$lib/motion";
-  import { settings } from "$lib/settings.svelte";
-  import { sim } from "$lib/simulator.svelte";
-  import type { Register, Value } from "$lib/types";
+  } from "#lib/format.ts";
+  import { registerOf } from "#lib/generators.ts";
+  import { popIn, popOut } from "#lib/motion.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { sim } from "#lib/simulator.svelte.ts";
+  import type { Register, Value } from "#lib/types.ts";
   import Icon from "../Icon.svelte";
   import RegisterInfo from "./RegisterInfo.svelte";
 

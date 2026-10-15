@@ -13,7 +13,7 @@
 </script>
 
 <script lang="ts" generics="T extends string | number">
-  import { popIn, popOut } from "$lib/motion";
+  import { popIn, popOut } from "#lib/motion.ts";
 
   let {
     value = $bindable(),

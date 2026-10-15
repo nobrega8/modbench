@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { FUNCTION_NAME } from "$lib/format";
-  import { fieldIn, slidePill } from "$lib/motion";
-  import { bench } from "$lib/state.svelte";
-  import type { ByteOrder } from "$lib/types";
+  import { FUNCTION_NAME } from "#lib/format.ts";
+  import { fieldIn, slidePill } from "#lib/motion.ts";
+  import { bench } from "#lib/state.svelte.ts";
+  import type { ByteOrder } from "#lib/types.ts";
   import IntInput from "./IntInput.svelte";
   import MapPicker from "./MapPicker.svelte";
   import ScanPanel from "./ScanPanel.svelte";

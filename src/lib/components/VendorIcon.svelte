@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import { api } from "$lib/api";
+  import { api } from "#lib/api.ts";
 
   // One request per website for the whole session; the backend also caches
   // icons on disk, so this only saves round trips.

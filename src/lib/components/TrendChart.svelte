@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { clock } from "$lib/format";
-  import { nearest, niceTicks, yRange, type Sample } from "$lib/trend";
-  import type { Register } from "$lib/types";
+  import { clock } from "#lib/format.ts";
+  import { nearest, niceTicks, yRange, type Sample } from "#lib/trend.ts";
+  import type { Register } from "#lib/types.ts";
 
   export interface Line {
     index: number;
