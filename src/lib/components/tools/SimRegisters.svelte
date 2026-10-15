@@ -284,7 +284,9 @@
     font-size: 12px;
   }
 
+  /* Keeps its height in the tool's column however many generators follow */
   .list {
+    flex-shrink: 0;
     max-height: 420px;
     overflow: auto;
   }
