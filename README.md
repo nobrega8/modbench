@@ -69,7 +69,7 @@ Everything stays on this computer. The last connection is filled in again on sta
 
 ## User manual
 
-The full user manual is in [`manual/`](manual/), in LaTeX: build it with `latexmk` in that folder (see its README).
+Read the [user manual (PDF)](https://raw.githubusercontent.com/nobrega8/modbench/main/manual/modbench-manual.pdf). Its LaTeX source is in [`manual/`](manual/): build it with `latexmk` in that folder (see its README).
 
 ## Command line and MCP
 
