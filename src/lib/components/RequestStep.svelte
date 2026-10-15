@@ -157,6 +157,28 @@
           disabled={locked}
         /> Loop command</label
       >
+      {#if bench.loop}
+        <label
+          class="every"
+          in:fieldIn
+          title="Time from the start of one cycle to the start of the next. 0 repeats as soon as Delay allows. Can be changed while running."
+        >
+          every
+          <input
+            class="input num"
+            type="number"
+            min="0"
+            step="100"
+            value={bench.loopMs}
+            onchange={(e) => {
+              bench.setLoopMs(Number(e.currentTarget.value));
+              e.currentTarget.value = String(bench.loopMs);
+            }}
+            aria-label="Time between loops, in milliseconds"
+          />
+          ms
+        </label>
+      {/if}
     </div>
   </div>
   {#if scanOpen}<ScanPanel onclose={() => (scanOpen = false)} />{/if}
@@ -179,5 +201,17 @@
 
   .loop {
     gap: 9px;
+  }
+
+  .every {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 12px;
+    color: var(--text-2);
+  }
+
+  .every input {
+    width: 84px;
   }
 </style>
