@@ -12,6 +12,11 @@
   import { settings } from "#lib/settings.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
   import type { TrafficEntry } from "#lib/types.ts";
+  import {
+    contextMenu,
+    copy,
+    type MenuEntry,
+  } from "#lib/contextmenu.svelte.ts";
 
   let errorsOnly = $state(false);
   let saveError = $state<string | null>(null);
@@ -33,6 +38,28 @@
   function line(t: TrafficEntry): string {
     const fc = String(t.function).padStart(2, "0");
     return `${clock(t.time_ms)}\tFC${fc}\t${FUNCTION_NAME[t.function] ?? ""}\t${addr(t)}\t${t.count}\t${t.duration_ms.toFixed(1)} ms\t${t.error ?? "OK"}`;
+  }
+
+  /** What a right-click on a request offers. */
+  function rowMenu(t: TrafficEntry): MenuEntry[] {
+    return [
+      { label: "Copy line", action: () => copy(line(t)) },
+      t.error !== null && {
+        label: "Copy error",
+        action: () => copy(t.error ?? ""),
+      },
+      {
+        label: errorsOnly ? "Copy errors shown" : "Copy all",
+        action: () => copy(shown.map(line).join("\n")),
+      },
+      null,
+      {
+        label: errorsOnly ? "Show every request" : "Show errors only",
+        action: () => (errorsOnly = !errorsOnly),
+      },
+      { label: "Save log…", action: saveLog },
+      { label: "Clear log", danger: true, action: () => bench.clearLog() },
+    ];
   }
 
   $effect(() => {
@@ -96,7 +123,10 @@
     </thead>
     <tbody>
       {#each shown as t, i (i)}
-        <tr class:err={t.error !== null}>
+        <tr
+          class:err={t.error !== null}
+          oncontextmenu={(e) => contextMenu.show(e, rowMenu(t))}
+        >
           <td class="mono dim">{clock(t.time_ms)}</td>
           <td
             ><span class="mono">{String(t.function).padStart(2, "0")}</span>

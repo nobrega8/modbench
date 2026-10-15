@@ -18,6 +18,13 @@
   import { byIndex, check, limitsText } from "#lib/alarms.ts";
   import { diagnosticWhere, type Register } from "#lib/types.ts";
   import { isCustom } from "#lib/custom-registers.ts";
+  import {
+    contextMenu,
+    copy,
+    type MenuEntry,
+  } from "#lib/contextmenu.svelte.ts";
+  import { registerId } from "#lib/profiles.ts";
+  import { MAX_SERIES } from "#lib/trend.ts";
   import AddressFormat from "./AddressFormat.svelte";
   import CustomRegisterForm from "./CustomRegisterForm.svelte";
   import Select from "./Select.svelte";
@@ -193,6 +200,90 @@
     const reg = open.map.registers[index];
     const v = bench.mapResults.get(index)?.value;
     draft = v === null || v === undefined ? "" : formatValue(reg, v);
+  }
+
+  /** Sets an alarm on a register (when it has none) and opens Alarms. */
+  function alarmFor(reg: Register) {
+    const id = registerId(reg);
+    if (!bench.alarms.some((a) => a.id === id))
+      bench.setAlarms([
+        ...bench.alarms,
+        {
+          id,
+          low: null,
+          high: null,
+          when: reg.type === "bool" ? true : null,
+        },
+      ]);
+    bench.tool = "alarms";
+    bench.page = "tools";
+  }
+
+  /** What a right-click on a register offers. */
+  function rowMenu(reg: Register, index: number): MenuEntry[] {
+    const r = bench.mapResults.get(index);
+    const readable = reg.access !== "W";
+    const charted = bench.chartSeries.some((s) => s.index === index);
+    const shown =
+      readable && r && !r.error && !r.sentinel
+        ? formatValue(reg, r.value ?? null)
+        : null;
+    return [
+      reg.access !== "R" && {
+        label: "Write…",
+        disabled: settings.readOnly,
+        hint: settings.readOnly ? "read-only" : undefined,
+        action: () => edit(index),
+      },
+      readable && {
+        label: bench.skipped.has(index) ? "Read it" : "Stop reading it",
+        action: () => bench.toggleRead(index),
+      },
+      readable &&
+        reg.type !== "string" &&
+        (charted
+          ? {
+              label: "Remove from chart",
+              action: () => bench.removeFromChart(index),
+            }
+          : {
+              label: "Add to chart",
+              disabled: bench.chartSeries.length >= MAX_SERIES,
+              hint:
+                bench.chartSeries.length >= MAX_SERIES
+                  ? `${MAX_SERIES} at most`
+                  : undefined,
+              action: () => bench.addToChart(index),
+            }),
+      readable &&
+        reg.type !== "string" && {
+          label: alarms.has(index) ? "Change alarm…" : "Set alarm…",
+          action: () => alarmFor(reg),
+        },
+      null,
+      shown !== null && {
+        label: "Copy value",
+        action: () => copy(reg.unit ? `${shown} ${reg.unit}` : shown),
+      },
+      r?.raw !== undefined &&
+        r?.raw !== null &&
+        !r.error && {
+          label: "Copy raw value",
+          action: () => copy(formatRaw(r.raw ?? null)),
+        },
+      { label: "Copy name", action: () => copy(reg.name) },
+      {
+        label: "Copy address",
+        action: () =>
+          copy(formatAddress(reg.address, settings.addressFormat, reg.area)),
+      },
+      null,
+      isCustom(reg) && {
+        label: "Remove register",
+        danger: true,
+        action: () => bench.removeCustomRegister(index),
+      },
+    ];
   }
 
   async function write(index: number, text: string) {
@@ -410,7 +501,11 @@
             : formatValue(reg, r?.value ?? null)}
         {@const shownTitle =
           shown === null ? undefined : valueTitle(reg, r?.value ?? null)}
-        <tr class:err={!!r?.error} class:off>
+        <tr
+          class:err={!!r?.error}
+          class:off
+          oncontextmenu={(e) => contextMenu.show(e, rowMenu(reg, index))}
+        >
           <td class="read">
             {#if reg.access !== "W"}
               <input

@@ -18,6 +18,11 @@
     parseInteger,
   } from "#lib/format.ts";
   import { functionName } from "#lib/frames.ts";
+  import {
+    contextMenu,
+    copy,
+    type MenuEntry,
+  } from "#lib/contextmenu.svelte.ts";
   import { span } from "#lib/generators.ts";
   import { slidePill } from "#lib/motion.ts";
   import { settings } from "#lib/settings.svelte.ts";
@@ -197,6 +202,37 @@
     }
     editing = offset;
     draft = String(view.data.values[offset]);
+  }
+
+  /** What a right-click on a value in the grid offers. */
+  function cellMenu(offset: number): MenuEntry[] {
+    if (!view) return [];
+    const v = view.data.values[offset];
+    const text = typeof v === "boolean" ? (v ? "1" : "0") : String(v);
+    return [
+      typeof v === "boolean"
+        ? { label: v ? "Switch off" : "Switch on", action: () => edit(offset) }
+        : { label: "Change value…", action: () => edit(offset) },
+      typeof v === "number" && {
+        label: "Set to 0",
+        disabled: v === 0,
+        action: () => write(offset, 0),
+      },
+      null,
+      { label: "Copy value", action: () => copy(text) },
+      typeof v === "number" && {
+        label: "Copy value",
+        hint: "hex",
+        action: () => copy(`0x${hex(v)}`),
+      },
+      { label: "Copy address", action: () => copy(addr(first + offset)) },
+    ];
+  }
+
+  /** One request of the activity log as a line of text. */
+  function eventLine(e: SimEvent): string {
+    const result = e.error ?? (e.wrote ? "written" : "OK");
+    return `${clock(e.time_ms)}\t${e.peer}\tunit ${e.unit}\t${functionName(e.function)}\t${where(e)}\t${result}`;
   }
 
   function commit() {
@@ -598,6 +634,7 @@
                   ? ` · 0x${hex(v)}`
                   : ''}{driven.has(first + i) ? ' · set by a generator' : ''}"
                 onclick={() => edit(i)}
+                oncontextmenu={(e) => contextMenu.show(e, cellMenu(i))}
                 >{typeof v === "boolean" ? (v ? "1" : "0") : v}</button
               >
             {/if}
@@ -624,7 +661,23 @@
             </thead>
             <tbody>
               {#each list as e, i (total - i)}
-                <tr>
+                <tr
+                  oncontextmenu={(ev) =>
+                    contextMenu.show(ev, [
+                      { label: "Copy line", action: () => copy(eventLine(e)) },
+                      {
+                        label: "Copy all",
+                        action: () =>
+                          copy([...list].reverse().map(eventLine).join("\n")),
+                      },
+                      null,
+                      {
+                        label: "Clear activity",
+                        danger: true,
+                        action: () => sim.clearEvents(),
+                      },
+                    ])}
+                >
                   <td class="mono dim">{clock(e.time_ms)}</td>
                   <td class="mono">{e.peer}</td>
                   <td class="num mono">{e.unit}</td>
