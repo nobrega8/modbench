@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Gives Modbench's file types their own icons in Explorer: Tauri's file
+  associations use the app's icon. The ProgIds are "<productName>.<ext>", as
+  Tauri's MSI template names them; the icons are installed as resources
+  (tauri.windows.conf.json).
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="FileTypeIcons" Guid="6f1d4c52-3a8e-4b6f-9d27-0c5e8a41b7d3">
+        <RegistryValue Root="HKCR" Key="Modbench.mbmap\DefaultIcon" Type="string" Value="[INSTALLDIR]file-icons\mbmap.ico" KeyPath="yes" />
+        <RegistryValue Root="HKCR" Key="Modbench.mbsim\DefaultIcon" Type="string" Value="[INSTALLDIR]file-icons\mbsim.ico" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

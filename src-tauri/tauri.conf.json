@@ -48,6 +48,13 @@
         "description": "Modbus device map",
         "role": "Editor",
         "mimeType": "text/x-mbmap"
+      },
+      {
+        "ext": ["mbsim"],
+        "name": "Modbench Simulator Setup",
+        "description": "Modbench simulator setup",
+        "role": "Editor",
+        "mimeType": "application/x-mbsim"
       }
     ]
   },

@@ -250,11 +250,8 @@
   const setupFilter = [
     { name: "Simulator setup", extensions: [SETUP_EXTENSION] },
   ];
-  /** The outcome of the last setup save or open. */
-  let setupNote = $state<{ ok: boolean; text: string } | null>(null);
-
   async function saveSetup() {
-    setupNote = null;
+    sim.setupNote = null;
     const path = await save({
       defaultPath: `simulator.${SETUP_EXTENSION}`,
       filters: setupFilter,
@@ -262,31 +259,15 @@
     if (!path) return;
     try {
       await api.saveText(path, sim.setupText());
-      setupNote = { ok: true, text: "Setup saved." };
+      sim.setupNote = { ok: true, text: "Setup saved." };
     } catch (e) {
-      setupNote = { ok: false, text: `Not saved: ${errorText(e)}` };
+      sim.setupNote = { ok: false, text: `Not saved: ${errorText(e)}` };
     }
   }
 
   async function openSetup() {
-    setupNote = null;
     const path = await openDialog({ multiple: false, filters: setupFilter });
-    if (typeof path !== "string") return;
-    let problem: string | null;
-    try {
-      problem = await sim.openSetup(await api.readText(path));
-    } catch (e) {
-      problem = errorText(e);
-    }
-    setupNote = problem
-      ? { ok: false, text: `Not opened: ${problem}` }
-      : {
-          ok: true,
-          text:
-            sim.running === null
-              ? "Setup opened."
-              : "Setup opened; stop the simulator to take its interface settings too.",
-        };
+    if (typeof path === "string") await sim.openSetupFile(path);
   }
 
   /** Points step 1 of Main at the simulator, and its unit ID at the
@@ -337,11 +318,12 @@
     <div class="title-row">
       <h1>Simulator</h1>
       <span class="spacer"></span>
-      {#if setupNote}
+      {#if sim.setupNote}
         <span
           class="setup-note"
-          class:bad={!setupNote.ok}
-          role={setupNote.ok ? undefined : "alert"}>{setupNote.text}</span
+          class:bad={!sim.setupNote.ok}
+          role={sim.setupNote.ok ? undefined : "alert"}
+          >{sim.setupNote.text}</span
         >
       {/if}
       <button

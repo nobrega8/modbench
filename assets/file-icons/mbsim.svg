@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- A simulator setup: a page with a generated wave -->
+  <path d="M248 72 H640 L856 288 V904 a48 48 0 0 1 -48 48 H248 a48 48 0 0 1 -48 -48 V120 a48 48 0 0 1 48 -48 Z" fill="#ffffff" stroke="#8b939e" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M640 72 V240 a48 48 0 0 0 48 48 H856 Z" fill="#dfe3e8" stroke="#8b939e" stroke-width="16" stroke-linejoin="round"/>
+  <line x1="288" y1="616" x2="768" y2="616" stroke="#b9c0ca" stroke-width="24" stroke-linecap="round"/>
+  <path d="M296 616 C 360 360, 464 360, 528 616 S 696 872, 760 616" fill="none" stroke="#2196f3" stroke-width="64" stroke-linecap="round"/>
+</svg>

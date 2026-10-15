@@ -117,6 +117,8 @@ class Simulator {
   changes = $state(0);
   /** The simulator is shown in a window of its own. */
   windowOpen = $state(false);
+  /** The outcome of the last setup save or open. */
+  setupNote = $state<{ ok: boolean; text: string } | null>(null);
 
   private pending: SimEvent[] = [];
   private flushQueued = false;
@@ -386,6 +388,26 @@ class Simulator {
       await this.sync();
       return errorText(e);
     }
+  }
+
+  /** Opens a setup file (from Open setup… or a double-click on one). */
+  async openSetupFile(path: string) {
+    this.setupNote = null;
+    let problem: string | null;
+    try {
+      problem = await this.openSetup(await api.readText(path));
+    } catch (e) {
+      problem = errorText(e);
+    }
+    this.setupNote = problem
+      ? { ok: false, text: `Not opened: ${problem}` }
+      : {
+          ok: true,
+          text:
+            this.running === null
+              ? `Opened ${fileName(path)}.`
+              : `Opened ${fileName(path)}; stop the simulator to take its interface settings too.`,
+        };
   }
 
   onEvent(event: SimEvent) {

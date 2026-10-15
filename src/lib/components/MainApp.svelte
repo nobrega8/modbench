@@ -15,6 +15,7 @@
   import { bench, type Page } from "#lib/state.svelte.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import { sim } from "#lib/simulator.svelte.ts";
+  import { SETUP_EXTENSION } from "#lib/sim-setup.ts";
   import {
     diagnosticWhere,
     type AddressProgress,
@@ -46,7 +47,7 @@
       listen<AddressProgress>("address-scan-progress", (e) =>
         bench.onAddressProgress(e.payload),
       ),
-      listen<string>("open-file", (e) => bench.openMap(e.payload)),
+      listen<string>("open-file", (e) => openFile(e.payload)),
     ];
     return () => stops.forEach((p) => p.then((stop) => stop()));
   });
@@ -71,7 +72,7 @@
     api.disconnect().catch(() => {});
     bench.refreshLibrary();
     api.startupFile().then((path) => {
-      if (path) bench.openMap(path);
+      if (path) openFile(path);
     });
   });
 
@@ -84,6 +85,16 @@
 
   /** macOS draws its own window buttons at the top left of the title bar. */
   const mac = navigator.userAgent.includes("Mac OS X");
+
+  /** A file given to Modbench (double-click): a simulator setup opens in
+   * the simulator, anything else as a map. */
+  function openFile(path: string) {
+    if (!path.toLowerCase().endsWith(`.${SETUP_EXTENSION}`))
+      return bench.openMap(path);
+    bench.page = "tools";
+    bench.tool = "simulator";
+    sim.openSetupFile(path);
+  }
 
   function fileName(path: string) {
     return path.split(/[\\/]/).pop() ?? path;
