@@ -67,6 +67,10 @@ Updates then arrive with `sudo apt upgrade`.
 Everything stays on this computer. The last connection is filled in again on start. For each device (map + connection + unit ID), the registers you switched off, the byte order override and Loop come back; restoring them never writes or starts a test. Both can be turned off, and saved device choices forgotten, in Settings.
 </details>
 
+## User manual
+
+The full user manual is in [`manual/`](manual/), in LaTeX: build it with `latexmk` in that folder (see its README).
+
 ## Command line and MCP
 
 `modbench-cli` reads devices without the UI. It never writes to a device.

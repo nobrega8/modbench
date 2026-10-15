@@ -1,0 +1,80 @@
+\chapter{Installation and updates}
+
+Installers are on the releases page:
+\web{github.com/nobrega8/modbench/releases}. Each release lists what changed.
+
+\section{Windows}
+
+Download \file{Modbench\_x.y.z\_x64-setup.exe} (recommended) or the
+\file{.msi}, and run it. The installer is about 2~MB: Modbench uses the
+WebView2 that comes with Windows.
+
+\section{macOS}
+
+Download \file{Modbench\_x.y.z\_universal.dmg}: one app for Apple Silicon and
+Intel Macs. Open it and drag Modbench to \nav{Applications}.
+
+\begin{note}[First start]
+Modbench is not signed with an Apple Developer ID, so macOS asks before the
+first start. Right-click the app in \nav{Applications}, choose \nav{Open}, then
+\nav{Open} again. Later starts need nothing.
+\end{note}
+
+\section{Linux}
+
+\begin{itemize}
+  \item \textbf{AppImage}: download it, make it executable
+        (\val{chmod +x Modbench*.AppImage}) and run it.
+  \item \textbf{Debian, Ubuntu and derivatives}: install the \file{.deb}, or
+        add the APT repository so that \val{apt upgrade} brings new versions:
+\end{itemize}
+
+\begin{lstlisting}[language=bash]
+curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
+sudo apt update && sudo apt install modbench
+\end{lstlisting}
+
+\begin{note}[Serial ports on Linux]
+To open serial ports without root, add your user to the \val{dialout} group
+(\val{sudo usermod -aG dialout \$USER}) and log in again.
+\end{note}
+
+\section{Updates}
+
+Modbench checks for a new version when it starts (this can be turned off in
+\nav{Settings\then Updates}). When there is one, a banner says what changed:
+
+\screenshot[2.2cm]{update-banner}{The update banner.}
+  {The banner at the top of the window: \emph{Modbench x.y.z is available},
+   the summary of changes, \emph{Install and restart} and \emph{Later}.}
+
+\uiaccent{Install and restart} downloads the update, checks its signature,
+installs it and starts Modbench again. \ui{Later} hides the banner until the
+next start. \nav{Settings\then Updates} can also check by hand.
+
+Installs from the APT repository update with the system
+(\val{sudo apt upgrade}) instead.
+
+\section{Files Modbench opens}
+
+The installers register two file types, each with its own icon. A
+double-click opens them in Modbench, also when it is already running.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l L}
+  \toprule
+  \thead{File} & \thead{What it is} \\
+  \midrule
+  \file{.mbmap.json} & A device map (Chapter~\ref{ch:maps}). Opens on the Main page. \\
+  \file{.mbmap} & A device map in the older version 1 format; Modbench can convert it. \\
+  \file{.mbsim} & A simulator setup (Section~\ref{sec:sim-setups}). Opens in the simulator. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{note}
+Windows tells file types apart by their last extension only, so
+\file{.mbmap.json} files keep the icon of JSON files there. On Linux they get
+the map icon.
+\end{note}

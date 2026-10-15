@@ -1,0 +1,230 @@
+% Modbench manual style: the app's colours, type and shapes (src/app.css).
+% Built with LuaLaTeX (fontspec).
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{modbench}[2026/10/15 Modbench manual style]
+
+\RequirePackage{fontspec}
+\RequirePackage[dvipsnames]{xcolor}
+\RequirePackage{geometry}
+\RequirePackage{graphicx}
+\RequirePackage{tikz}
+\RequirePackage[most]{tcolorbox}
+\RequirePackage{titlesec}
+\RequirePackage{fancyhdr}
+\RequirePackage{enumitem}
+\RequirePackage{array}
+\RequirePackage{tabularx}
+\RequirePackage{booktabs}
+\RequirePackage{colortbl}
+\RequirePackage{listings}
+\RequirePackage{microtype}
+\RequirePackage{etoolbox}
+\RequirePackage{xurl}
+\RequirePackage[hidelinks]{hyperref}
+\RequirePackage{bookmark}
+
+\usetikzlibrary{positioning,shapes.misc}
+
+% --- Colours: the light theme of the app -------------------------------
+\definecolor{ground}{RGB}{242,242,245}   % --bg: the window
+\definecolor{surface}{RGB}{255,255,255}  % --surface: a card
+\definecolor{surface2}{RGB}{240,240,243} % sunken cell, chip track
+\definecolor{surface3}{RGB}{230,230,234} % hover
+\definecolor{ink}{RGB}{23,23,23}         % --fg
+\definecolor{ink2}{RGB}{92,92,96}        % --fg-2
+\definecolor{ink3}{RGB}{142,142,147}     % --fg-3
+\definecolor{edge}{RGB}{226,226,230}     % the hairline
+\definecolor{edge2}{RGB}{210,210,215}
+\definecolor{tx}{RGB}{21,101,192}        % what is sent
+\definecolor{rx}{RGB}{19,116,58}         % what comes back
+\definecolor{alert}{RGB}{200,38,38}
+\definecolor{tile}{HTML}{161B22}         % the app icon's tile
+\definecolor{tiledeep}{HTML}{0B0F14}
+\definecolor{logogreen}{HTML}{22D36B}
+\definecolor{logoblue}{HTML}{2196F3}
+
+% --- Type: Inter, as in the app, with a monospace for values -----------
+\setmainfont{Inter}[
+  UprightFont = *-Regular,
+  BoldFont = *-SemiBold,
+  ItalicFont = *-Italic,
+  BoldItalicFont = *-SemiBoldItalic,
+  Extension = .otf,
+  Numbers = Tabular,
+]
+\newfontfamily\interbold{Inter}[UprightFont = *-Bold, Extension = .otf]
+\newfontfamily\intermedium{Inter}[UprightFont = *-Medium, BoldFont = *-SemiBold, Extension = .otf]
+\IfFontExistsTF{Cascadia Mono}
+  {\setmonofont{Cascadia Mono}[Scale = MatchLowercase]}
+  {\IfFontExistsTF{Consolas}
+    {\setmonofont{Consolas}[Scale = MatchLowercase]}
+    {\setmonofont{Latin Modern Mono}}}
+
+\color{ink}
+\linespread{1.15}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt}
+\frenchspacing
+\setlength{\emergencystretch}{3em}
+
+% --- Page ---------------------------------------------------------------
+\geometry{a4paper, top=26mm, bottom=24mm, inner=24mm, outer=24mm,
+  headsep=10mm, footskip=12mm}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\fancyhead[L]{\small\color{ink3}\leftmark}
+\fancyhead[R]{\small\color{ink3}Modbench}
+\fancyfoot[R]{\small\color{ink2}\thepage}
+\fancyfoot[L]{\small\color{ink3}User manual}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[R]{\small\color{ink2}\thepage}}
+
+% --- Headings: a small label above a large title -----------------------
+\titleformat{\chapter}[display]
+  {\interbold\color{ink}}
+  {\normalfont\small\color{ink3}\MakeUppercase{\chaptertitlename}\ \thechapter}
+  {4pt}
+  {\fontsize{28}{32}\selectfont}
+  [\vspace{4pt}{\color{edge}\titlerule[0.8pt]}]
+\titlespacing*{\chapter}{0pt}{0pt}{20pt}
+\titleformat{\section}{\interbold\Large\color{ink}}{\color{ink3}\thesection}{10pt}{}
+\titlespacing*{\section}{0pt}{18pt}{6pt}
+\titleformat{\subsection}{\interbold\large\color{ink}}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{14pt}{4pt}
+\titleformat{\subsubsection}{\intermedium\normalsize\color{ink2}\MakeUppercase}{}{0pt}{}
+\titlespacing*{\subsubsection}{0pt}{10pt}{2pt}
+\setcounter{secnumdepth}{1}
+\setcounter{tocdepth}{1}
+
+% --- Lists ---------------------------------------------------------------
+\setlist{itemsep=2pt, topsep=4pt, parsep=0pt}
+\setlist[itemize]{label={\color{ink3}\textbullet}, leftmargin=14pt}
+\setlist[enumerate]{label={\color{ink2}\arabic*.}, leftmargin=18pt}
+\newlist{steps}{enumerate}{1}
+\DeclareRobustCommand{\stepnumber}[1]{\tikz[baseline=(n.base)]\node[circle,
+  fill=ink, text=white, inner sep=0pt, minimum size=15pt,
+  font=\footnotesize\interbold] (n) {#1};}
+\setlist[steps]{label=\stepnumber{\arabic*}, leftmargin=24pt, itemsep=5pt}
+
+% --- Interface elements ---------------------------------------------------
+% A button as the app draws it: a pill with a hairline.
+\newcommand{\ui}[1]{\tikz[baseline=(b.base)]\node[draw=edge2, fill=surface,
+  rounded corners=6pt, inner xsep=5pt, inner ysep=2pt, font=\small\intermedium] (b) {#1};}
+% The accent (primary) button: dark fill.
+\newcommand{\uiaccent}[1]{\tikz[baseline=(b.base)]\node[fill=ink, text=white,
+  rounded corners=6pt, inner xsep=5pt, inner ysep=2pt, font=\small\intermedium] (b) {#1};}
+% A tab of a segmented control.
+\newcommand{\tab}[1]{\tikz[baseline=(b.base)]\node[fill=surface2,
+  rounded corners=6pt, inner xsep=5pt, inner ysep=2pt, font=\small\intermedium] (b) {#1};}
+% A page or menu path: Tools > Simulator.
+\newcommand{\nav}[1]{{\intermedium #1}}
+\newcommand{\then}{\,{\color{ink3}›}\,}
+% A field label, as above an input.
+\newcommand{\field}[1]{{\intermedium\color{ink}#1}}
+% A key.
+\newcommand{\key}[1]{\tikz[baseline=(k.base)]\node[draw=edge2, fill=surface2,
+  rounded corners=3pt, inner xsep=3pt, inner ysep=1.5pt, font=\footnotesize\ttfamily] (k) {#1};}
+% Values, addresses, frames.
+\newcommand{\val}[1]{{\ttfamily #1}}
+\newcommand{\sent}[1]{{\ttfamily\color{tx}#1}}
+\newcommand{\received}[1]{{\ttfamily\color{rx}#1}}
+\newcommand{\file}[1]{{\ttfamily #1}}
+% A web address, which may break at the end of a line.
+\newcommand{\web}[1]{{\urlstyle{tt}\url{#1}}}
+
+% --- Boxes: cards with the one hairline ----------------------------------
+\tcbset{
+  mbcard/.style={enhanced, breakable, colback=surface, colframe=edge,
+    boxrule=0.6pt, arc=10pt, left=12pt, right=12pt, top=9pt, bottom=9pt,
+    before skip=10pt, after skip=10pt, fontupper=\small},
+}
+\newtcolorbox{note}[1][Note]{mbcard, colback=surface,
+  borderline west={2.5pt}{0pt}{ink3},
+  title={\intermedium\color{ink2}#1}, attach title to upper={\par\smallskip}}
+\newtcolorbox{tip}[1][Tip]{mbcard, colback=rx!4!surface,
+  borderline west={2.5pt}{0pt}{rx},
+  title={\intermedium\color{rx}#1}, attach title to upper={\par\smallskip}}
+\newtcolorbox{warning}[1][Careful]{mbcard, colback=alert!4!surface,
+  borderline west={2.5pt}{0pt}{alert},
+  title={\intermedium\color{alert}#1}, attach title to upper={\par\smallskip}}
+\newtcolorbox{card}{mbcard}
+
+% --- Screenshots -----------------------------------------------------------
+% \screenshot[height]{file}{caption}{what to capture}
+% Shows screenshots/<file>.png when it exists; otherwise a placeholder that
+% says what to capture, so the manual builds before the pictures exist.
+\newcounter{shot}
+\newcommand{\screenshot}[4][6cm]{%
+  \refstepcounter{shot}%
+  \par\medskip
+  \begin{center}
+  \IfFileExists{screenshots/#2.png}{%
+    \begin{tcolorbox}[enhanced, colback=surface, colframe=edge, boxrule=0.6pt,
+      arc=10pt, left=0pt, right=0pt, top=0pt, bottom=0pt, width=\linewidth,
+      clip upper]
+      \includegraphics[width=\linewidth]{screenshots/#2.png}%
+    \end{tcolorbox}%
+  }{%
+    \begin{tikzpicture}
+      \node[draw=edge2, dashed, fill=surface2, rounded corners=10pt,
+        minimum width=\linewidth-0.8pt, minimum height=#1, align=center,
+        text width=0.8\linewidth, font=\small\color{ink2}] {%
+        \tikz\draw[ink3, line width=1.2pt, rounded corners=2pt]
+          (0,0) rectangle (0.9,0.6) (0.45,0.3) circle (0.17)
+          (0.12,0.6) -- (0.25,0.72) -- (0.5,0.72) -- (0.6,0.6);\\[6pt]
+        {\intermedium\color{ink}Screenshot: \file{screenshots/#2.png}}\\[3pt]
+        #4};
+    \end{tikzpicture}%
+  }%
+  \par\smallskip
+  {\small\color{ink2}\intermedium Figure \theshot.\ \normalfont #3}
+  \end{center}
+  \medskip
+}
+
+% --- Tables: hairlines in the edge colour ----------------------------------
+\setlength{\aboverulesep}{3pt}
+\setlength{\belowrulesep}{3pt}
+\arrayrulecolor{edge2}
+\renewcommand{\arraystretch}{1.2}
+\newcolumntype{L}{>{\raggedright\arraybackslash\setlength{\parskip}{0pt}}X}
+\newcommand{\thead}[1]{{\intermedium\small\color{ink2}#1}}
+
+% --- Code -------------------------------------------------------------------
+\lstdefinestyle{mb}{basicstyle=\small\ttfamily\color{ink}, backgroundcolor=\color{surface2},
+  frame=none, xleftmargin=10pt, xrightmargin=10pt, aboveskip=10pt, belowskip=10pt,
+  framexleftmargin=8pt, framexrightmargin=8pt, framextopmargin=6pt, framexbottommargin=6pt,
+  columns=fullflexible, keepspaces=true, breaklines=true, showstringspaces=false,
+  commentstyle=\color{ink3}, stringstyle=\color{rx}, keywordstyle=\color{tx}}
+\lstset{style=mb}
+
+% --- Cover ------------------------------------------------------------------
+\newcommand{\mbcover}[2]{% version, date
+  \begin{titlepage}
+  \newgeometry{margin=0pt}
+  \begin{tikzpicture}[remember picture, overlay]
+    \shade[top color=tile, bottom color=tiledeep]
+      (current page.south west) rectangle (current page.north east);
+    \node[anchor=north west, inner sep=0pt] at ([xshift=24mm, yshift=-34mm]current page.north west)
+      {\includegraphics[width=34mm]{../src-tauri/icons/icon.png}};
+    \node[anchor=north west, text=white, font=\interbold\fontsize{48}{52}\selectfont, inner sep=0pt]
+      at ([xshift=24mm, yshift=-84mm]current page.north west) {Modbench};
+    \node[anchor=north west, text=white!70!tile, font=\fontsize{20}{24}\selectfont, inner sep=0pt]
+      at ([xshift=24mm, yshift=-104mm]current page.north west) {User manual};
+    \draw[logogreen, line width=2pt] ([xshift=24mm, yshift=-120mm]current page.north west) -- ++(18mm,0);
+    \draw[logoblue, line width=2pt] ([xshift=44mm, yshift=-120mm]current page.north west) -- ++(18mm,0);
+    \node[anchor=north west, text=white!75!tile, text width=120mm, font=\large, inner sep=0pt, align=left]
+      at ([xshift=24mm, yshift=-130mm]current page.north west)
+      {A Modbus client for Windows, Linux and macOS: manual requests, device maps,
+       charts, a simulator and tools to find and check devices.};
+    \node[anchor=south west, text=white!60!tile, font=\small, inner sep=0pt, align=left]
+      at ([xshift=24mm, yshift=24mm]current page.south west)
+      {Version #1 \quad·\quad #2\\[3pt] github.com/nobrega8/modbench};
+  \end{tikzpicture}
+  \restoregeometry
+  \end{titlepage}
+}
+
+\endinput

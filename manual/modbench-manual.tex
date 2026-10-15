@@ -1,0 +1,38 @@
+% Modbench user manual. Build with: latexmk (see README.md in this folder).
+\documentclass[11pt, a4paper, oneside, openany]{book}
+\usepackage{modbench}
+
+\newcommand{\mbversion}{0.2}
+\hypersetup{pdftitle={Modbench user manual}, pdfauthor={Modbench}}
+
+\begin{document}
+
+\mbcover{\mbversion}{October 2026}
+
+\frontmatter
+\pagestyle{plain}
+\begingroup
+\renewcommand{\contentsname}{Contents}
+\tableofcontents
+\endgroup
+
+\mainmatter
+\pagestyle{fancy}
+\include{chapters/01-introduction}
+\include{chapters/02-installation}
+\include{chapters/03-main-page}
+\include{chapters/04-device-maps}
+\include{chapters/05-read-write}
+\include{chapters/06-charts}
+\include{chapters/07-raw-log}
+\include{chapters/08-library}
+\include{chapters/09-simulator}
+\include{chapters/10-tools}
+\include{chapters/11-settings}
+\include{chapters/12-command-line}
+
+\appendix
+\include{chapters/a-troubleshooting}
+\include{chapters/b-reference}
+
+\end{document}

@@ -1,0 +1,67 @@
+\chapter{Charts}
+\label{ch:charts}
+
+The \tab{Chart} tab plots values over time while a test runs: map registers
+by name, or addresses of a manual read.
+
+\screenshot[8cm]{chart}{Voltages and currents of a meter, one chart per unit.}
+  {The Chart tab with a map: two charts (V and A) with three lines each, the
+   legend with the newest values, and the hover tip showing values at one
+   moment.}
+
+\section{Adding lines}
+
+\begin{itemize}
+  \item With a map: \field{Add a register to the chart} lists the map's
+        numeric registers.
+  \item With a manual read: add an address from the list, or right-click a
+        cell on the \tab{Read registers} tab and choose \nav{Add to chart}.
+\end{itemize}
+
+Up to eight lines can be shown, each in its own colour. Lines with the same
+unit share a chart, so values of different sizes (volts and amperes) do not
+flatten each other. The tab's name counts the lines: \tab{Chart (3)}.
+
+Values are recorded from the moment a line is added, while the test runs. To
+remove a line, click \ui{×} next to its name in the legend.
+
+\section{Reading the chart}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Time span] \field{Time span} shows the last minute, 5 or 15 minutes,
+    the last hour, or everything since the lines were added.
+  \item[Legend] Each line's name and its newest value.
+  \item[Hover] Move the pointer over a chart to see every line's value at that
+    moment.
+  \item[Spikes] When there are more samples than pixels, each pixel keeps its
+    lowest and highest value, so short spikes stay visible.
+  \item[Gaps] A failed read leaves a gap in the line instead of a false value.
+\end{description}
+
+\ui{Clear} empties the charts and keeps the lines.
+
+\section{Saving a chart as an image}
+\label{sec:chart-image}
+
+\ui{Export image…} saves the charts shown, for a report or a bug report:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l L}
+  \toprule
+  \thead{Choice} & \thead{What you get} \\
+  \midrule
+  PNG… & A picture at twice the screen size, sharp in documents. \\
+  SVG… & A vector drawing that scales to any size and opens in other
+    programs (colours written out, no styles needed). \\
+  PNG, light theme… & As PNG, in the light theme even when Modbench is
+    dark. \\
+  SVG, light theme… & As SVG, in the light theme. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+The image holds every chart shown, each with its unit and legend, under a line
+with the date and the time span. The hover marks are left out. The image is
+taken when you choose, so it does not move on while the save dialog is open.
+
+The Trend player (Section~\ref{sec:trend-player}) has the same button.

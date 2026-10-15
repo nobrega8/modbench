@@ -1,0 +1,107 @@
+\chapter{Introduction}
+
+Modbench is a Modbus client: it sends requests to Modbus devices (meters,
+inverters, drives, PLCs, controllers) and shows what they answer. It reads and
+writes registers by hand, or by name with a \emph{device map}, charts values
+over time, shows every frame on the wire, and simulates devices when there is
+no hardware at hand.
+
+It runs on Windows, Linux and macOS, speaks Modbus over serial lines (RTU and
+ASCII) and over the network (TCP, UDP, and RTU frames over TCP or UDP), and
+keeps everything on your computer.
+
+\screenshot[7cm]{overview}{The Main page with a device map open.}
+  {The whole window: the Main page with a map open on the Device map tab, a test
+   running, in the light theme.}
+
+\section{What you can do with it}
+
+\begin{itemize}
+  \item \textbf{Send any request}: choose a function code, an address and a
+        quantity, press \uiaccent{Start}, and see the values, once or in a loop.
+  \item \textbf{Read a device by name}: open a map (\file{.mbmap.json}) and
+        every register shows with its name, unit, scaling and state labels.
+        Over 400 maps can be downloaded from the shared library.
+  \item \textbf{Check that the map fits}: reference values catch a wrong
+        address, base or byte order before you trust the other values.
+  \item \textbf{Write safely}: typed controls, the map's limits, an optional
+        confirmation, and a read-only mode that blocks every write.
+  \item \textbf{See what happens}: charts, the raw bytes of each frame
+        decoded field by field, a log of every request, and statistics of
+        failures by cause.
+  \item \textbf{Find and identify devices}: scan unit IDs and serial settings,
+        find which addresses answer, ask a device who it is.
+  \item \textbf{Simulate devices}: several devices shaped after maps, with
+        values that move on their own, to try maps and other programs.
+\end{itemize}
+
+\section{A few Modbus words}
+
+If you work with Modbus every day, skip this section.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Client and server] The client (Modbench) asks; the server (the
+    device, also called slave) answers. A device never speaks first.
+  \item[Unit ID] The address of a device on a serial line, or behind a
+    gateway: \val{1} to \val{247}. Over TCP to a single device it is often
+    ignored, but must still be sent (usually \val{1} or \val{255}).
+  \item[Areas] Each device has four tables of data:
+    \begin{center}
+    \begin{tabularx}{0.9\linewidth}{l l L}
+      \toprule
+      \thead{Area} & \thead{Size} & \thead{Read / write} \\
+      \midrule
+      Coils & 1 bit & read (FC01), write (FC05, FC15) \\
+      Discrete inputs & 1 bit & read only (FC02) \\
+      Input registers & 16 bits & read only (FC04) \\
+      Holding registers & 16 bits & read (FC03), write (FC06, FC16) \\
+      \bottomrule
+    \end{tabularx}
+    \end{center}
+  \item[Address] The number of a coil or register in its area, from \val{0}
+    to \val{65535} on the wire. Manuals often count from 1, or write the area
+    in front (\val{40001} is holding register 1, that is 0 on the wire).
+    Modbench shows addresses the way you choose (Section~\ref{sec:notation}).
+  \item[Byte and word order] A register holds two bytes; 32- and 64-bit values
+    take two or four registers. Devices disagree on which byte and which
+    register comes first, so the same bytes can read as very different
+    numbers. Maps say which order a device uses; the Data decoder
+    (Section~\ref{sec:data-decoder}) helps find it.
+  \item[Exception] An answer that says the request failed, with a code:
+    \val{02} for an address the device does not have, \val{03} for a value it
+    refuses, and so on (Appendix~\ref{app:exceptions}).
+\end{description}
+
+\section{The window}
+\label{sec:window}
+
+Four pages sit in the title bar. Click one to show it.
+
+\screenshot[3cm]{title-bar}{The title bar and its four pages.}
+  {The top of the window: the Modbench logo, the Main, Tools, Library and
+   Settings pages, and the window buttons.}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Main] Connect to a device and test it, in three steps: \emph{Connection},
+    \emph{Request} and \emph{Test} (Chapter~\ref{ch:main}).
+  \item[Tools] The simulator, and tools to identify devices, find addresses,
+    decode data and frames, play back recordings, see statistics and set
+    alarms (Chapters~\ref{ch:simulator} and~\ref{ch:tools}).
+  \item[Library] The device maps on this computer, and the shared online
+    library (Chapter~\ref{ch:library}).
+  \item[Settings] Theme, text size, safety, what Modbench remembers, updates
+    (Chapter~\ref{ch:settings}).
+\end{description}
+
+\subsection{Right-click menus}
+
+Most lists and values have a right-click menu with what can be done there:
+copy a value or an address, add a register to the chart, write a value, export,
+remove. Text fields have \nav{Cut}, \nav{Copy}, \nav{Paste} and
+\nav{Select all}.
+
+\subsection{Light and dark}
+
+Modbench follows the system theme, or the one chosen in
+\nav{Settings\then Appearance}. The screenshots in this manual use the light
+theme.

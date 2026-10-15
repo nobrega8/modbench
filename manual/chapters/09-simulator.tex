@@ -1,0 +1,125 @@
+\chapter{The simulator}
+\label{ch:simulator}
+
+The simulator runs Modbus devices inside Modbench. Use it to try a map, an
+alarm or another program (a SCADA, a PLC, a script) without the hardware:
+each device answers like the real one, with the values of its map, and can
+make values move on its own.
+
+Open it from \nav{Tools\then Simulator}.
+
+\screenshot[9cm]{simulator}{The simulator with two devices.}
+  {The simulator running on Modbus TCP: two device tabs (Unit 1 and Unit 2),
+   the map picker, the registers view with values, and the recent requests at
+   the bottom.}
+
+\section{Where it listens}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Interface] Modbus TCP or UDP, RTU over TCP or UDP, or a serial port
+    with RTU or ASCII. Over the network, set the \field{Port} (5020 by
+    default, so it does not need administrator rights); \field{Other
+    computers} also accepts clients from the network, not only from this
+    computer. On a serial port, set the line settings as the clients use them.
+  \item[\uiaccent{Start} and \ui{Stop}] Start listens; the status shows where
+    (\emph{Listening on 127.0.0.1:5020}).
+  \item[\ui{Connect Main to it}] Fills step 1 of the Main page with the
+    simulator's address and the shown device's unit ID, and goes to Main.
+\end{description}
+
+\begin{note}[Serial]
+Clients connect to the other end of the line. To try it on one computer, use
+a virtual null-modem pair (com0com on Windows, \val{socat} on Linux and macOS)
+and open the other port on the Main page.
+\end{note}
+
+\section{Devices}
+
+The simulator starts with one device. Several devices can share one address,
+each on its own unit ID, like devices behind a gateway or on one RS-485 line;
+other unit IDs get no answer.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[\ui{Add device}] Adds a device on the lowest free unit ID. The tabs
+    above switch between devices.
+  \item[\field{Unit ID}] The unit ID the device answers. Empty answers every
+    unit ID that no other device has. Unit ID \val{0} is a broadcast: every
+    device takes the write and none answers.
+  \item[\field{Map}] Shapes the device after a map: one open on the Main page,
+    one from the library, or \nav{Open a map file…}. \emph{Empty device}
+    gives a memory where every address exists and holds zero.
+  \item[\field{Only the map's addresses}] Addresses the map does not have
+    answer exception 2, like the real device. Off, every address answers.
+  \item[\ui{Reset values}] Puts back the map's reference values.
+  \item[\ui{Remove device}] Removes the device shown; its unit ID gets no
+    answer.
+\end{description}
+
+\section{Values}
+
+The view switch shows the device's memory either as \tab{Registers}, the map's
+registers by name with their values in engineering units, or as a raw
+\tab{Grid} of addresses, in any area. Click a value to change it: clients
+read the new value from the next request.
+
+Writes from clients show up immediately, and the recent requests are listed
+at the bottom, reads and writes apart, so a stream of reads does not push the
+writes out of sight.
+
+\section{Generators}
+
+Generators make values change on their own, every so many milliseconds (at
+least 50). \ui{Add generator} adds one; it drives a map register, in its own
+units, or a raw address.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l L}
+  \toprule
+  \thead{Kind} & \thead{What it does} \\
+  \midrule
+  Increment & Adds a step each time, from a minimum to a maximum, then starts
+    again: counters, energy. \\
+  Sine & Swings around an offset with an amplitude and a period: voltage,
+    temperature. \\
+  Random & A new value between a minimum and a maximum each time: noise. \\
+  Copy & Takes the value of another address: a status input that follows a
+    command coil. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\screenshot[5cm]{generators}{Generators on a meter's registers.}
+  {The generators list: a sine on Voltage L1 (offset 230, amplitude 5,
+   period 10~s), an increment on Active energy and a copy, with one generator
+   showing why it cannot run.}
+
+A generator that cannot run (its register is not in the map, or its address
+does not exist) says why. Generators keep running across \ui{Stop} and
+\uiaccent{Start}.
+
+\section{Its own window}
+
+\ui{Pop out} moves the simulator into a window of its own, to watch it next to
+the Main page. \ui{Back to the main window} brings it back to the Tools page.
+
+\section{Saving a setup}
+\label{sec:sim-setups}
+
+A test bench with several devices, maps and generators takes a while to set
+up. \ui{Save setup…} keeps it in a \file{.mbsim} file:
+
+\begin{itemize}
+  \item the interface and its settings;
+  \item every device: unit ID, map, \emph{Only the map's addresses}, and
+        generators.
+\end{itemize}
+
+\ui{Open setup…}, or a double-click on the file, puts it back. Each map is read
+again from its file when that is still there, so updates to the library are
+picked up; otherwise the copy kept in the setup is used. While the simulator
+runs, opening a setup replaces the devices but keeps the interface.
+
+\begin{note}
+Values changed by hand are not saved: devices start from their maps'
+reference values.
+\end{note}

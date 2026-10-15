@@ -1,0 +1,64 @@
+\chapter{Settings}
+\label{ch:settings}
+
+Settings are kept on this computer and apply at once.
+
+\screenshot[8cm]{settings}{The Settings page.}
+  {The Settings page: Appearance with the three theme previews and the text
+   size, then Values, Device library, Updates and Connection.}
+
+\section{Appearance}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Theme] Light, dark, or as the system.
+  \item[Text size] Smaller to see more at once, larger to read from further
+    away. \ui{Reset} goes back to 100\,\%.
+\end{description}
+
+\section{Values}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Highlight changed values] How long a value that changed stays
+    highlighted: off, or 1 to 30 seconds.
+\end{description}
+
+\section{Device library}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Library folder] Where your maps are kept. \ui{Open folder} shows it.
+  \item[Shared maps] Links to the map format and to the repository of maps
+    shared by other users.
+\end{description}
+
+\section{Updates}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Check for updates when Modbench starts] On by default. Installs from
+    the APT repository update with \val{sudo apt upgrade} instead.
+\end{description}
+
+\section{Connection}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Remember the last connection] Port, baud rate, address, device and
+    timing are filled in again when Modbench starts.
+  \item[Remember register choices for each device] Which registers are read,
+    the byte order and Loop come back for each device (map, connection and
+    unit ID). Restoring them never writes or starts a test.
+  \item[Forget saved device choices] Clears what was remembered per device.
+  \item[Confirm before writing to a device] Asks before every write.
+  \item[Reconnect when the connection is lost] While a test runs, a connection
+    that fails is opened again, and the test goes on.
+  \item[Read-only mode] Blocks every write, also on a connection that is
+    already open.
+  \item[CSV separator] For saved logs, exported values and recordings. Use a
+    semicolon for spreadsheets set to a language with a decimal comma.
+  \item[Requests kept in the log] Older requests are dropped first.
+\end{description}
+
+\section{What Modbench keeps}
+
+Everything stays on this computer: settings, the last connection, choices per
+device, alarms, templates and the library folder. The only network requests
+besides your devices are downloads: the update check, the online library, and
+the vendors' icons from their websites.

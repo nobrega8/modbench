@@ -1,0 +1,71 @@
+\chapter{Reference}
+
+\section{Function codes}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l L l}
+  \toprule
+  \thead{Code} & \thead{Function} & \thead{Most per request} \\
+  \midrule
+  \val{01} & Read coils & 2000 bits \\
+  \val{02} & Read discrete inputs & 2000 bits \\
+  \val{03} & Read holding registers & 125 registers \\
+  \val{04} & Read input registers & 125 registers \\
+  \val{05} & Write single coil & 1 bit \\
+  \val{06} & Write single register & 1 register \\
+  \val{15} & Write multiple coils & 1968 bits \\
+  \val{16} & Write multiple registers & 123 registers \\
+  \val{43/14} & Read device identification & --- \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Byte and word order}
+
+How the 32-bit value \val{0x0A0B0C0D} arrives, in the four orders:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l l l L}
+  \toprule
+  \thead{Byte order} & \thead{Word order} & \thead{On the wire} & \thead{Common name} \\
+  \midrule
+  big & big & \val{0A 0B 0C 0D} & Modbus standard (ABCD) \\
+  big & little & \val{0C 0D 0A 0B} & Word swap (CDAB), used by many meters and PLCs \\
+  little & big & \val{0B 0A 0D 0C} & Byte swap (BADC), rare \\
+  little & little & \val{0D 0C 0B 0A} & Little-endian (DCBA) \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Files}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[\file{.mbmap.json}] A device map, version 2: one JSON object with the
+    device's connection defaults and its registers. The format is described
+    in \file{SPEC.md} of the mbmap-library repository.
+  \item[\file{.mbmap}] A device map, version 1 (older, line-based). Modbench
+    opens it and converts it to version 2.
+  \item[\file{.mbsim}] A simulator setup (JSON): the interface settings and
+    each device's unit ID, map (with a copy of it), \emph{Only the map's
+    addresses} and generators.
+  \item[Recordings (\file{.csv})] Made with \ui{Record…}: a time column, then
+    one column per register, named with its unit; one row per cycle. The
+    Trend player plays them back.
+  \item[Logs and exports (\file{.csv})] From \ui{Save log…} and
+    \ui{Export…}, with the separator set in Settings.
+\end{description}
+
+\section{Keyboard}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l L}
+  \toprule
+  \thead{Key} & \thead{Does} \\
+  \midrule
+  \key{Esc} & Closes a menu or a dialog; in the online library, goes back to
+    the vendors. \\
+  \key{↑} \key{↓} \key{Enter} & Move through and choose in menus and lists. \\
+  \key{Tab} & Moves to the next field. \\
+  \bottomrule
+\end{tabularx}
+\end{center}

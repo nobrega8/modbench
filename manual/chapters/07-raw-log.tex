@@ -1,0 +1,49 @@
+\chapter{Raw data and the log}
+
+When a device answers strangely, the frames tell why. These two tabs show
+what was really sent and received.
+
+\section{The Raw data tab}
+\label{sec:raw}
+
+\screenshot[6cm]{raw-data}{A request and its answer on the Raw data tab.}
+  {The Raw data tab with one request (Data out) and its answer (Data in),
+   decoded field by field: unit ID, function, address, quantity, byte count,
+   values and a valid CRC.}
+
+The bytes exactly as sent to and received from the device, newest last:
+\sent{Data out} in blue, \received{Data in} in green, as in the logo. Each
+frame is decoded field by field (unit ID, function code, address, quantity,
+byte count, data), and its check is verified: the CRC on RTU, the LRC on
+ASCII, the header on TCP and UDP. A frame that fails its check is marked.
+
+When no answer came, the tab says so (\emph{No response.}). \ui{Clear}
+empties it.
+
+\begin{tip}
+To read a frame from another program or a bus analyser, paste it into the
+Frame decoder (Section~\ref{sec:frame-decoder}): it decodes it the same way.
+\end{tip}
+
+\section{The Log tab}
+\label{sec:log}
+
+\screenshot[6cm]{log}{The Log tab.}
+  {The Log tab after a test with a few timeouts: time, function, address,
+   result and duration of each request.}
+
+Every request: \field{Time}, \field{Function},
+\field{Address}, \field{Result} (OK, the exception, or a timeout) and
+\field{Duration}. The tab's name counts them: \tab{Log (120)}.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[\ui{Save log…}] Saves the log to a CSV file.
+  \item[\ui{Clear log}] Empties it.
+  \item[Right-click] \nav{Copy line}, \nav{Copy error}, \nav{Copy all}, and
+    \nav{Show errors only} to keep just the failed requests in view.
+  \item[Size] \nav{Settings\then Requests kept in the log} sets how many
+    requests are kept; older ones are dropped first.
+\end{description}
+
+For failures by cause over a long test, see Statistics
+(Section~\ref{sec:statistics}).

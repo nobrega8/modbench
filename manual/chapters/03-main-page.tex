@@ -1,0 +1,170 @@
+\chapter{The Main page}
+\label{ch:main}
+
+The Main page tests a device in three steps, from top to bottom:
+\emph{Connection} (how to reach it), \emph{Request} (what to ask) and
+\emph{Test} (send, and see the answers).
+
+\screenshot[8cm]{main-page}{The Main page: Connection, Request and Test.}
+  {The Main page with a manual request: step 1 set to Modbus TCP, step 2 reading
+   10 holding registers, step 3 after a few cycles with the Read registers tab.}
+
+\section{Step 1: Connection}
+
+\subsection{Interface}
+
+Choose how the device is reached:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l L}
+  \toprule
+  \thead{Interface} & \thead{Use it for} \\
+  \midrule
+  Serial, RTU & RS-485 or RS-232 devices: the usual Modbus on a serial line. \\
+  Serial, ASCII & Older devices that send frames as text, checked with an LRC. \\
+  Modbus TCP & Devices and gateways on Ethernet (port 502). \\
+  Modbus UDP & Devices that answer Modbus TCP frames over UDP. \\
+  RTU over TCP & Serial-to-Ethernet converters that pass RTU frames as they are. \\
+  RTU over UDP & The same, over UDP. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Serial}
+
+\field{Serial port} lists the ports of this computer (\ui{↻} looks again
+after plugging an adapter in). Set \field{Baud rate}, \field{Data bits},
+\field{Parity} and \field{Stop bits} as the device is configured: every device
+on the line must use the same.
+
+\subsubsection{Network}
+
+\field{IP address} and \field{Port}. The port is 502 unless the device or the
+converter uses another.
+
+\subsection{Device}
+
+\field{Device (unit ID)} is the device's address: \val{1}--\val{247} on a serial
+line or behind a gateway. \field{Timeout (ms)} is how long to wait for an
+answer before counting a timeout; \field{Delay (ms)} is the pause between two
+requests, which slow devices and some converters need.
+
+\begin{tip}[Not sure of the settings?]
+\ui{Find…} scans for unit IDs that answer, or, on a serial line, for the baud
+rate, parity and stop bits of a device (Section~\ref{sec:find-devices}). The
+Statistics tool suggests a timeout from the measured response times
+(Section~\ref{sec:statistics}).
+\end{tip}
+
+\section{Step 2: Request}
+
+\field{Source} chooses between a \emph{manual request} and a \emph{device map}.
+
+\subsection{Manual request}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Command] The function code: read coils (FC01), discrete inputs (FC02),
+    holding registers (FC03) or input registers (FC04), or one of the writes
+    (FC05, FC06, FC15, FC16).
+  \item[Start address] The first address, in the notation chosen in Settings
+    (below).
+  \item[Quantity] How many coils or registers. Modbus allows up to 125
+    registers or 2000 bits per read.
+\end{description}
+
+\subsection{Device map}
+
+With \field{Source} set to a map, \field{Map} chooses one of the maps of the
+library, an open file, or \nav{From a file…}. Modbench then reads every
+register of the map by name (Chapter~\ref{ch:maps}). The map's connection
+defaults (unit ID, baud rate, parity, port) fill step 1 when the map is
+picked; you can still change them.
+
+\subsection{Byte order}
+
+\field{Byte order} reads every value of a map with another byte and word order
+than the map says. It is meant for checking: if the values only make sense
+with another order, the map, or the device's configuration, is wrong.
+
+\subsection{Loop}
+\label{sec:loop}
+
+With \field{Loop command} on, the request repeats until \ui{Stop}. The time
+next to it is from the start of one cycle to the start of the next; \val{0}
+repeats as soon as \field{Delay} allows. It can be changed while the test runs.
+Without Loop, \uiaccent{Start} sends the request once.
+
+\section{Address notation}
+\label{sec:notation}
+
+Manuals write addresses in many ways. The address menu on the
+\tab{Device map}, \tab{Read registers} and \tab{Log} tabs chooses how Modbench
+shows them:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l l L}
+  \toprule
+  \thead{Notation} & \thead{Holding register 100} & \thead{Notes} \\
+  \midrule
+  0-based & \val{100} & The address on the wire. \\
+  1-based & \val{101} & As many manuals number registers. \\
+  Hex & \val{0x0064} & As in protocol documents. \\
+  Modicon & \val{400101} & Area digit in front (\val{0}, \val{1}, \val{3}, \val{4}), 1-based. \\
+  IEC 61131-3 & \val{\%MW100} & As PLC programs write them. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+Address fields also take the Modicon and IEC forms as typed, and switch the
+command to their area: typing \val{300010} reads input register 9.
+
+\section{Step 3: Test}
+
+\uiaccent{Start} sends the request (once, or in a loop); \ui{Stop} ends it. The
+counters show \field{Valid responses}, \field{Error responses} (exceptions)
+and \field{Timeouts}; the button next to each counter sets it back to zero.
+
+\screenshot[2.5cm]{test-controls}{Start, Stop and the counters.}
+  {The top of step 3 during a test: Start, Stop and the three counters with
+   some values.}
+
+The tabs below show the results:
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[\tab{Device map} or \tab{Read registers}] The values: by register name
+    with a map (Chapter~\ref{ch:maps}), as a grid for a manual read
+    (Chapter~\ref{ch:read-write}).
+  \item[\tab{Chart}] Values over time (Chapter~\ref{ch:charts}).
+  \item[\tab{Write values}] Write coils and registers
+    (Section~\ref{sec:write}).
+  \item[\tab{Raw data}] The bytes of each frame, decoded
+    (Section~\ref{sec:raw}).
+  \item[\tab{Log}] Every request with its result and time
+    (Section~\ref{sec:log}).
+\end{description}
+
+\subsection{When the link drops}
+
+With \nav{Reconnect when the connection is lost} on (in Settings), a test that
+loses its link (a cable pulled, a gateway restarted) keeps trying to
+reconnect, and goes on where it stopped.
+
+\section{Finding devices}
+\label{sec:find-devices}
+
+\ui{Find…} in step 1 opens a scan:
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[\tab{Unit IDs}] Asks every unit ID in a range (\val{1}--\val{247} by
+    default) and lists the ones that answer. Use a short \field{Wait (ms)} to
+    go faster on a quiet line.
+  \item[\tab{Serial settings}] For a serial device whose settings are
+    unknown: tries the chosen baud rates, parities and stop bits, most common
+    first, until the device answers.
+\end{description}
+
+\screenshot[5cm]{find-devices}{Finding unit IDs and serial settings.}
+  {The Find panel after a unit ID scan that found two devices, with the
+   Serial settings tab visible.}
+
+\ui{Use} next to a unit ID that answered puts it in step 1.

@@ -1,0 +1,84 @@
+\chapter{Reading and writing}
+\label{ch:read-write}
+
+\section{The Read registers tab}
+
+With a manual request, the values come back as a grid: one cell per coil or
+register, with its address.
+
+\screenshot[6cm]{read-registers}{Holding registers in the Read registers tab.}
+  {The Read registers tab after reading 20 holding registers, with Show as
+   set to a 32-bit type and the address menu visible.}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Show as] Shows the registers as unsigned or signed 16-bit numbers,
+    hexadecimal, binary, ASCII text, 32-bit signed or unsigned integers, or
+    32-bit floats, in the byte order chosen next to it. When the right type is
+    not known, the Data decoder shows them all at once, 64-bit types included
+    (Section~\ref{sec:data-decoder}).
+  \item[Bits] Shows the 16 bits of each register. A bit of a holding register
+    can be switched on its own: Modbench writes the register with only that
+    bit changed.
+  \item[Addresses] The address menu chooses the notation
+    (Section~\ref{sec:notation}).
+  \item[Right-click] Copy a value, an address or all values, add the address
+    to the chart, or \nav{Write here…} and \nav{Write all…}.
+\end{description}
+
+\section{Writing values}
+\label{sec:write}
+
+The \tab{Write values} tab writes coils and registers.
+
+\subsection{Without a map}
+
+Choose the function (single or multiple coils, single or multiple
+registers), the start address and the values, then \uiaccent{Write}.
+\ui{Copy data to write values} fills the list with the values last read, to
+change one and write them back.
+
+\subsection{With a map}
+
+The map's writable registers are listed by name, each with a control for its
+type: a number in engineering units, a list of the map's labels for state
+registers, a switch for bits. Modbench applies the inverse of the scaling,
+checks the type's range and the map's limits, and only then writes.
+
+\screenshot[6cm]{write-values}{Writable registers of a map.}
+  {The Write values tab with a map: a setpoint with its limits, a mode chosen
+   from its labels, and the Write… dialog open for one of them.}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Limits] A value outside the map's limits is refused before anything
+    is sent, with the limit it broke.
+  \item[Bit fields] Writing a bit or a field reads the register first and
+    changes only its bits.
+  \item[Custom values] For a register with labels, a value that is not one of
+    them can still be typed.
+\end{description}
+
+\subsection{Templates}
+
+A template copies the settings of one device to another of the same model.
+\ui{Save template…} saves the values last read from the writable registers;
+\ui{Load template…} writes the values of a saved template to the device shown.
+
+\section{Writing safely}
+
+Writes change how a real machine behaves. Modbench has three guards, in
+\nav{Settings\then Connection}:
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Confirm before writing to a device] Asks before every write: write
+    commands, map values and templates.
+  \item[Read-only mode] Blocks every write, also on a connection that is
+    already open. Step 3 shows a lock while it is on; click it to go to the
+    setting.
+  \item[Map mismatch] After a device does not match its map, writes always ask
+    first.
+\end{description}
+
+\begin{warning}
+A write is sent as soon as it is confirmed. Check the unit ID: on a serial
+line, unit ID \val{0} is a broadcast that every device takes.
+\end{warning}
