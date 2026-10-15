@@ -78,7 +78,14 @@ export const api = {
   libraryDelete: (path: string) => invoke<void>("library_delete", { path }),
   libraryOpenFolder: () => invoke<void>("library_open_folder"),
   openLink: (
-    link: "repo" | "issues" | "releases" | "library" | "spec" | "support",
+    link:
+      | "repo"
+      | "issues"
+      | "releases"
+      | "library"
+      | "spec"
+      | "support"
+      | "manual",
   ) => invoke<void>("open_link", { link }),
   libraryOnlineIndex: () => invoke<OnlineEntry[]>("library_online_index"),
   libraryOnlineImport: (paths: string[]) =>

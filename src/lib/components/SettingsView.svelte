@@ -100,6 +100,9 @@
           onclick={() => run(() => api.openLink("repo"))}
           >View on GitHub {@render external()}</button
         >
+        <button class="btn" onclick={() => run(() => api.openLink("manual"))}
+          >User manual (PDF) {@render external()}</button
+        >
         <button class="btn" onclick={() => run(() => api.openLink("issues"))}
           >Report a problem {@render external()}</button
         >
