@@ -138,6 +138,10 @@ enum Command {
         /// Listen on every network interface, not only this computer
         #[arg(long)]
         public: bool,
+        /// JSON file with values that change on their own: a list of
+        /// generators (increment, sine, random, copy), see the README
+        #[arg(long, value_name = "FILE")]
+        generators: Option<String>,
     },
     /// Check a map file (.mbmap.json, or a deprecated version 1 .mbmap) against the spec
     Validate { map: String },
@@ -777,12 +781,38 @@ async fn simulate(
     strict: bool,
     unit: Option<u8>,
     public: bool,
+    generators: Option<String>,
 ) -> Result<(), String> {
+    use modbench_lib::generators::{self, Generator};
     use modbench_lib::simulator::{self, Memory, SimLogger};
     let memory = match &map {
         Some(path) => Memory::from_map(&load_map(path)?, strict),
         None => Memory::default(),
     };
+    let generators = match &generators {
+        Some(path) => {
+            let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+            let list: Vec<Generator> =
+                serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
+            let problems: Vec<_> = list
+                .iter()
+                .enumerate()
+                .filter_map(|(i, g)| {
+                    generators::problem(&memory, g)
+                        .map(|p| format!("{path}: generator {}: {p}", i + 1))
+                })
+                .collect();
+            if !problems.is_empty() {
+                return Err(problems.join(
+                    "
+",
+                ));
+            }
+            Some(list)
+        }
+        None => None,
+    };
+    let count = generators.as_ref().map_or(0, Vec::len);
     let ip = if public { [0, 0, 0, 0] } else { [127, 0, 0, 1] };
     let logger: SimLogger = std::sync::Arc::new(|e| {
         let what = match (e.address, e.count) {
@@ -800,11 +830,17 @@ async fn simulate(
         std::sync::Arc::new(std::sync::Mutex::new(memory)),
         unit,
         Some(logger),
+        generators.map(|g| std::sync::Arc::new(std::sync::Mutex::new(g))),
     )
     .await
     .map_err(|e| format!("port {port}: {e}"))?;
+    let changing = match count {
+        0 => String::new(),
+        1 => ", 1 generator".into(),
+        n => format!(", {n} generators"),
+    };
     println!(
-        "Simulating {} on {} (Ctrl+C to stop)",
+        "Simulating {} on {}{changing} (Ctrl+C to stop)",
         map.as_deref().unwrap_or("an empty device"),
         running.addr
     );
@@ -991,7 +1027,8 @@ async fn run(cli: Cli) -> Result<(), String> {
             strict,
             unit,
             public,
-        } => simulate(map, port, strict, unit, public).await?,
+            generators,
+        } => simulate(map, port, strict, unit, public, generators).await?,
         Command::Mcp => serve_mcp().await,
     }
     Ok(())

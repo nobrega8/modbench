@@ -4,6 +4,7 @@ pub mod ascii;
 pub mod codec;
 mod commands;
 pub mod firmware;
+pub mod generators;
 pub mod library;
 pub mod mbmap;
 mod mbmap_v2;
@@ -74,6 +75,7 @@ pub fn run() {
             commands::sim_start,
             commands::sim_stop,
             commands::sim_status,
+            commands::sim_set_generators,
             commands::sim_load,
             commands::sim_read,
             commands::sim_write,

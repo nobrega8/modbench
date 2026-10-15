@@ -10,6 +10,7 @@
   import { api, errorText } from "$lib/api";
   import { clock, formatAddress, hex, parseInteger } from "$lib/format";
   import { functionName } from "$lib/frames";
+  import { span } from "$lib/generators";
   import { slidePill } from "$lib/motion";
   import { settings } from "$lib/settings.svelte";
   import { sim } from "$lib/simulator.svelte";
@@ -17,6 +18,7 @@
   import type { SimView } from "$lib/types";
   import AddressFormat from "../AddressFormat.svelte";
   import IntInput from "../IntInput.svelte";
+  import SimGenerators from "./SimGenerators.svelte";
 
   const PER_ROW = 10;
   const SHOWN = 100;
@@ -44,6 +46,24 @@
       .simRead(a, s, SHOWN)
       .then((v) => (view = v))
       .catch(() => (view = null));
+  });
+
+  // While generators run, read the memory a few times a second.
+  $effect(() => {
+    if (sim.running === null || !sim.generators.length) return;
+    const timer = setInterval(() => sim.changes++, 250);
+    return () => clearInterval(timer);
+  });
+
+  /** Addresses of this area a generator writes to. */
+  const driven = $derived.by(() => {
+    const out = new Set<number>();
+    for (const g of sim.generators) {
+      const s = span(g, sim.registers);
+      if (s?.area !== area) continue;
+      for (let i = 0; i < s.count; i++) out.add(s.address + i);
+    }
+    return out;
   });
 
   function addr(n: number) {
@@ -114,7 +134,7 @@
     A Modbus TCP device that runs inside Modbench. Shape it after a map to try
     the map, the alarms or another program without hardware: it answers with the
     map's reference values, and with exception 2 at addresses the map does not
-    have.
+    have. Generators make values move on their own.
   </p>
 </header>
 
@@ -276,11 +296,12 @@
             class="cell mono"
             class:off={!defined}
             class:on={v === true}
+            class:gen={driven.has(first + i)}
             title="{addr(first + i)}{defined
               ? ''
               : ' · not in the map'}{typeof v === 'number'
               ? ` · 0x${hex(v)}`
-              : ''}"
+              : ''}{driven.has(first + i) ? ' · set by a generator' : ''}"
             onclick={() => edit(i)}
             >{typeof v === "boolean" ? (v ? "1" : "0") : v}</button
           >
@@ -289,6 +310,8 @@
     {/each}
   </div>
 {/if}
+
+<SimGenerators />
 
 <section class="activity">
   <div class="row">
@@ -442,6 +465,11 @@
 
   .cell.off {
     opacity: 0.35;
+  }
+
+  /* Set by a generator: the device's own green, under the value */
+  .cell.gen {
+    box-shadow: inset 0 -2px 0 var(--rx);
   }
 
   input.cell {

@@ -7,6 +7,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::Mutex;
 
 use crate::codec::{self, ByteOrder, DataType, Value};
+use crate::generators::{self, Generator};
 use crate::library::{self, ImportResult, LibraryEntry};
 use crate::mbmap::{self, DeviceMap, Parsed, Register};
 use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
@@ -42,6 +43,8 @@ pub struct AppState {
     /// The simulated device: its memory lives on while it is stopped.
     sim_memory: Arc<std::sync::Mutex<simulator::Memory>>,
     sim: std::sync::Mutex<Option<simulator::Running>>,
+    /// Values the simulator changes on its own; kept across stop and start.
+    sim_generators: generators::Shared,
 }
 
 impl AppState {
@@ -781,6 +784,7 @@ pub async fn sim_start(
         state.sim_memory.clone(),
         unit,
         Some(logger),
+        Some(state.sim_generators.clone()),
     )
     .await
     .map_err(|e| match e.kind() {
@@ -818,6 +822,21 @@ pub fn sim_load(state: State<'_, AppState>, map: Option<DeviceMap>, strict: bool
         Some(map) => simulator::Memory::from_map(&map, strict),
         None => simulator::Memory::default(),
     };
+}
+
+/// Replaces the simulator's generators. Returns, for each one, why it cannot
+/// run against the current memory (e.g. a register the map does not have),
+/// or None; those are kept and skipped until they can.
+#[tauri::command]
+pub fn sim_set_generators(state: State<'_, AppState>, list: Vec<Generator>) -> Vec<Option<String>> {
+    let problems = {
+        let memory = state.sim_memory.lock().unwrap();
+        list.iter()
+            .map(|g| generators::problem(&memory, g))
+            .collect()
+    };
+    *state.sim_generators.lock().unwrap() = list;
+    problems
 }
 
 /// Values held by the simulator, and which of those addresses exist.
