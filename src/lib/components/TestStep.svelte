@@ -310,7 +310,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--text);
+    background: var(--live);
     animation: pulse 1.2s ease-in-out infinite;
   }
 

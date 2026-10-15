@@ -69,13 +69,15 @@
         role="radio"
         aria-checked={direction === "request"}
         class:on={direction === "request"}
-        onclick={() => (direction = "request")}>Client</button
+        onclick={() => (direction = "request")}
+        ><span class="from tx" aria-hidden="true"></span>Client</button
       >
       <button
         role="radio"
         aria-checked={direction === "response"}
         class:on={direction === "response"}
-        onclick={() => (direction = "response")}>Device</button
+        onclick={() => (direction = "response")}
+        ><span class="from rx" aria-hidden="true"></span>Device</button
       >
     </div>
   </div>
@@ -102,5 +104,23 @@
 
   p {
     margin: 0;
+  }
+
+  /* The logo's arrows: blue from the client, green from the device */
+  .from {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 7px;
+    border-radius: 50%;
+    vertical-align: 1px;
+  }
+
+  .from.tx {
+    background: var(--tx);
+  }
+
+  .from.rx {
+    background: var(--rx);
   }
 </style>
