@@ -8,7 +8,7 @@
 [![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)](#download)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri-24C8DB?logo=tauri&logoColor=white)](https://tauri.app)
 [![Supports .mbmap](https://img.shields.io/badge/supports-.mbmap-0A7EA4)](https://github.com/nobrega8/mbmap-library)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/nobrega)
 
 A lightweight Modbus TCP/RTU/ASCII client for Windows, Linux and macOS. Test any address by hand, or open a device map and read every register by name, already scaled, with units and labels.
@@ -112,7 +112,9 @@ To release, bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-
 
 ## License
 
-[MIT](LICENSE)
+Modbench is free software: you can redistribute it and/or modify it under the terms of the [GNU General Public License](LICENSE) as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. A modified version you distribute, or a program built on Modbench's code, must be published under the same terms.
+
+Releases up to 0.1.9 were published under the MIT licence, and those copies keep it. The device maps in [mbmap-library](https://github.com/nobrega8/mbmap-library) stay in the public domain (CC0).
 
 ## Funding
 
