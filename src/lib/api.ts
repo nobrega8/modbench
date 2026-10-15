@@ -21,6 +21,7 @@ import type {
   ScanHit,
   SerialHit,
   SerialScan,
+  SimInfo,
   SimView,
   TypedAddress,
   Value,
@@ -103,8 +104,14 @@ export const api = {
     invoke<number>("sim_start", { port, public: isPublic, unit }),
   simStop: () => invoke<void>("sim_stop"),
   simStatus: () => invoke<number | null>("sim_status"),
-  simLoad: (map: DeviceMap | null, strict: boolean) =>
-    invoke<void>("sim_load", { map, strict }),
+  /** Shapes the simulator after a map; `source` is the file it came from. */
+  simLoad: (map: DeviceMap | null, strict: boolean, source: string | null) =>
+    invoke<void>("sim_load", { map, strict, source }),
+  /** The simulator as the backend has it, for any window. */
+  simInfo: () => invoke<SimInfo>("sim_info"),
+  /** Shows the simulator in a window of its own, or brings it to the front. */
+  simOpenWindow: () => invoke<void>("sim_open_window"),
+  simCloseWindow: () => invoke<void>("sim_close_window"),
   simRead: (area: Area, address: number, count: number) =>
     invoke<SimView>("sim_read", { area, address, count }),
   simWrite: (area: Area, address: number, data: RawData) =>

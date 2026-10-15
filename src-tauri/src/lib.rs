@@ -76,12 +76,34 @@ pub fn run() {
             commands::sim_stop,
             commands::sim_status,
             commands::sim_set_generators,
+            commands::sim_info,
+            commands::sim_open_window,
+            commands::sim_close_window,
             commands::sim_values,
             commands::sim_set_value,
             commands::sim_load,
             commands::sim_read,
             commands::sim_write,
         ])
+        .on_window_event(|window, event| {
+            if !matches!(event, tauri::WindowEvent::Destroyed) {
+                return;
+            }
+            let app = window.app_handle();
+            match window.label() {
+                // The main window shows the simulator again.
+                commands::SIM_WINDOW => {
+                    let _ = app.emit("sim-window", false);
+                }
+                // The simulator's window does not outlive the app's.
+                "main" => {
+                    if let Some(sim) = app.get_webview_window(commands::SIM_WINDOW) {
+                        let _ = sim.close();
+                    }
+                }
+                _ => {}
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -45,7 +45,19 @@ pub struct AppState {
     sim: std::sync::Mutex<Option<simulator::Running>>,
     /// Values the simulator changes on its own; kept across stop and start.
     sim_generators: generators::Shared,
+    /// The map file the simulator was shaped after, if any.
+    sim_source: std::sync::Mutex<Option<String>>,
 }
+
+/// Tells every window the simulator changed (started, stopped, loaded, new
+/// generators, values set by hand), so a popped-out simulator and the main
+/// window show the same thing.
+fn sim_changed(app: &AppHandle) {
+    let _ = app.emit("sim-state", ());
+}
+
+/// Label of the simulator's own window.
+pub const SIM_WINDOW: &str = "simulator";
 
 impl AppState {
     fn stop_poller(&self) {
@@ -776,8 +788,9 @@ pub async fn sim_start(
         old.stop();
     }
     let ip = if public { [0, 0, 0, 0] } else { [127, 0, 0, 1] };
+    let emitter = app.clone();
     let logger: simulator::SimLogger = Arc::new(move |event| {
-        let _ = app.emit("sim", event);
+        let _ = emitter.emit("sim", event);
     });
     let running = simulator::start(
         (ip, port).into(),
@@ -798,14 +811,16 @@ pub async fn sim_start(
     })?;
     let port = running.addr.port();
     *state.sim.lock().unwrap() = Some(running);
+    sim_changed(&app);
     Ok(port)
 }
 
 #[tauri::command]
-pub fn sim_stop(state: State<'_, AppState>) {
+pub fn sim_stop(app: AppHandle, state: State<'_, AppState>) {
     if let Some(running) = state.sim.lock().unwrap().take() {
         running.stop();
     }
+    sim_changed(&app);
 }
 
 /// The port the simulator listens on, or None when it is stopped.
@@ -817,18 +832,110 @@ pub fn sim_status(state: State<'_, AppState>) -> Option<u16> {
 /// Clears the simulator's memory, or shapes it after a map (see
 /// `Memory::from_map`).
 #[tauri::command]
-pub fn sim_load(state: State<'_, AppState>, map: Option<DeviceMap>, strict: bool) {
+pub fn sim_load(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    map: Option<DeviceMap>,
+    strict: bool,
+    source: Option<String>,
+) {
+    let loaded = map.is_some();
     *state.sim_memory.lock().unwrap() = match map {
         Some(map) => simulator::Memory::from_map(&map, strict),
         None => simulator::Memory::default(),
     };
+    *state.sim_source.lock().unwrap() = source.filter(|_| loaded);
+    sim_changed(&app);
+}
+
+/// Everything about the simulator a window needs to show it: whether and
+/// where it runs, what it was shaped after, its generators, and whether it
+/// has a window of its own.
+#[derive(serde::Serialize)]
+pub struct SimInfo {
+    port: Option<u16>,
+    public: bool,
+    unit: Option<u8>,
+    map: Option<DeviceMap>,
+    source: Option<String>,
+    strict: bool,
+    generators: Vec<Generator>,
+    problems: Vec<Option<String>>,
+    window_open: bool,
+}
+
+#[tauri::command]
+pub fn sim_info(app: AppHandle, state: State<'_, AppState>) -> SimInfo {
+    let (port, public, unit) = match state.sim.lock().unwrap().as_ref() {
+        Some(r) => (Some(r.addr.port()), r.addr.ip().is_unspecified(), r.unit),
+        None => (None, false, None),
+    };
+    let memory = state.sim_memory.lock().unwrap();
+    let generators = state.sim_generators.lock().unwrap().clone();
+    SimInfo {
+        port,
+        public,
+        unit,
+        map: memory.map().cloned(),
+        source: state.sim_source.lock().unwrap().clone(),
+        strict: memory.strict(),
+        problems: generators
+            .iter()
+            .map(|g| generators::problem(&memory, g))
+            .collect(),
+        generators,
+        window_open: app.get_webview_window(SIM_WINDOW).is_some(),
+    }
+}
+
+/// Shows the simulator in a window of its own (or brings that window to
+/// the front), so it can sit next to the main window.
+// Async: building a window inside a synchronous command deadlocks on Windows.
+#[tauri::command]
+pub async fn sim_open_window(app: AppHandle) -> Result<(), ModbusError> {
+    if let Some(window) = app.get_webview_window(SIM_WINDOW) {
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+        return Ok(());
+    }
+    let url = tauri::WebviewUrl::App("?window=simulator".into());
+    let builder = tauri::WebviewWindowBuilder::new(&app, SIM_WINDOW, url)
+        .title("Modbench Simulator")
+        .inner_size(1040.0, 780.0)
+        .min_inner_size(640.0, 480.0);
+    // Like the main window: macOS keeps its own buttons over the content,
+    // elsewhere the page draws them.
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true)
+        .traffic_light_position(tauri::LogicalPosition::new(18.0, 24.0));
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder.decorations(false);
+    builder
+        .build()
+        .map_err(|e| ModbusError::Invalid(format!("could not open the window: {e}")))?;
+    let _ = app.emit("sim-window", true);
+    Ok(())
+}
+
+/// Closes the simulator's own window; the main window shows it again.
+#[tauri::command]
+pub fn sim_close_window(app: AppHandle) {
+    if let Some(window) = app.get_webview_window(SIM_WINDOW) {
+        let _ = window.close();
+    }
 }
 
 /// Replaces the simulator's generators. Returns, for each one, why it cannot
 /// run against the current memory (e.g. a register the map does not have),
 /// or None; those are kept and skipped until they can.
 #[tauri::command]
-pub fn sim_set_generators(state: State<'_, AppState>, list: Vec<Generator>) -> Vec<Option<String>> {
+pub fn sim_set_generators(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    list: Vec<Generator>,
+) -> Vec<Option<String>> {
     let problems = {
         let memory = state.sim_memory.lock().unwrap();
         list.iter()
@@ -836,6 +943,7 @@ pub fn sim_set_generators(state: State<'_, AppState>, list: Vec<Generator>) -> V
             .collect()
     };
     *state.sim_generators.lock().unwrap() = list;
+    sim_changed(&app);
     problems
 }
 
@@ -849,13 +957,16 @@ pub fn sim_values(state: State<'_, AppState>) -> Vec<Option<crate::codec::Value>
 /// Sets a register of the loaded map, in engineering units.
 #[tauri::command]
 pub fn sim_set_value(
+    app: AppHandle,
     state: State<'_, AppState>,
     register: String,
     value: f64,
 ) -> Result<(), ModbusError> {
     let target = generators::Target::Register { register };
     generators::write(&mut state.sim_memory.lock().unwrap(), &target, value)
-        .map_err(ModbusError::Invalid)
+        .map_err(ModbusError::Invalid)?;
+    sim_changed(&app);
+    Ok(())
 }
 
 /// Values held by the simulator, and which of those addresses exist.
@@ -884,6 +995,7 @@ pub fn sim_read(state: State<'_, AppState>, area: Area, address: u16, count: u16
 /// Changes values in the simulator, in any area.
 #[tauri::command]
 pub fn sim_write(
+    app: AppHandle,
     state: State<'_, AppState>,
     area: Area,
     address: u16,
@@ -894,5 +1006,7 @@ pub fn sim_write(
         .lock()
         .unwrap()
         .set(area, address, &data)
-        .map_err(ModbusError::Invalid)
+        .map_err(ModbusError::Invalid)?;
+    sim_changed(&app);
+    Ok(())
 }

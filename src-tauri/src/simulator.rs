@@ -104,6 +104,11 @@ impl Memory {
         self.map.as_ref()
     }
 
+    /// Only the map's addresses exist.
+    pub fn strict(&self) -> bool {
+        self.defined.is_some()
+    }
+
     /// Puts a register's reference value (the raw value a healthy device
     /// holds) in memory. Registers without one stay at zero.
     fn seed(&mut self, r: &Register, map: &DeviceMap) {
@@ -408,6 +413,8 @@ impl tokio_modbus::server::Service for Service {
 /// A running simulator: stop it by dropping or aborting the tasks.
 pub struct Running {
     pub addr: SocketAddr,
+    /// The only unit ID it answers, or None for all of them.
+    pub unit: Option<u8>,
     task: tokio::task::JoinHandle<()>,
     generators: Option<tokio::task::JoinHandle<()>>,
 }
@@ -457,6 +464,7 @@ pub async fn start(
     });
     Ok(Running {
         addr,
+        unit,
         task,
         generators,
     })

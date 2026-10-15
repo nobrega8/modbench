@@ -15,7 +15,8 @@
   import { span } from "$lib/generators";
   import { slidePill } from "$lib/motion";
   import { settings } from "$lib/settings.svelte";
-  import { sim } from "$lib/simulator.svelte";
+  import { IN_SIM_WINDOW, sim } from "$lib/simulator.svelte";
+  import Icon from "../Icon.svelte";
   import { bench } from "$lib/state.svelte";
   import type { SimEvent, SimView } from "$lib/types";
   import AddressFormat from "../AddressFormat.svelte";
@@ -153,281 +154,325 @@
   }
 </script>
 
-<header class="tool-head">
-  <h1>Simulator</h1>
-  <p>
-    A Modbus TCP device that runs inside Modbench. Shape it after a map to try
-    the map, the alarms or another program without hardware: it answers with the
-    map's reference values, and with exception 2 at addresses the map does not
-    have. Generators make values move on their own.
-  </p>
-</header>
-
-<div class="row">
-  <label class="field">
-    <span>Port</span>
-    <IntInput
-      value={sim.port}
-      min={1}
-      max={65535}
-      width="80px"
-      label="Port"
-      disabled={sim.running !== null}
-      onchange={(n) => (sim.port = n)}
-    />
-  </label>
-  <label class="field" title="Leave empty to answer every unit ID">
-    <span>Unit ID</span>
-    <input
-      class="input num"
-      style:width="80px"
-      value={sim.unit ?? ""}
-      placeholder="All"
-      disabled={sim.running !== null}
-      aria-label="Unit ID"
-      onchange={(e) => {
-        const n = parseInteger(e.currentTarget.value);
-        sim.unit = n !== null && n >= 0 && n <= 255 ? n : null;
-        e.currentTarget.value = sim.unit === null ? "" : String(sim.unit);
-      }}
-    />
-  </label>
-  <label
-    class="check switch-row"
-    title="Let other computers on the network connect (the firewall may ask)"
-  >
-    <input
-      type="checkbox"
-      class="switch"
-      role="switch"
-      bind:checked={sim.isPublic}
-      disabled={sim.running !== null}
-    />
-    Other computers
-  </label>
-  {#if sim.running === null}
-    <button class="btn accent" onclick={() => sim.start()}>Start</button>
-  {:else}
-    <button class="btn danger" onclick={() => sim.stop()}>Stop</button>
-  {/if}
-  <span class="status" aria-live="polite">
-    {#if sim.running !== null}
-      <span class="live"
-        ><span class="dot"></span>Listening on {sim.isPublic
-          ? "every interface"
-          : "127.0.0.1"}:{sim.running}</span
-      >
-      <button class="btn ghost" onclick={useInMain}>Connect Main to it</button>
-    {:else}
-      <span class="dim">Stopped</span>
-    {/if}
-  </span>
-</div>
-
-<div class="row source">
-  <label class="field">
-    <span>Device</span>
-    <Select
-      value={sim.source ?? ""}
-      options={sources}
-      label="Map the device is shaped after"
-      width="300px"
-      onchange={choose}
-    />
-  </label>
-  <label
-    class="check"
-    title="Only the map's addresses exist; the others answer exception 2"
-  >
-    <input
-      type="checkbox"
-      bind:checked={sim.strict}
-      disabled={!sim.map}
-      onchange={() => sim.reload()}
-    />
-    Only the map's addresses
-  </label>
-  <span class="spacer"></span>
-  {#if sim.map}
-    <button
-      class="btn ghost"
-      title="Back to the map's reference values"
-      onclick={() => sim.reload()}>Reset values</button
-    >
-    <div class="segmented" role="tablist" aria-label="View" use:slidePill>
-      <button
-        role="tab"
-        aria-selected={mode === "registers"}
-        class:on={mode === "registers"}
-        onclick={() => (mode = "registers")}>Registers</button
-      >
-      <button
-        role="tab"
-        aria-selected={mode === "grid"}
-        class:on={mode === "grid"}
-        onclick={() => (mode = "grid")}>Grid</button
-      >
-    </div>
-  {/if}
-</div>
-
-{#if sim.error}<p class="bad" role="alert">{sim.error}</p>{/if}
-
-{#if sim.map && mode === "registers"}
-  <SimRegisters ongenerate={(r, i) => generators?.generateFor(r, i)} />
-{:else}
+{#if sim.windowOpen && !IN_SIM_WINDOW}
+  <header class="tool-head">
+    <h1>Simulator</h1>
+    <p>
+      The simulator is open in its own window{sim.running !== null
+        ? `, listening on port ${sim.running}`
+        : ""}.
+    </p>
+  </header>
   <div class="row">
-    <div class="segmented" role="tablist" aria-label="Area" use:slidePill>
-      {#each areas as a (a.id)}
+    <button class="btn accent" onclick={() => api.simOpenWindow()}
+      >Show its window</button
+    >
+    <button class="btn" onclick={() => api.simCloseWindow()}
+      >Bring it back here</button
+    >
+  </div>
+{:else}
+  <header class="tool-head">
+    <div class="title-row">
+      <h1>Simulator</h1>
+      {#if IN_SIM_WINDOW}
         <button
-          role="tab"
-          aria-selected={area === a.id}
-          class:on={area === a.id}
-          onclick={() => {
-            area = a.id;
-            editing = null;
-          }}>{a.label}</button
+          class="btn ghost"
+          title="Close this window and show the simulator on the Tools page again"
+          onclick={() => api.simCloseWindow()}>Back to the main window</button
         >
-      {/each}
+      {:else}
+        <button
+          class="btn ghost"
+          title="Open the simulator in a window of its own, to see it next to the Main page"
+          onclick={() => api.simOpenWindow()}
+          ><Icon name="popout" />Pop out</button
+        >
+      {/if}
     </div>
-    <label class="inline">
-      <span class="dim">From</span>
+    <p>
+      A Modbus TCP device that runs inside Modbench. Shape it after a map to try
+      the map, the alarms or another program without hardware: it answers with
+      the map's reference values, and with exception 2 at addresses the map does
+      not have. Generators make values move on their own.
+    </p>
+  </header>
+
+  <div class="row">
+    <label class="field">
+      <span>Port</span>
       <IntInput
-        value={first}
-        min={0}
-        max={0x10000 - SHOWN}
+        value={sim.port}
+        min={1}
+        max={65535}
         width="80px"
-        label="First address shown"
-        onchange={(n) => {
-          start = n;
-          editing = null;
+        label="Port"
+        disabled={sim.running !== null}
+        onchange={(n) => (sim.port = n)}
+      />
+    </label>
+    <label class="field" title="Leave empty to answer every unit ID">
+      <span>Unit ID</span>
+      <input
+        class="input num"
+        style:width="80px"
+        value={sim.unit ?? ""}
+        placeholder="All"
+        disabled={sim.running !== null}
+        aria-label="Unit ID"
+        onchange={(e) => {
+          const n = parseInteger(e.currentTarget.value);
+          sim.unit = n !== null && n >= 0 && n <= 255 ? n : null;
+          e.currentTarget.value = sim.unit === null ? "" : String(sim.unit);
         }}
       />
     </label>
-    <span class="spacer"></span>
-    <AddressFormat />
-  </div>
-  <p class="dim hint">
-    {bits
-      ? "Click a bit to switch it."
-      : "Click a value to change it. Clients see the change at once."}
-  </p>
-  {#if problem}<p class="bad">{problem}</p>{/if}
-
-  {#if view}
-    <div class="grid" style:--cols={PER_ROW}>
-      <span></span>
-      {#each Array(PER_ROW) as _, i (i)}<span class="colhead">+{i}</span>{/each}
-      {#each Array(SHOWN / PER_ROW) as _, row (row)}
-        <span class="rowhead mono">{addr(first + row * PER_ROW)}</span>
-        {#each Array(PER_ROW) as _, col (col)}
-          {@const i = row * PER_ROW + col}
-          {@const v = view.data.values[i]}
-          {@const defined = view.defined[i]}
-          {#if editing === i}
-            <input
-              class="cell input num"
-              bind:value={draft}
-              use:focus
-              onkeydown={(e) => {
-                if (e.key === "Enter") commit();
-                if (e.key === "Escape") editing = null;
-              }}
-              onblur={commit}
-              aria-label="Value at {addr(first + i)}"
-            />
-          {:else}
-            <button
-              class="cell mono"
-              class:off={!defined}
-              class:on={v === true}
-              class:gen={driven.has(first + i)}
-              title="{addr(first + i)}{defined
-                ? ''
-                : ' · not in the map'}{typeof v === 'number'
-                ? ` · 0x${hex(v)}`
-                : ''}{driven.has(first + i) ? ' · set by a generator' : ''}"
-              onclick={() => edit(i)}
-              >{typeof v === "boolean" ? (v ? "1" : "0") : v}</button
-            >
-          {/if}
-        {/each}
-      {/each}
-    </div>
-  {/if}
-{/if}
-
-<SimGenerators bind:this={generators} />
-
-{#snippet log(title: string, list: SimEvent[], total: number, empty: string)}
-  <div class="pane">
-    <h3>{title} <span class="dim">{total}</span></h3>
-    {#if list.length}
-      <div class="log">
-        <table class="data">
-          <thead>
-            <tr>
-              <th>Time</th><th>Client</th><th class="num">Unit</th><th
-                >Request</th
-              ><th>Address</th><th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each list as e, i (total - i)}
-              <tr>
-                <td class="mono dim">{clock(e.time_ms)}</td>
-                <td class="mono">{e.peer}</td>
-                <td class="num mono">{e.unit}</td>
-                <td>{functionName(e.function)}</td>
-                <td class="mono">{where(e)}</td>
-                <td
-                  class:bad={!!e.error}
-                  class:wrote={!e.error && e.wrote}
-                  class:ok={!e.error && !e.wrote}
-                  >{e.error ?? (e.wrote ? "written" : "OK")}</td
-                >
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
+    <label
+      class="check switch-row"
+      title="Let other computers on the network connect (the firewall may ask)"
+    >
+      <input
+        type="checkbox"
+        class="switch"
+        role="switch"
+        bind:checked={sim.isPublic}
+        disabled={sim.running !== null}
+      />
+      Other computers
+    </label>
+    {#if sim.running === null}
+      <button class="btn accent" onclick={() => sim.start()}>Start</button>
     {:else}
-      <p class="empty">{empty}</p>
+      <button class="btn danger" onclick={() => sim.stop()}>Stop</button>
+    {/if}
+    <span class="status" aria-live="polite">
+      {#if sim.running !== null}
+        <span class="live"
+          ><span class="dot"></span>Listening on {sim.isPublic
+            ? "every interface"
+            : "127.0.0.1"}:{sim.running}</span
+        >
+        <button class="btn ghost" onclick={useInMain}>Connect Main to it</button
+        >
+      {:else}
+        <span class="dim">Stopped</span>
+      {/if}
+    </span>
+  </div>
+
+  <div class="row source">
+    <label class="field">
+      <span>Device</span>
+      <Select
+        value={sim.source ?? ""}
+        options={sources}
+        label="Map the device is shaped after"
+        width="300px"
+        onchange={choose}
+      />
+    </label>
+    <label
+      class="check"
+      title="Only the map's addresses exist; the others answer exception 2"
+    >
+      <input
+        type="checkbox"
+        bind:checked={sim.strict}
+        disabled={!sim.map}
+        onchange={() => sim.reload()}
+      />
+      Only the map's addresses
+    </label>
+    <span class="spacer"></span>
+    {#if sim.map}
+      <button
+        class="btn ghost"
+        title="Back to the map's reference values"
+        onclick={() => sim.reload()}>Reset values</button
+      >
+      <div class="segmented" role="tablist" aria-label="View" use:slidePill>
+        <button
+          role="tab"
+          aria-selected={mode === "registers"}
+          class:on={mode === "registers"}
+          onclick={() => (mode = "registers")}>Registers</button
+        >
+        <button
+          role="tab"
+          aria-selected={mode === "grid"}
+          class:on={mode === "grid"}
+          onclick={() => (mode = "grid")}>Grid</button
+        >
+      </div>
     {/if}
   </div>
-{/snippet}
 
-<section class="activity">
-  <div class="row">
-    <h2 class="key">Activity</h2>
-    <span class="spacer"></span>
-    <button
-      class="btn ghost"
-      disabled={!sim.reads.length && !sim.writes.length}
-      onclick={() => sim.clearEvents()}>Clear</button
-    >
-  </div>
-  <div class="panes">
-    {@render log(
-      "Reads",
-      reads,
-      sim.reads.length,
-      sim.running === null
-        ? "Start the simulator, then connect to it from the Main page or another program."
-        : "Waiting for a client…",
-    )}
-    {@render log(
-      "Writes",
-      writes,
-      sim.writes.length,
-      "No client has written anything yet.",
-    )}
-  </div>
-</section>
+  {#if sim.error}<p class="bad" role="alert">{sim.error}</p>{/if}
+
+  {#if sim.map && mode === "registers"}
+    <SimRegisters ongenerate={(r, i) => generators?.generateFor(r, i)} />
+  {:else}
+    <div class="row">
+      <div class="segmented" role="tablist" aria-label="Area" use:slidePill>
+        {#each areas as a (a.id)}
+          <button
+            role="tab"
+            aria-selected={area === a.id}
+            class:on={area === a.id}
+            onclick={() => {
+              area = a.id;
+              editing = null;
+            }}>{a.label}</button
+          >
+        {/each}
+      </div>
+      <label class="inline">
+        <span class="dim">From</span>
+        <IntInput
+          value={first}
+          min={0}
+          max={0x10000 - SHOWN}
+          width="80px"
+          label="First address shown"
+          onchange={(n) => {
+            start = n;
+            editing = null;
+          }}
+        />
+      </label>
+      <span class="spacer"></span>
+      <AddressFormat />
+    </div>
+    <p class="dim hint">
+      {bits
+        ? "Click a bit to switch it."
+        : "Click a value to change it. Clients see the change at once."}
+    </p>
+    {#if problem}<p class="bad">{problem}</p>{/if}
+
+    {#if view}
+      <div class="grid" style:--cols={PER_ROW}>
+        <span></span>
+        {#each Array(PER_ROW) as _, i (i)}<span class="colhead">+{i}</span
+          >{/each}
+        {#each Array(SHOWN / PER_ROW) as _, row (row)}
+          <span class="rowhead mono">{addr(first + row * PER_ROW)}</span>
+          {#each Array(PER_ROW) as _, col (col)}
+            {@const i = row * PER_ROW + col}
+            {@const v = view.data.values[i]}
+            {@const defined = view.defined[i]}
+            {#if editing === i}
+              <input
+                class="cell input num"
+                bind:value={draft}
+                use:focus
+                onkeydown={(e) => {
+                  if (e.key === "Enter") commit();
+                  if (e.key === "Escape") editing = null;
+                }}
+                onblur={commit}
+                aria-label="Value at {addr(first + i)}"
+              />
+            {:else}
+              <button
+                class="cell mono"
+                class:off={!defined}
+                class:on={v === true}
+                class:gen={driven.has(first + i)}
+                title="{addr(first + i)}{defined
+                  ? ''
+                  : ' · not in the map'}{typeof v === 'number'
+                  ? ` · 0x${hex(v)}`
+                  : ''}{driven.has(first + i) ? ' · set by a generator' : ''}"
+                onclick={() => edit(i)}
+                >{typeof v === "boolean" ? (v ? "1" : "0") : v}</button
+              >
+            {/if}
+          {/each}
+        {/each}
+      </div>
+    {/if}
+  {/if}
+
+  <SimGenerators bind:this={generators} />
+
+  {#snippet log(title: string, list: SimEvent[], total: number, empty: string)}
+    <div class="pane">
+      <h3>{title} <span class="dim">{total}</span></h3>
+      {#if list.length}
+        <div class="log">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Time</th><th>Client</th><th class="num">Unit</th><th
+                  >Request</th
+                ><th>Address</th><th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each list as e, i (total - i)}
+                <tr>
+                  <td class="mono dim">{clock(e.time_ms)}</td>
+                  <td class="mono">{e.peer}</td>
+                  <td class="num mono">{e.unit}</td>
+                  <td>{functionName(e.function)}</td>
+                  <td class="mono">{where(e)}</td>
+                  <td
+                    class:bad={!!e.error}
+                    class:wrote={!e.error && e.wrote}
+                    class:ok={!e.error && !e.wrote}
+                    >{e.error ?? (e.wrote ? "written" : "OK")}</td
+                  >
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {:else}
+        <p class="empty">{empty}</p>
+      {/if}
+    </div>
+  {/snippet}
+
+  <section class="activity">
+    <div class="row">
+      <h2 class="key">Activity</h2>
+      <span class="spacer"></span>
+      <button
+        class="btn ghost"
+        disabled={!sim.reads.length && !sim.writes.length}
+        onclick={() => sim.clearEvents()}>Clear</button
+      >
+    </div>
+    <div class="panes">
+      {@render log(
+        "Reads",
+        reads,
+        sim.reads.length,
+        sim.running === null
+          ? "Start the simulator, then connect to it from the Main page or another program."
+          : "Waiting for a client…",
+      )}
+      {@render log(
+        "Writes",
+        writes,
+        sim.writes.length,
+        "No client has written anything yet.",
+      )}
+    </div>
+  </section>
+{/if}
 
 <style>
   p {
     margin: 0;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .spacer {

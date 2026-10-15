@@ -1,8 +1,18 @@
-// The simulated device on the Tools page. The backend runs it; this keeps
-// its settings and recent activity while the page is not shown.
+// The simulated device on the Tools page. The backend runs it and holds its
+// state; this mirrors that state in each window (the main one, and the
+// simulator's own window when it is popped out) and keeps the recent
+// activity while the page is not shown.
 
+import { listen } from "@tauri-apps/api/event";
 import { api, errorText } from "./api";
 import type { DeviceMap, Generator, Register, SimEvent } from "./types";
+
+/** This page is the simulator's own window (see `sim_open_window`). */
+export const IN_SIM_WINDOW =
+  typeof location !== "undefined" &&
+  new URLSearchParams(location.search).get("window") === "simulator";
+
+const fileName = (path: string) => path.split(/[\\/]/).pop() ?? path;
 
 /** Requests kept per list, reads and writes apiece. */
 const EVENT_LIMIT = 300;
@@ -38,9 +48,53 @@ class Simulator {
   problems = $state.raw<(string | null)[]>([]);
   /** Registers of the loaded map a generator can drive (not text). */
   registers = $state.raw<Register[]>([]);
+  /** The simulator is shown in a window of its own. */
+  windowOpen = $state(false);
 
   private pending: SimEvent[] = [];
   private flushQueued = false;
+
+  /** Follows the backend: the simulator's state when another window (or
+   * this one) changes it, its requests, and its own window opening and
+   * closing. Returns a function that stops listening. */
+  connect(): () => void {
+    const stops = [
+      listen<SimEvent>("sim", (e) => this.onEvent(e.payload)),
+      listen("sim-state", () => this.sync()),
+      listen<boolean>("sim-window", (e) => (this.windowOpen = e.payload)),
+    ];
+    this.sync();
+    return () => stops.forEach((p) => p.then((stop) => stop()));
+  }
+
+  /** Takes the simulator's state from the backend. */
+  async sync() {
+    try {
+      const info = await api.simInfo();
+      this.running = info.port;
+      if (info.port !== null) {
+        this.port = info.port;
+        this.isPublic = info.public;
+        this.unit = info.unit;
+      }
+      this.map = info.map;
+      this.source = info.source;
+      this.loaded = info.map
+        ? info.source
+          ? fileName(info.source)
+          : `${info.map.meta.vendor} ${info.map.meta.model}`
+        : null;
+      if (info.map) this.strict = info.strict;
+      this.registers =
+        info.map?.registers.filter((r) => r.type !== "string") ?? [];
+      this.generators = info.generators;
+      this.problems = info.problems;
+      this.windowOpen = info.window_open;
+      this.changes++;
+    } catch {
+      // Not running under Tauri (tests): keep what is here.
+    }
+  }
 
   async start() {
     this.error = null;
@@ -68,7 +122,7 @@ class Simulator {
           "This map has errors; open it on the Main page to see them.";
         return;
       }
-      await this.load(map, path.split(/[\\/]/).pop() ?? path, path);
+      await this.load(map, fileName(path), path);
     } catch (e) {
       this.error = errorText(e);
     }
@@ -85,7 +139,7 @@ class Simulator {
   async load(map: DeviceMap, name: string, path: string | null = null) {
     this.error = null;
     try {
-      await api.simLoad(map, this.strict);
+      await api.simLoad(map, this.strict, path);
       this.loaded = name;
       this.map = map;
       this.source = path;
@@ -99,7 +153,7 @@ class Simulator {
 
   /** Every address back to zero, all of them defined. */
   async clear() {
-    await api.simLoad(null, false);
+    await api.simLoad(null, false, null);
     this.loaded = null;
     this.map = null;
     this.source = null;
