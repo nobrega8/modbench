@@ -17,7 +17,9 @@
   import { appliesTo, rangeText, versionText } from "$lib/identity";
   import { byIndex, check, limitsText } from "$lib/alarms";
   import { diagnosticWhere, type Register } from "$lib/types";
+  import { isCustom } from "$lib/custom-registers";
   import AddressFormat from "./AddressFormat.svelte";
+  import CustomRegisterForm from "./CustomRegisterForm.svelte";
   import Select from "./Select.svelte";
 
   let { open }: { open: OpenMap } = $props();
@@ -29,6 +31,8 @@
   let note = $state<{ index: number; ok: boolean; text: string } | null>(null);
   let busy = $state(false);
   let converting = $state(false);
+  /** The form to add a register the map is missing is open. */
+  let adding = $state(false);
   let convertError = $state<string | null>(null);
 
   async function convert() {
@@ -433,6 +437,9 @@
                   reg.firmware_max,
                 )}. The device's firmware is not known, so it is read anyway."
                 >fw {rangeText(reg.firmware_min, reg.firmware_max)}</span
+              >{/if}{#if isCustom(reg)}<span
+                class="grp custom"
+                title="Added on this computer; not in the map file">custom</span
               >{/if}{#if reg.reference}<span
                 class="refmark"
                 class:ok={r?.reference === "match"}
@@ -475,6 +482,13 @@
             {#if reg.access !== "R"}
               <button class="btn small" onclick={() => edit(index)}
                 >Write…</button
+              >
+            {/if}
+            {#if isCustom(reg)}
+              <button
+                class="btn ghost small"
+                title="Remove this register you added"
+                onclick={() => bench.removeCustomRegister(index)}>Remove</button
               >
             {/if}
           </td>
@@ -550,6 +564,17 @@
           >
         </tr>
       {/each}
+      <tr class="add-row">
+        <td colspan="8">
+          {#if adding}
+            <CustomRegisterForm {open} onclose={() => (adding = false)} />
+          {:else}
+            <button class="btn ghost small" onclick={() => (adding = true)}
+              >Add a register the map is missing…</button
+            >
+          {/if}
+        </td>
+      </tr>
     </tbody>
   </table>
 </div>
@@ -898,6 +923,15 @@
     font-weight: 400;
     font-style: italic;
     color: var(--text-3);
+  }
+
+  .grp.custom {
+    font-style: italic;
+  }
+
+  .add-row td {
+    padding-top: 8px;
+    border-bottom: 0;
   }
 
   .editor td {

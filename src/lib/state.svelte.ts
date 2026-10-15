@@ -20,6 +20,7 @@ import {
   type ResponseTimes,
 } from "./stats";
 import { loadAlarms, saveAlarms, type Alarm } from "./alarms";
+import { isCustom, loadCustom, saveCustom } from "./custom-registers";
 import { recordHeader, recordRow } from "./csv";
 import {
   MAX_SERIES,
@@ -61,6 +62,7 @@ import type {
   PointResult,
   PollCycle,
   RawData,
+  Register,
   ScanHit,
   SerialHit,
   SerialProgress,
@@ -371,7 +373,7 @@ This writes to the device.`,
     this.mapError = null;
     const entry: OpenMap = {
       path,
-      map: parsed.map,
+      map: withCustom(parsed.map, path),
       warnings: parsed.diagnostics.filter((d) => d.severity === "warning"),
       version: parsed.version,
     };
@@ -390,9 +392,11 @@ This writes to the device.`,
     const path = await api.convertMap(old.path);
     const parsed = await api.openMap(path);
     if (!parsed.map) return;
+    // The custom registers follow the map to its new file.
+    saveCustom(path, old.map.registers);
     this.maps[index] = {
       path,
-      map: parsed.map,
+      map: withCustom(parsed.map, path),
       warnings: parsed.diagnostics.filter((d) => d.severity === "warning"),
       version: parsed.version,
     };
@@ -1169,6 +1173,41 @@ This writes to the device.`,
     }, 200);
   }
 
+  /** Adds a register the open map is missing; it is read from the next
+   * cycle and kept for this map file on this computer. */
+  addCustomRegister(reg: Register) {
+    const open = this.map;
+    if (!open) return;
+    open.map.registers.push(reg);
+    saveCustom(open.path, open.map.registers);
+    this.refreshPolling();
+  }
+
+  /** Removes a register added with addCustomRegister. Everything kept by
+   * register index moves down past it. */
+  removeCustomRegister(index: number) {
+    const open = this.map;
+    if (!open || !isCustom(open.map.registers[index])) return;
+    open.map.registers.splice(index, 1);
+    saveCustom(open.path, open.map.registers);
+    const shift = (i: number) => (i > index ? i - 1 : i);
+    const rekey = <T>(m: Map<number, T>) =>
+      new Map(
+        [...m].filter(([i]) => i !== index).map(([i, v]) => [shift(i), v]),
+      );
+    this.skipped = new Set(
+      [...this.skipped].filter((i) => i !== index).map(shift),
+    );
+    this.mapResults = rekey(this.mapResults);
+    this.history = rekey(this.history);
+    this.chartSeries = this.chartSeries
+      .filter((s) => s.index !== index)
+      .map((s) => ({ ...s, index: shift(s.index) }));
+    this.changes = new Map();
+    this.persistDevice();
+    this.refreshPolling();
+  }
+
   /** Puts a map register on the chart, and switches its reading on. */
   addToChart(index: number) {
     if (this.chartSeries.some((s) => s.index === index)) return;
@@ -1208,3 +1247,13 @@ This writes to the device.`,
 }
 
 export const bench = new Bench();
+
+/** A map with the registers added to it on this computer appended. */
+function withCustom(map: DeviceMap, path: string): DeviceMap {
+  const custom = loadCustom(path).filter(
+    (c) => !map.registers.some((r) => r.name === c.name),
+  );
+  return custom.length
+    ? { ...map, registers: [...map.registers, ...custom] }
+    : map;
+}
