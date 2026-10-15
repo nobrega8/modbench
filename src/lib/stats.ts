@@ -50,6 +50,24 @@ export function average(times: ResponseTimes): number {
   return times.count ? times.total / times.count : 0;
 }
 
+/** Answers needed before a timeout is suggested. */
+export const SUGGEST_AFTER = 20;
+/** A suggested timeout is never shorter than this. */
+export const TIMEOUT_FLOOR_MS = 100;
+/** Step of the Timeout field in step 1; suggestions round up to it. */
+const TIMEOUT_STEP_MS = 50;
+
+/**
+ * A timeout that leaves room for slow answers without waiting long for a
+ * lost one: 4 × the slowest answer measured, rounded up to the step of the
+ * Timeout field, never below the floor. Null until enough answers came.
+ */
+export function suggestedTimeout(times: ResponseTimes): number | null {
+  if (times.count < SUGGEST_AFTER) return null;
+  const ms = Math.ceil((times.max * 4) / TIMEOUT_STEP_MS) * TIMEOUT_STEP_MS;
+  return Math.max(TIMEOUT_FLOOR_MS, ms);
+}
+
 /** Milliseconds as short text: one decimal below 100 ms, whole above. */
 export function ms(value: number): string {
   return value < 100 ? value.toFixed(1) : value.toFixed(0);
@@ -106,4 +124,21 @@ export function addEntry(b: Breakdown, entry: TrafficEntry): Breakdown {
     times: addTime(f.times, entry),
   });
   return { total: b.total + 1, causes, functions };
+}
+
+/** Response times of every function code together (last is not kept). */
+export function allTimes(b: Breakdown): ResponseTimes {
+  let all = NO_TIMES;
+  for (const { times: t } of b.functions.values()) {
+    if (!t.count) continue;
+    const first = all.count === 0;
+    all = {
+      count: all.count + t.count,
+      last: 0,
+      min: first ? t.min : Math.min(all.min, t.min),
+      max: first ? t.max : Math.max(all.max, t.max),
+      total: all.total + t.total,
+    };
+  }
+  return all;
 }
