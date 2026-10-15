@@ -8,7 +8,7 @@ make values move on its own.
 
 Open it from \nav{Tools\then Simulator}.
 
-\screenshot[9cm]{simulator}{The simulator with two devices.}
+\screenshot[9cm]{simulator}{The simulator with two devices on a serial port.}
   {The simulator running on Modbus TCP: two device tabs (Unit 1 and Unit 2),
    the map picker, the registers view with values, and the recent requests at
    the bottom.}
@@ -89,9 +89,8 @@ units, or a raw address.
 \end{center}
 
 \screenshot[5cm]{generators}{Generators on a meter's registers.}
-  {The generators list: a sine on Voltage L1 (offset 230, amplitude 5,
-   period 10~s), an increment on Active energy and a copy, with one generator
-   showing why it cannot run.}
+  {The generators list: sines on the voltages, currents and powers, random
+   values on the power factors and an increment on the energy.}
 
 A generator that cannot run (its register is not in the map, or its address
 does not exist) says why. Generators keep running across \ui{Stop} and

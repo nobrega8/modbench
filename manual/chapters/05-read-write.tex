@@ -6,9 +6,9 @@
 With a manual request, the values come back as a grid: one cell per coil or
 register, with its address.
 
-\screenshot[6cm]{read-registers}{Holding registers in the Read registers tab.}
-  {The Read registers tab after reading 20 holding registers, with Show as
-   set to a 32-bit type and the address menu visible.}
+\screenshot[6cm]{read-registers}{Holding registers read as 32-bit values.}
+  {The Read registers tab after reading 20 holding registers, shown as 32-bit
+   signed in CDAB order, with the address menu open.}
 
 \begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
   \item[Show as] Shows the registers as unsigned or signed 16-bit numbers,
@@ -44,9 +44,9 @@ type: a number in engineering units, a list of the map's labels for state
 registers, a switch for bits. Modbench applies the inverse of the scaling,
 checks the type's range and the map's limits, and only then writes.
 
-\screenshot[6cm]{write-values}{Writable registers of a map.}
-  {The Write values tab with a map: a setpoint with its limits, a mode chosen
-   from its labels, and the Write… dialog open for one of them.}
+\screenshot[6cm]{write-values}{Writable registers of a map; one mode just written.}
+  {The Write values tab with a map: registers with their limits, a text field,
+   and a mode chosen from its labels and written.}
 
 \begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
   \item[Limits] A value outside the map's limits is refused before anything

@@ -15,13 +15,12 @@ only read.
 \section{Identify}
 
 Asks the device for its vendor, product code and revision with \emph{Read
-Device Identification} (FC43/14). Choose how much to \field{Ask for} (basic,
-regular or extended objects) and \uiaccent{Read}. Each object the device
+Device Identification} (FC43/14). Choose which \field{Objects} to ask for (basic,
+regular or extended) and \uiaccent{Read identification}. Each object the device
 returns is listed with its value.
 
 \screenshot[4cm]{identify}{A device that answered FC43.}
-  {The Identify tool after a read: vendor name, product code, revision and a
-   few more objects.}
+  {The Identify tool after a read: vendor name, product code and revision.}
 
 Not every device supports FC43: many answer exception 1 (illegal function).
 
@@ -32,18 +31,18 @@ addresses, and splits the blocks that fail until it knows which addresses
 exist.
 
 \begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
-  \item[Area, First address, Last address] What to search.
-  \item[Block size] Addresses read at once before splitting. Larger blocks are
+  \item[Area, From, To] What to search.
+  \item[Block] Addresses read at once before splitting. Larger blocks are
     faster on devices with long runs of registers.
   \item[Wait (ms)] How long to wait for each answer.
 \end{description}
 
-The result lists the ranges that answered. \nav{Read these addresses on the
-Main page} sets up a manual request for a range.
+The result lists the ranges that answered. \ui{Read} next to a range sets up
+a manual request for it on the Main page.
 
-\screenshot[5cm]{find-addresses}{Address ranges found on a device.}
-  {Find addresses after a scan of holding registers 0--2000: three ranges
-   that answer, with their counts.}
+\screenshot[5cm]{find-addresses}{Address ranges found on an energy meter.}
+  {Find addresses after a scan of holding registers 0--2000: the ranges that
+   answer, with their counts.}
 
 \section{Data decoder}
 \label{sec:data-decoder}
@@ -56,9 +55,10 @@ This is the quickest way to find a value's type and byte order before
 writing a map: look for the column where the number makes sense (a voltage
 near 230, a frequency near 50).
 
-\screenshot[6cm]{data-decoder}{Two registers decoded in every type and order.}
-  {The Data decoder with two registers that hold a float, the row where the
-   value reads 230.4~V standing out.}
+\screenshot[6cm]{data-decoder}{Two registers decoded in every type and order:
+  only 32-bit float in ABCD order reads as a voltage, 230.4.}
+  {The Data decoder with 4366 6666: every type in the four byte orders, and
+   each register on its own.}
 
 It works without a connection.
 
@@ -130,7 +130,11 @@ Limits on the registers of the open map. A value below \field{Low} or above
 \end{steps}
 
 \screenshot[4cm]{alarms}{Alarms on a meter's map.}
-  {The Alarms tool with three alarms (a voltage range, a temperature limit and
-   a fault bit), and the Device map tab with one value in red.}
+  {The Alarms tool with three alarms: a voltage range and two upper limits,
+   one of them exceeded and in red.}
+
+\screenshot[5cm]{alarms-map}{The value in alarm, in red on the Device map tab.}
+  {The Device map tab with an alarm: the current over its limit in red, and
+   \emph{1 in alarm} above the table.}
 
 Alarms are kept per map on this computer. Nothing is sent to the device.

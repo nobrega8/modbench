@@ -2,3 +2,10 @@
 $pdf_mode = 4;
 $out_dir = 'build';
 $lualatex = 'lualatex -interaction=nonstopmode -file-line-error %O %S';
+
+# \include writes each chapter's .aux next to it, under build/
+use File::Path qw(make_path);
+make_path('build/chapters');
+
+# The PDF is kept in the repository, next to its source
+$success_cmd = 'cp build/modbench-manual.pdf modbench-manual.pdf';
