@@ -24,6 +24,7 @@
   import {
     IN_SIM_WINDOW,
     deviceName,
+    overNetwork,
     sim,
     whereText,
     type SimKind,
@@ -44,6 +45,8 @@
   const kinds: { value: SimKind; label: string }[] = [
     { value: "tcp", label: "Modbus TCP" },
     { value: "rtuovertcp", label: "RTU over TCP" },
+    { value: "udp", label: "Modbus UDP" },
+    { value: "rtuoverudp", label: "RTU over UDP" },
     { value: "rtu", label: "Serial RTU" },
     { value: "ascii", label: "Serial ASCII" },
   ];
@@ -208,10 +211,10 @@
   }
 
   /** Points step 1 of Main at the simulator, and its unit ID at the
-   * device shown. Only over TCP: a serial port has another end. */
+   * device shown. Only over the network: a serial port has another end. */
   function useInMain() {
     const t = sim.running;
-    if (t?.kind !== "tcp" && t?.kind !== "rtuovertcp") return;
+    if (!t || !overNetwork(t)) return;
     bench.transport = t.kind;
     bench.host = "127.0.0.1";
     bench.tcpPort = t.port;
@@ -270,12 +273,12 @@
       {/if}
     </div>
     <p>
-      Modbus devices that run inside Modbench, over TCP, RTU over TCP or a
-      serial port. Shape each after a map to try the map, the alarms or another
-      program without hardware: it answers with the map's reference values, and
-      with exception 2 at addresses the map does not have. Several devices
-      answer their own unit IDs at the same address, like devices behind a
-      gateway or on one RS-485 line; other unit IDs get no answer. Generators
+      Modbus devices that run inside Modbench, over TCP or UDP, RTU over TCP or
+      UDP, or a serial port. Shape each after a map to try the map, the alarms
+      or another program without hardware: it answers with the map's reference
+      values, and with exception 2 at addresses the map does not have. Several
+      devices answer their own unit IDs at the same address, like devices behind
+      a gateway or on one RS-485 line; other unit IDs get no answer. Generators
       make values move on their own.
     </p>
   </header>
@@ -404,7 +407,7 @@
         <span class="live"
           ><span class="dot"></span>Listening on {whereText(sim.running)}</span
         >
-        {#if sim.running.kind === "tcp" || sim.running.kind === "rtuovertcp"}
+        {#if overNetwork(sim.running)}
           <button class="btn ghost" onclick={useInMain}
             >Connect Main to it</button
           >

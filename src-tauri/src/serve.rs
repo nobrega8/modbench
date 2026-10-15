@@ -1,7 +1,8 @@
 //! Server side of Modbus RTU and ASCII framing, over any byte stream (a
-//! serial port, or a TCP connection for RTU over TCP). tokio-modbus only
-//! serves RTU on a serial port and has no ASCII at all, so the simulator
-//! frames requests and answers here.
+//! serial port, or a TCP connection for RTU over TCP), and of MBAP and RTU
+//! frames in UDP datagrams. tokio-modbus only serves RTU on a serial port
+//! and has neither ASCII nor UDP, so the simulator frames requests and
+//! answers here.
 
 use std::io;
 use std::time::Duration;
@@ -184,9 +185,28 @@ where
     }
 }
 
+/// The answer to one MBAP frame (transaction ID, protocol 0, length, unit
+/// ID, PDU), as Modbus TCP sends it, when it is whole and the unit answers.
+pub fn mbap_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
+    if frame.len() < 8 || frame[2..4] != [0, 0] {
+        return None;
+    }
+    let len = usize::from(u16::from_be_bytes([frame[4], frame[5]]));
+    if len < 2 || frame.len() != 6 + len {
+        return None;
+    }
+    let unit = frame[6];
+    let pdu = answer(handler, unit, &frame[7..])?;
+    let mut out = frame[..4].to_vec();
+    out.extend(((pdu.len() + 1) as u16).to_be_bytes());
+    out.push(unit);
+    out.extend(pdu);
+    Some(out)
+}
+
 /// The answer to one whole RTU frame (unit ID to CRC), when its CRC holds
 /// and the unit answers.
-fn rtu_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
+pub fn rtu_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
     if frame.len() < 4 {
         return None;
     }
@@ -313,6 +333,23 @@ mod tests {
         let replies = ascii_frames(&Echo, &mut buf);
         assert_eq!(replies, [ascii::encode_frame(1, &[3, 2, 0, 0])]);
         assert_eq!(buf, b":0103");
+    }
+
+    #[test]
+    fn mbap_frames_keep_their_transaction_id() {
+        let request = [0x12, 0x34, 0, 0, 0, 6, 1, 3, 0, 2, 0, 1];
+        assert_eq!(
+            mbap_frame(&Echo, &request),
+            Some(vec![0x12, 0x34, 0, 0, 0, 5, 1, 3, 2, 0, 2])
+        );
+        // Another unit, a cut frame, or another protocol: no answer.
+        let mut other = request;
+        other[6] = 9;
+        assert_eq!(mbap_frame(&Echo, &other), None);
+        assert_eq!(mbap_frame(&Echo, &request[..10]), None);
+        let mut protocol = request;
+        protocol[3] = 1;
+        assert_eq!(mbap_frame(&Echo, &protocol), None);
     }
 
     #[test]

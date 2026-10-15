@@ -127,13 +127,19 @@ enum Command {
     Simulate {
         /// Map whose reference values and identity the device takes
         map: Option<String>,
-        /// TCP port to listen on
+        /// TCP or UDP port to listen on
         #[arg(long, default_value_t = 5020)]
         port: u16,
         /// Serve RTU frames over TCP (like a serial gateway) instead of
         /// Modbus TCP
-        #[arg(long, conflicts_with_all = ["rtu", "ascii"])]
+        #[arg(long, conflicts_with_all = ["rtu", "ascii", "udp", "rtu_over_udp"])]
         rtu_over_tcp: bool,
+        /// Serve Modbus TCP frames over UDP instead of TCP
+        #[arg(long, conflicts_with_all = ["rtu", "ascii", "rtu_over_udp"])]
+        udp: bool,
+        /// Serve RTU frames over UDP (like a serial gateway) instead of TCP
+        #[arg(long, conflicts_with_all = ["rtu", "ascii"])]
+        rtu_over_udp: bool,
         /// Serve Modbus RTU on this serial port instead of TCP
         #[arg(long, conflicts_with = "ascii")]
         rtu: Option<String>,
@@ -187,6 +193,12 @@ struct Conn {
     /// Modbus RTU over TCP (serial gateway), host[:port]
     #[arg(long)]
     rtu_over_tcp: Option<String>,
+    /// Modbus TCP frames over UDP, host[:port]
+    #[arg(long)]
+    udp: Option<String>,
+    /// Modbus RTU over UDP (serial gateway), host[:port]
+    #[arg(long)]
+    rtu_over_udp: Option<String>,
     /// Serial port for Modbus RTU, e.g. COM3 or /dev/ttyUSB0
     #[arg(long)]
     rtu: Option<String>,
@@ -247,6 +259,12 @@ impl Conn {
         } else if let Some(t) = &self.rtu_over_tcp {
             let (host, port) = host_port(t);
             Transport::RtuOverTcp { host, port }
+        } else if let Some(t) = &self.udp {
+            let (host, port) = host_port(t);
+            Transport::Udp { host, port }
+        } else if let Some(t) = &self.rtu_over_udp {
+            let (host, port) = host_port(t);
+            Transport::RtuOverUdp { host, port }
         } else if let Some(port) = self.rtu.as_ref().or(self.ascii.as_ref()) {
             let parity = match self.parity.as_deref().map(str::to_uppercase).as_deref() {
                 None => meta.and_then(|m| m.parity).unwrap_or(Parity::N),
@@ -284,7 +302,7 @@ impl Conn {
             }
         } else {
             return Err(
-                "choose a connection: --tcp HOST[:PORT], --rtu PORT, --ascii PORT or --rtu-over-tcp HOST[:PORT]"
+                "choose a connection: --tcp HOST[:PORT], --udp HOST[:PORT], --rtu PORT, --ascii PORT, --rtu-over-tcp HOST[:PORT] or --rtu-over-udp HOST[:PORT]"
                     .into(),
             );
         };
@@ -299,6 +317,8 @@ impl Conn {
         let t = match &cfg.transport {
             Transport::Tcp { host, port } => format!("TCP {host}:{port}"),
             Transport::RtuOverTcp { host, port } => format!("RTU over TCP {host}:{port}"),
+            Transport::Udp { host, port } => format!("UDP {host}:{port}"),
+            Transport::RtuOverUdp { host, port } => format!("RTU over UDP {host}:{port}"),
             Transport::Rtu {
                 port,
                 baudrate,
@@ -638,6 +658,8 @@ fn conn_schema() -> Json {
     json!({
         "tcp": {"type": "string", "description": "Modbus TCP device, host[:port]"},
         "rtu_over_tcp": {"type": "string", "description": "RTU over TCP gateway, host[:port]"},
+        "udp": {"type": "string", "description": "Modbus UDP device, host[:port]"},
+        "rtu_over_udp": {"type": "string", "description": "RTU over UDP gateway, host[:port]"},
         "rtu": {"type": "string", "description": "Serial port for Modbus RTU, e.g. COM3"},
         "ascii": {"type": "string", "description": "Serial port for Modbus ASCII"},
         "baud": {"type": "integer"},
@@ -873,6 +895,8 @@ fn where_listening(listen: &Transport) -> String {
     match listen {
         Transport::Tcp { host, port } => format!("{host}:{port} (Modbus TCP)"),
         Transport::RtuOverTcp { host, port } => format!("{host}:{port} (RTU over TCP)"),
+        Transport::Udp { host, port } => format!("{host}:{port} (Modbus UDP)"),
+        Transport::RtuOverUdp { host, port } => format!("{host}:{port} (RTU over UDP)"),
         Transport::Rtu { port, .. } => format!("{port} (RTU)"),
         Transport::Ascii { port, .. } => format!("{port} (ASCII)"),
     }
@@ -1053,6 +1077,8 @@ async fn run(cli: Cli) -> Result<(), String> {
             map,
             port,
             rtu_over_tcp,
+            udp,
+            rtu_over_udp,
             rtu,
             ascii,
             baud,
@@ -1080,6 +1106,10 @@ async fn run(cli: Cli) -> Result<(), String> {
                 serial.config(map.as_ref())?.transport
             } else if rtu_over_tcp {
                 Transport::RtuOverTcp { host, port }
+            } else if udp {
+                Transport::Udp { host, port }
+            } else if rtu_over_udp {
+                Transport::RtuOverUdp { host, port }
             } else {
                 Transport::Tcp { host, port }
             };

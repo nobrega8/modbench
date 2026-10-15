@@ -794,8 +794,8 @@ impl AppState {
     }
 }
 
-/// Starts the simulator the way `listen` says: Modbus TCP or RTU over TCP on
-/// a port (host 127.0.0.1 for this computer only, 0.0.0.0 for every
+/// Starts the simulator the way `listen` says: Modbus TCP or UDP, or RTU
+/// over TCP or UDP, on a port (host 127.0.0.1 for this computer only, 0.0.0.0 for every
 /// interface), or RTU or ASCII on a serial port. Each request it answers is
 /// sent to the UI as a `sim` event. Returns where it listens.
 #[tauri::command]
@@ -808,7 +808,10 @@ pub async fn sim_start(
         old.stop();
     }
     let port = match &listen {
-        modbus::Transport::Tcp { port, .. } | modbus::Transport::RtuOverTcp { port, .. } => *port,
+        modbus::Transport::Tcp { port, .. }
+        | modbus::Transport::RtuOverTcp { port, .. }
+        | modbus::Transport::Udp { port, .. }
+        | modbus::Transport::RtuOverUdp { port, .. } => *port,
         _ => 0,
     };
     let emitter = app.clone();

@@ -48,7 +48,7 @@ export function registerId(r: Register): string {
 
 /** Where a device is reached, without the unit ID. */
 export function endpointOf(c: {
-  transport: "tcp" | "rtuovertcp" | "rtu";
+  transport: "tcp" | "rtuovertcp" | "udp" | "rtuoverudp" | "rtu";
   framing?: "rtu" | "ascii";
   host: string;
   tcpPort: number;

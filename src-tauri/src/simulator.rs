@@ -1,7 +1,7 @@
 //! Simulated Modbus devices. Each keeps the four data areas in memory and
 //! answers its unit ID, so maps, tools and other programs can be tried
-//! without hardware: over Modbus TCP, RTU over TCP, or a serial port (RTU or
-//! ASCII). Values can be seeded from a device map, and changed on their own
+//! without hardware: over Modbus TCP or UDP, RTU over TCP or UDP, or a
+//! serial port (RTU or ASCII). Values can be seeded from a device map, and changed on their own
 //! by generators (see [`crate::generators`]).
 
 use std::collections::HashSet;
@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, UdpSocket};
 use tokio_modbus::prelude::{
     ConformityLevel, DeviceIdObject, ReadCode, ReadDeviceIdentificationResponse,
 };
@@ -526,10 +526,13 @@ impl Running {
         drop(self);
     }
 
-    /// The TCP port it listens on; None on a serial port.
+    /// The TCP or UDP port it listens on; None on a serial port.
     pub fn port(&self) -> Option<u16> {
         match &self.listen {
-            Transport::Tcp { port, .. } | Transport::RtuOverTcp { port, .. } => Some(*port),
+            Transport::Tcp { port, .. }
+            | Transport::RtuOverTcp { port, .. }
+            | Transport::Udp { port, .. }
+            | Transport::RtuOverUdp { port, .. } => Some(*port),
             _ => None,
         }
     }
@@ -542,9 +545,9 @@ impl Drop for Running {
     }
 }
 
-/// Starts answering clients the way `listen` says: Modbus TCP or RTU over
-/// TCP on a host and port (port 0 picks a free one), or RTU or ASCII on a
-/// serial port. Runs the devices' generators while it does.
+/// Starts answering clients the way `listen` says: Modbus TCP or UDP, or
+/// RTU over TCP or UDP, on a host and port (port 0 picks a free one), or RTU
+/// or ASCII on a serial port. Runs the devices' generators while it does.
 pub async fn start(
     listen: Transport,
     devices: Devices,
@@ -597,6 +600,40 @@ pub async fn start(
                 }
             });
             (Transport::RtuOverTcp { host, port }, task)
+        }
+        Transport::Udp { ref host, port } | Transport::RtuOverUdp { ref host, port } => {
+            let socket = UdpSocket::bind((host.as_str(), port)).await?;
+            let port = socket.local_addr()?.port();
+            let rtu = matches!(listen, Transport::RtuOverUdp { .. });
+            let task = tokio::spawn(async move {
+                // One request per datagram; the longest ADU is 260 bytes.
+                let mut buf = [0u8; 512];
+                loop {
+                    // On Windows a client that went away shows up here as
+                    // an error: keep serving the others.
+                    let Ok((n, peer)) = socket.recv_from(&mut buf).await else {
+                        continue;
+                    };
+                    // RTU over UDP comes from gateways, which pass
+                    // broadcasts on to their line.
+                    let r = responder(peer.to_string(), rtu);
+                    let reply = if rtu {
+                        serve::rtu_frame(&r, &buf[..n])
+                    } else {
+                        serve::mbap_frame(&r, &buf[..n])
+                    };
+                    if let Some(reply) = reply {
+                        let _ = socket.send_to(&reply, peer).await;
+                    }
+                }
+            });
+            let host = host.clone();
+            let listen = if rtu {
+                Transport::RtuOverUdp { host, port }
+            } else {
+                Transport::Udp { host, port }
+            };
+            (listen, task)
         }
         Transport::Rtu {
             ref port,
@@ -846,6 +883,61 @@ mod tests {
             assert_eq!(
                 memory.read(Area::Holding, 12, 1),
                 RawData::Registers(vec![4])
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn clients_read_and_write_over_udp() {
+        for rtu in [false, true] {
+            let list = devices(vec![
+                Device::new(Some(1), Memory::from_map(&map(), true)),
+                Device::new(Some(2), Memory::default()),
+            ]);
+            let host = "127.0.0.1".to_string();
+            let listen = if rtu {
+                Transport::RtuOverUdp { host, port: 0 }
+            } else {
+                Transport::Udp { host, port: 0 }
+            };
+            let sim = start(listen, list.clone(), None).await.unwrap();
+            let config = |unit| {
+                let (host, port) = ("127.0.0.1".to_string(), sim.port().unwrap());
+                ConnectionConfig {
+                    transport: if rtu {
+                        Transport::RtuOverUdp { host, port }
+                    } else {
+                        Transport::Udp { host, port }
+                    },
+                    unit_id: unit,
+                    timeout_ms: 300,
+                }
+            };
+            let mut s = Session::connect(&config(1), None).await.unwrap();
+            assert_eq!(
+                s.read(Area::Holding, 0, 1).await.unwrap(),
+                RawData::Registers(vec![0x016A])
+            );
+            s.write_registers(12, &[3]).await.unwrap();
+            assert_eq!(
+                s.read(Area::Holding, 12, 1).await.unwrap(),
+                RawData::Registers(vec![3])
+            );
+            assert!(matches!(
+                s.read(Area::Holding, 5, 1).await,
+                Err(ModbusError::Exception { code: 2, .. })
+            ));
+            let mut two = Session::connect(&config(2), None).await.unwrap();
+            assert!(two.read(Area::Holding, 5, 1).await.is_ok());
+            let mut none = Session::connect(&config(9), None).await.unwrap();
+            assert!(matches!(
+                none.read(Area::Holding, 0, 1).await,
+                Err(ModbusError::Timeout(_))
+            ));
+            // After a timeout the next answer is still the right one.
+            assert_eq!(
+                s.read(Area::Holding, 12, 1).await.unwrap(),
+                RawData::Registers(vec![3])
             );
         }
     }
