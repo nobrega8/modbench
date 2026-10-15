@@ -10,6 +10,7 @@
     describe,
     fromDraft,
     newDraft,
+    registerOf as findRegister,
     toDraft,
     type Draft,
     type TargetDraft,
@@ -36,22 +37,24 @@
     })),
   );
 
-  function registerOf(t: GeneratorTarget) {
-    if (!("register" in t)) return null;
-    const key = t.register.trim().toLowerCase();
-    return sim.registers.find((r) => r.name.trim().toLowerCase() === key);
-  }
+  const registerOf = (t: GeneratorTarget) => findRegister(t, sim.registers);
 
   function name(t: GeneratorTarget) {
     if ("register" in t) return t.register;
-    return `${AREA_LABELS[t.area]} ${formatAddress(t.address, settings.addressFormat)}`;
+    const where = `${AREA_LABELS[t.area]} ${formatAddress(t.address, settings.addressFormat)}`;
+    const r = registerOf(t);
+    return r ? `${where} · ${r.name}` : where;
   }
 
-  /** The unit of what the form writes to, if it is a map register. */
-  const unit = $derived.by(() => {
-    if (draft.to.mode !== "register") return "";
-    return registerOf({ register: draft.to.register })?.unit ?? "";
-  });
+  function draftTarget(t: TargetDraft): GeneratorTarget {
+    return t.mode === "register"
+      ? { register: t.register }
+      : { area: t.area, address: t.address };
+  }
+
+  /** The map register the form writes to as a whole, if any. */
+  const drafted = $derived(registerOf(draftTarget(draft.to)));
+  const unit = $derived(drafted?.unit ?? "");
 
   function add() {
     draft = newDraft(sim.registers);
@@ -308,8 +311,8 @@
       {/key}
 
       <p class="dim note">
-        {draft.to.mode === "register"
-          ? "In the register's own units: its type, scale and offset are applied."
+        {drafted
+          ? `In ${drafted.name}'s own units: its type (${drafted.type}), scale and offset are applied.`
           : "Raw: a bit is 0 or 1, a register a whole number (negative ones are stored as int16)."}
       </p>
 

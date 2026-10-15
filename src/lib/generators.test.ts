@@ -8,6 +8,7 @@ const voltage = {
   address: 10,
   type: "float32",
   unit: "V",
+  bit: null,
 } as Register;
 
 group("generators", () => {
@@ -66,6 +67,13 @@ group("generators", () => {
       count: 2,
     });
     expect(span({ register: "Other" }, [voltage])).toBeNull();
+    // An address where a register starts takes the whole register.
+    expect(span({ area: "holding", address: 10 }, [voltage])).toMatchObject({
+      count: 2,
+    });
+    expect(span({ area: "holding", address: 11 }, [voltage])).toMatchObject({
+      count: 1,
+    });
   });
 
   it("describes each kind", () => {

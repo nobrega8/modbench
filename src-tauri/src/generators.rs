@@ -27,6 +27,8 @@ pub enum Target {
     /// A register of the loaded map, by name, in engineering units.
     Register { register: String },
     /// One raw address: a bit, or a register as an unsigned 16-bit word.
+    /// Where a register of the loaded map starts, that whole register (its
+    /// type, scale and offset), as if named.
     Address { area: Area, address: u16 },
 }
 
@@ -84,7 +86,22 @@ enum Slot<'a> {
 fn resolve<'a>(memory: &'a Memory, target: &Target) -> Result<Slot<'a>, String> {
     match target {
         Target::Address { area, address } if area.is_bit() => Ok(Slot::Bit(*area, *address)),
-        Target::Address { area, address } => Ok(Slot::Word(*area, *address)),
+        Target::Address { area, address } => {
+            // Where a map register starts, the whole register: a uint32 at
+            // this address must not get its value in the high word only.
+            let starts = memory.map().and_then(|map| {
+                map.registers
+                    .iter()
+                    .find(|r| {
+                        r.area == *area
+                            && r.address == *address
+                            && r.bit.is_none()
+                            && !matches!(r.ty, DataType::Bool | DataType::String)
+                    })
+                    .map(|r| Slot::Register(r, r.byte_order(&map.meta)))
+            });
+            Ok(starts.unwrap_or(Slot::Word(*area, *address)))
+        }
         Target::Register { register } => {
             let Some(map) = memory.map() else {
                 return Err(format!(
@@ -345,7 +362,8 @@ mod tests {
                     Voltage,holding,0,float32,,1,0,R\n\
                     Current,input,2,int16,,0.1,0,R\n\
                     Temp,input,3,uint16,,0.5,-40,R\n\
-                    Label,holding,10,string,4,1,0,R\n";
+                    Label,holding,10,string,4,1,0,R\n\
+                    Utilization,input,20,uint32,,1,0,R\n";
         let parsed = mbmap::parse(text.as_bytes());
         let map = parsed
             .map
@@ -361,6 +379,19 @@ mod tests {
 
     fn addr(area: Area, address: u16) -> Target {
         Target::Address { area, address }
+    }
+
+    #[test]
+    fn an_address_where_a_register_starts_takes_the_whole_register() {
+        let mut m = memory();
+        write(&mut m, &addr(Area::Input, 20), 67.0).unwrap();
+        assert_eq!(m.read(Area::Input, 20, 2), RawData::Registers(vec![0, 67]));
+        assert_eq!(read(&m, &addr(Area::Input, 20)).unwrap(), 67.0);
+        // Inside the register, or with no register there: one raw word.
+        write(&mut m, &addr(Area::Input, 21), 5.0).unwrap();
+        assert_eq!(m.read(Area::Input, 20, 2), RawData::Registers(vec![0, 5]));
+        write(&mut m, &addr(Area::Input, 40), -1.0).unwrap();
+        assert_eq!(m.read(Area::Input, 40, 1), RawData::Registers(vec![0xFFFF]));
     }
 
     #[test]

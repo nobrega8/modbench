@@ -136,14 +136,40 @@ export function targetOf(g: GeneratorTarget): GeneratorTarget {
 }
 
 /** The addresses a target takes, when they can be told. */
+/**
+ * The map register a target writes as a whole: the one it names, or the one
+ * that starts at its address (the backend does the same, so a uint32 does
+ * not get its value in the high word only).
+ */
+export function registerOf(
+  t: GeneratorTarget,
+  registers: Register[],
+): Register | undefined {
+  if ("register" in t) {
+    const key = t.register.trim().toLowerCase();
+    return registers.find((r) => r.name.trim().toLowerCase() === key);
+  }
+  if (t.area === "coil" || t.area === "discrete") return undefined;
+  return registers.find(
+    (r) =>
+      r.area === t.area &&
+      r.address === t.address &&
+      r.bit === null &&
+      r.type !== "bool" &&
+      r.type !== "string",
+  );
+}
+
 export function span(
   t: GeneratorTarget,
   registers: Register[],
 ): { area: Area; address: number; count: number } | null {
-  if (!("register" in t)) return { area: t.area, address: t.address, count: 1 };
-  const key = t.register.trim().toLowerCase();
-  const r = registers.find((r) => r.name.trim().toLowerCase() === key);
-  if (!r) return null;
+  const r = registerOf(t, registers);
+  if (!r) {
+    return "register" in t
+      ? null
+      : { area: t.area, address: t.address, count: 1 };
+  }
   const words: Record<string, number> = {
     int32: 2,
     uint32: 2,
