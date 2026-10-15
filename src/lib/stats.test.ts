@@ -4,10 +4,12 @@ import {
   NO_TIMES,
   addEntry,
   addTime,
+  allTimes,
   answered,
   average,
   cause,
   ms,
+  suggestedTimeout,
 } from "./stats";
 import type { TrafficEntry } from "./types";
 
@@ -32,6 +34,21 @@ describe("response times", () => {
     const t = addTime(NO_TIMES, entry(1000, "timed out after 1000 ms"));
     expect(t).toBe(NO_TIMES);
     expect(average(t)).toBe(0);
+  });
+
+  it("suggests 4 × the slowest answer, after enough answers", () => {
+    let t = NO_TIMES;
+    for (let i = 0; i < 19; i++) t = addTime(t, entry(10 + i));
+    expect(suggestedTimeout(t)).toBeNull();
+    t = addTime(t, entry(60));
+    // 4 × 60 = 240, rounded up to the 50 ms step of the field.
+    expect(suggestedTimeout(t)).toBe(250);
+  });
+
+  it("never suggests below the floor", () => {
+    let t = NO_TIMES;
+    for (let i = 0; i < 20; i++) t = addTime(t, entry(2));
+    expect(suggestedTimeout(t)).toBe(100);
   });
 
   it("formats milliseconds", () => {
@@ -77,5 +94,15 @@ describe("breakdown", () => {
     // The timeout does not count as a response time.
     expect(fc3.times.count).toBe(1);
     expect(NO_BREAKDOWN.total).toBe(0);
+  });
+});
+
+describe("all response times", () => {
+  it("merges every function code", () => {
+    let b = addEntry(NO_BREAKDOWN, entry(5));
+    b = addEntry(b, { ...entry(30), function: 4 });
+    b = addEntry(b, { ...entry(1000, "timed out after 1000 ms"), function: 6 });
+    expect(allTimes(b)).toMatchObject({ count: 2, min: 5, max: 30, total: 35 });
+    expect(allTimes(NO_BREAKDOWN)).toBe(NO_TIMES);
   });
 });

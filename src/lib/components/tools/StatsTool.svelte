@@ -1,6 +1,13 @@
 <script lang="ts">
   import { functionName } from "#lib/frames.ts";
-  import { average, ms } from "#lib/stats.ts";
+  import {
+    SUGGEST_AFTER,
+    TIMEOUT_FLOOR_MS,
+    allTimes,
+    average,
+    ms,
+    suggestedTimeout,
+  } from "#lib/stats.ts";
   import { bench } from "#lib/state.svelte.ts";
 
   const b = $derived(bench.breakdown);
@@ -10,6 +17,8 @@
     ),
   );
   const functions = $derived([...b.functions].sort(([a], [c]) => a - c));
+  const times = $derived(allTimes(b));
+  const suggested = $derived(suggestedTimeout(times));
 
   function share(n: number) {
     return b.total ? (n / b.total) * 100 : 0;
@@ -97,6 +106,32 @@
       how fast the device is.
     </p>
   </section>
+
+  <section>
+    <h2 class="key">Suggested timeout</h2>
+    {#if suggested === null}
+      <p class="dim note">
+        Shown after {SUGGEST_AFTER} answers ({times.count} so far).
+      </p>
+    {:else}
+      <div class="row suggest">
+        <span class="mono"><strong>{suggested}</strong> ms</span>
+        <span class="dim"
+          >4 × the slowest answer ({ms(times.max)} ms), at least {TIMEOUT_FLOOR_MS}
+          ms. Step 1 uses {bench.timeoutMs} ms.</span
+        >
+        <span class="spacer"></span>
+        <button
+          class="btn"
+          disabled={bench.running || suggested === bench.timeoutMs}
+          title={bench.running
+            ? "Stop the test to change step 1."
+            : "Put it in step 1's Timeout field."}
+          onclick={() => (bench.timeoutMs = suggested)}>Use in step 1</button
+        >
+      </div>
+    {/if}
+  </section>
 {/if}
 
 <style>
@@ -138,6 +173,11 @@
   .fc {
     display: inline-block;
     width: 28px;
+  }
+
+  .suggest {
+    margin-left: 10px;
+    gap: 12px;
   }
 
   .note {

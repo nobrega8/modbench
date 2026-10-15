@@ -48,7 +48,7 @@ Updates then arrive with `sudo apt upgrade`.
   - **Identify**: read the device's vendor, product code and revision (FC43).
   - **Find addresses**: discover which registers answer on a device without a manual.
   - **Data decoder** and **frame decoder**: hex as every type in every byte order, and frames field by field with CRC/LRC checks (also on the Raw data tab).
-  - **Statistics**: failures by cause (timeouts, each exception, bad frames) and response times per function code.
+  - **Statistics**: failures by cause (timeouts, each exception, bad frames) and response times per function code, and a suggested timeout (4 × the slowest answer) that one click puts in step 1.
   - **Alarms**: low/high limits on map registers, shown in red on the Device map tab.
   - **Trend player**: play back a CSV recording with a scrub bar and up to 60× speed.
 - **Bit view**: see the 16 bits of each register and switch a single bit of a holding register.

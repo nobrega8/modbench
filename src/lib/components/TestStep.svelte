@@ -109,7 +109,13 @@
         tone="warn"
         onreset={() => (bench.counters.timeouts = 0)}
       />
-      <TimeStat times={bench.times} onreset={() => bench.resetTimes()} />
+      <TimeStat
+        times={bench.times}
+        onreset={() => bench.resetTimes()}
+        timeout={bench.timeoutMs}
+        locked={bench.running}
+        onuse={(ms) => (bench.timeoutMs = ms)}
+      />
     </div>
 
     <div class="state" aria-live="polite">

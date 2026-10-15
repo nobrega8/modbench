@@ -1,8 +1,28 @@
 <script lang="ts">
-  import { average, ms, type ResponseTimes } from "#lib/stats.ts";
+  import {
+    average,
+    ms,
+    suggestedTimeout,
+    type ResponseTimes,
+  } from "#lib/stats.ts";
 
-  let { times, onreset }: { times: ResponseTimes; onreset: () => void } =
-    $props();
+  let {
+    times,
+    onreset,
+    timeout,
+    locked = false,
+    onuse,
+  }: {
+    times: ResponseTimes;
+    onreset: () => void;
+    /** Timeout set in step 1, to offer a better one. */
+    timeout?: number;
+    /** Step 1 cannot change now (a test is running). */
+    locked?: boolean;
+    onuse?: (ms: number) => void;
+  } = $props();
+
+  const suggested = $derived(onuse ? suggestedTimeout(times) : null);
 
   const cells = $derived(
     times.count
@@ -51,6 +71,20 @@
         /></svg
       >
     </button>
+    {#if suggested !== null}
+      <button
+        class="use"
+        disabled={locked || suggested === timeout}
+        title="Suggested timeout: 4 × the slowest answer ({ms(
+          times.max,
+        )} ms). {suggested === timeout
+          ? 'Step 1 already uses it.'
+          : locked
+            ? 'Stop the test to change step 1.'
+            : 'Click to use it in step 1.'}"
+        onclick={() => onuse?.(suggested)}>Timeout {suggested} ms</button
+      >
+    {/if}
   </div>
 </div>
 
@@ -118,6 +152,33 @@
     transition:
       background-color 0.14s var(--ease),
       color 0.14s var(--ease);
+  }
+
+  .use {
+    height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 9px;
+    background: rgb(var(--fg-rgb) / 0.06);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.14s var(--ease),
+      color 0.14s var(--ease);
+  }
+
+  .use:hover:not(:disabled) {
+    color: var(--text);
+    background: rgb(var(--fg-rgb) / 0.11);
+  }
+
+  .use:disabled {
+    color: var(--text-3);
+    cursor: default;
   }
 
   .reset:hover {
