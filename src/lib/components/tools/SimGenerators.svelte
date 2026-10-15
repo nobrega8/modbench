@@ -21,6 +21,7 @@
   import { sim } from "#lib/simulator.svelte.ts";
   import type { Area, GeneratorTarget, Register } from "#lib/types.ts";
   import { tick } from "svelte";
+  import AddressInput from "../AddressInput.svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";
   import RegisterInfo from "./RegisterInfo.svelte";
@@ -45,7 +46,7 @@
 
   function name(t: GeneratorTarget) {
     if ("register" in t) return t.register;
-    const where = `${AREA_LABELS[t.area]} ${formatAddress(t.address, settings.addressFormat)}`;
+    const where = `${AREA_LABELS[t.area]} ${formatAddress(t.address, settings.addressFormat, t.area)}`;
     const r = registerOf(t);
     return r ? `${where} · ${r.name}` : where;
   }
@@ -135,13 +136,14 @@
         label="{label} area"
         width="120px"
       />
-      <IntInput
+      <AddressInput
         value={t.address}
-        min={0}
-        max={65535}
         width="90px"
         label="{label} address"
-        onchange={(n) => (t.address = n)}
+        onchange={(n, a) => {
+          t.address = n;
+          if (a) t.area = a;
+        }}
       />
     {/if}
   </div>

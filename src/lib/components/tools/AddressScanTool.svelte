@@ -16,6 +16,7 @@
   import { settings } from "#lib/settings.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
   import AddressFormat from "../AddressFormat.svelte";
+  import AddressInput from "../AddressInput.svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";
 
@@ -33,7 +34,7 @@
   const found = $derived(hits?.reduce((n, r) => n + r.count, 0) ?? 0);
 
   function addr(n: number) {
-    return formatAddress(n, settings.addressFormat);
+    return formatAddress(n, settings.addressFormat, bench.addressArea);
   }
 
   function scan() {
@@ -79,26 +80,28 @@
   </label>
   <label class="field">
     <span>From</span>
-    <IntInput
+    <AddressInput
       value={from}
-      min={0}
-      max={65535}
       width="90px"
       label="First address"
       disabled={busy}
-      onchange={(n) => (from = n)}
+      onchange={(n, a) => {
+        from = n;
+        if (a) area = a;
+      }}
     />
   </label>
   <label class="field">
     <span>To</span>
-    <IntInput
+    <AddressInput
       value={to}
-      min={0}
-      max={65535}
       width="90px"
       label="Last address"
       disabled={busy}
-      onchange={(n) => (to = n)}
+      onchange={(n, a) => {
+        to = n;
+        if (a) area = a;
+      }}
     />
   </label>
   <label class="field" title="Addresses read at once before splitting">

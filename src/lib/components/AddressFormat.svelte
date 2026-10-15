@@ -6,7 +6,7 @@
 
 <label
   class="inline"
-  title="How addresses are shown. Fields where you type an address always take the address sent on the wire (0-based)."
+  title="How addresses are shown. Fields where you type an address take the address sent on the wire (0-based), or a Modicon (400101) or IEC 61131-3 (%MW100) address, which also sets the area."
 >
   <span>Addresses</span>
   <Select

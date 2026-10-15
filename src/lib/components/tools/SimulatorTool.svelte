@@ -10,7 +10,13 @@
 
 <script lang="ts">
   import { api, errorText } from "#lib/api.ts";
-  import { clock, formatAddress, hex, parseInteger } from "#lib/format.ts";
+  import {
+    areaOfFunction,
+    clock,
+    formatAddress,
+    hex,
+    parseInteger,
+  } from "#lib/format.ts";
   import { functionName } from "#lib/frames.ts";
   import { span } from "#lib/generators.ts";
   import { slidePill } from "#lib/motion.ts";
@@ -27,6 +33,7 @@
   import { MAP_EXTENSIONS, type SimEvent, type SimView } from "#lib/types.ts";
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import AddressFormat from "../AddressFormat.svelte";
+  import AddressInput from "../AddressInput.svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";
   import SimGenerators from "./SimGenerators.svelte";
@@ -158,8 +165,8 @@
     return out;
   });
 
-  function addr(n: number) {
-    return formatAddress(n, settings.addressFormat, true);
+  function addr(n: number, at: Area | null = area) {
+    return formatAddress(n, settings.addressFormat, at, true);
   }
 
   async function write(offset: number, value: number | boolean) {
@@ -212,11 +219,12 @@
     bench.page = "main";
   }
 
-  function where(e: { address: number | null; count: number | null }) {
+  function where(e: SimEvent) {
     if (e.address === null) return "";
+    const at = areaOfFunction(e.function);
     return e.count && e.count > 1
-      ? `${addr(e.address)} × ${e.count}`
-      : addr(e.address);
+      ? `${addr(e.address, at)} × ${e.count}`
+      : addr(e.address, at);
   }
 
   function focus(node: HTMLInputElement) {
@@ -531,14 +539,13 @@
       </div>
       <label class="inline">
         <span class="dim">From</span>
-        <IntInput
+        <AddressInput
           value={first}
-          min={0}
-          max={0x10000 - SHOWN}
           width="80px"
           label="First address shown"
-          onchange={(n) => {
+          onchange={(n, a) => {
             start = n;
+            if (a) area = a;
             editing = null;
           }}
         />

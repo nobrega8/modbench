@@ -38,6 +38,7 @@ Updates then arrive with `sudo apt upgrade`.
 ## Features
 
 - **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or RTU over TCP.
+- **Address notations**: show addresses 0-based, 1-based, in hex, in Modicon (`400101`) or IEC 61131-3 (`%MW100`) notation. Address fields take the last two as typed, and switch to their area.
 - **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
 - **Checks the device**: reference values catch a wrong address or byte order, and a map can declare which models and firmware versions it fits.
 - **Write safely**: typed controls for writable registers, limits from the map, optional confirmation, and a read-only mode that blocks every write.

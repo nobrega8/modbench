@@ -97,7 +97,7 @@
           reg.name.toLowerCase().includes(q) ||
           reg.description.toLowerCase().includes(q) ||
           String(reg.address).includes(q) ||
-          formatAddress(reg.address, settings.addressFormat)
+          formatAddress(reg.address, settings.addressFormat, reg.area)
             .toLowerCase()
             .includes(q)
         );
@@ -432,6 +432,7 @@
             ><span class="area">{AREA_TAG[reg.area]}</span>{formatAddress(
               reg.address,
               settings.addressFormat,
+              reg.area,
             )}</td
           >
           <td class="name" title={reg.description || undefined}
