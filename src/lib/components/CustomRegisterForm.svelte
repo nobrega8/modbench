@@ -7,12 +7,12 @@
     customProblem,
     customRegister,
     type CustomFields,
-  } from "$lib/custom-registers";
-  import { parseInteger } from "$lib/format";
-  import { fieldIn } from "$lib/motion";
-  import { settings } from "$lib/settings.svelte";
-  import { bench, type OpenMap } from "$lib/state.svelte";
-  import type { Access, Area, DataType } from "$lib/types";
+  } from "#lib/custom-registers.ts";
+  import { parseInteger } from "#lib/format.ts";
+  import { fieldIn } from "#lib/motion.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { bench, type OpenMap } from "#lib/state.svelte.ts";
+  import type { Access, Area, DataType } from "#lib/types.ts";
   import Select from "./Select.svelte";
 
   let { open, onclose }: { open: OpenMap; onclose: () => void } = $props();

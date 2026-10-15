@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { Area } from "$lib/types";
+  import type { Area } from "#lib/types.ts";
 
   // Kept while other tools are shown.
   let area = $state<Area>("holding");
@@ -12,9 +12,9 @@
 </script>
 
 <script lang="ts">
-  import { AREA_NAME, AREA_TAG, formatAddress } from "$lib/format";
-  import { settings } from "$lib/settings.svelte";
-  import { bench } from "$lib/state.svelte";
+  import { AREA_NAME, AREA_TAG, formatAddress } from "#lib/format.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { bench } from "#lib/state.svelte.ts";
   import AddressFormat from "../AddressFormat.svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";

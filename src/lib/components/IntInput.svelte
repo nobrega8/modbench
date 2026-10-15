@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { parseInteger } from "$lib/format";
+  import { parseInteger } from "#lib/format.ts";
 
   let {
     value,

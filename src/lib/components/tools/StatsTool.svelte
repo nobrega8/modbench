@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { functionName } from "$lib/frames";
-  import { average, ms } from "$lib/stats";
-  import { bench } from "$lib/state.svelte";
+  import { functionName } from "#lib/frames.ts";
+  import { average, ms } from "#lib/stats.ts";
+  import { bench } from "#lib/state.svelte.ts";
 
   const b = $derived(bench.breakdown);
   const causes = $derived(

@@ -1,7 +1,7 @@
 // Update check shared by the update banner and the Settings tab.
 
 import { check, type Update } from "@tauri-apps/plugin-updater";
-import { api } from "$lib/api";
+import { api } from "#lib/api.ts";
 
 /** Command that updates a copy installed from the .deb package. */
 export const APT_UPGRADE = "sudo apt update && sudo apt upgrade";

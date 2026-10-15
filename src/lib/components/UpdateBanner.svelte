@@ -1,7 +1,7 @@
 <script lang="ts">
   import { relaunch } from "@tauri-apps/plugin-process";
-  import { settings } from "$lib/settings.svelte";
-  import { APT_UPGRADE, updates } from "$lib/updates.svelte";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { APT_UPGRADE, updates } from "#lib/updates.svelte.ts";
 
   const update = $derived(updates.available);
   let dismissed = $state(false);

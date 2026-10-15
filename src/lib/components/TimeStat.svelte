@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { average, ms, type ResponseTimes } from "$lib/stats";
+  import { average, ms, type ResponseTimes } from "#lib/stats.ts";
 
   let { times, onreset }: { times: ResponseTimes; onreset: () => void } =
     $props();

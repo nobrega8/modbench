@@ -1,15 +1,15 @@
 <script lang="ts">
   import Select from "./Select.svelte";
-  import { api, errorText } from "$lib/api";
-  import { bench } from "$lib/state.svelte";
+  import { api, errorText } from "#lib/api.ts";
+  import { bench } from "#lib/state.svelte.ts";
   import {
     settings,
     TEXT_SCALE_MAX,
     TEXT_SCALE_MIN,
     type Theme,
-  } from "$lib/settings.svelte";
-  import { forgetAll } from "$lib/profiles";
-  import { APT_UPGRADE, updates } from "$lib/updates.svelte";
+  } from "#lib/settings.svelte.ts";
+  import { forgetAll } from "#lib/profiles.ts";
+  import { APT_UPGRADE, updates } from "#lib/updates.svelte.ts";
 
   const themes: { id: Theme; label: string }[] = [
     { id: "system", label: "Same as system" },

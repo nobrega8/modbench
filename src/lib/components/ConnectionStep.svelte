@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { api } from "$lib/api";
-  import { fieldIn, slidePill } from "$lib/motion";
-  import { bench } from "$lib/state.svelte";
+  import { api } from "#lib/api.ts";
+  import { fieldIn, slidePill } from "#lib/motion.ts";
+  import { bench } from "#lib/state.svelte.ts";
   import StepCard from "./StepCard.svelte";
   import Select from "./Select.svelte";
 

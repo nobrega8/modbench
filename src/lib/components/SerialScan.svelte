@@ -1,7 +1,7 @@
 <script lang="ts">
   import Select from "./Select.svelte";
-  import { bench } from "$lib/state.svelte";
-  import type { Area, Parity, SerialHit } from "$lib/types";
+  import { bench } from "#lib/state.svelte.ts";
+  import type { Area, Parity, SerialHit } from "#lib/types.ts";
   import IntInput from "./IntInput.svelte";
 
   // Most common first: they are tried in this order.

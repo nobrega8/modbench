@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { Recording } from "$lib/playback";
+  import type { Recording } from "#lib/playback.ts";
 
   // Kept while other tools are shown.
   let recording = $state.raw<Recording | null>(null);
@@ -13,11 +13,11 @@
 
 <script lang="ts">
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
-  import { api, errorText } from "$lib/api";
-  import { parseRecording, upTo } from "$lib/playback";
-  import { clock } from "$lib/format";
-  import { MAX_SERIES } from "$lib/trend";
-  import type { Register } from "$lib/types";
+  import { api, errorText } from "#lib/api.ts";
+  import { parseRecording, upTo } from "#lib/playback.ts";
+  import { clock } from "#lib/format.ts";
+  import { MAX_SERIES } from "#lib/trend.ts";
+  import type { Register } from "#lib/types.ts";
   import Select from "../Select.svelte";
   import TrendChart, { type Line } from "../TrendChart.svelte";
 

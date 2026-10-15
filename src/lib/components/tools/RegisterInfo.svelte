@@ -4,10 +4,10 @@
   a generator is made for it, so the generator fits the register.
 -->
 <script lang="ts">
-  import { AREA_NAME, formatAddress, limitHint } from "$lib/format";
-  import { referenceValue } from "$lib/generators";
-  import { settings } from "$lib/settings.svelte";
-  import type { Register } from "$lib/types";
+  import { AREA_NAME, formatAddress, limitHint } from "#lib/format.ts";
+  import { referenceValue } from "#lib/generators.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import type { Register } from "#lib/types.ts";
 
   let { register: r }: { register: Register } = $props();
 

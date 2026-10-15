@@ -3,7 +3,7 @@
   to add or edit one. They run while the simulator does.
 -->
 <script lang="ts">
-  import { formatAddress } from "$lib/format";
+  import { formatAddress } from "#lib/format.ts";
   import {
     AREA_LABELS,
     KINDS,
@@ -15,11 +15,11 @@
     toDraft,
     type Draft,
     type TargetDraft,
-  } from "$lib/generators";
-  import { fieldIn, slidePill } from "$lib/motion";
-  import { settings } from "$lib/settings.svelte";
-  import { sim } from "$lib/simulator.svelte";
-  import type { Area, GeneratorTarget, Register } from "$lib/types";
+  } from "#lib/generators.ts";
+  import { fieldIn, slidePill } from "#lib/motion.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { sim } from "#lib/simulator.svelte.ts";
+  import type { Area, GeneratorTarget, Register } from "#lib/types.ts";
   import { tick } from "svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";

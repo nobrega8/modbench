@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { ADDRESS_FORMATS } from "$lib/format";
-  import { settings } from "$lib/settings.svelte";
+  import { ADDRESS_FORMATS } from "#lib/format.ts";
+  import { settings } from "#lib/settings.svelte.ts";
   import Select from "./Select.svelte";
 </script>
 

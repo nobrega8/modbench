@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { DeviceIdentity } from "$lib/types";
+  import type { DeviceIdentity } from "#lib/types.ts";
 
   // Kept while other tools are shown.
   let result = $state.raw<DeviceIdentity | null>(null);
@@ -7,10 +7,10 @@
 </script>
 
 <script lang="ts">
-  import { errorText } from "$lib/api";
-  import { hex } from "$lib/format";
-  import { slidePill } from "$lib/motion";
-  import { bench } from "$lib/state.svelte";
+  import { errorText } from "#lib/api.ts";
+  import { hex } from "#lib/format.ts";
+  import { slidePill } from "#lib/motion.ts";
+  import { bench } from "#lib/state.svelte.ts";
 
   const levels = [
     { id: 1, label: "Basic" },

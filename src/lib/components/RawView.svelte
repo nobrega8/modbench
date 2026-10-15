@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { clock, hex } from "$lib/format";
-  import { decodeFrame, type Framing } from "$lib/frames";
-  import { bench, type Exchange } from "$lib/state.svelte";
+  import { clock, hex } from "#lib/format.ts";
+  import { decodeFrame, type Framing } from "#lib/frames.ts";
+  import { bench, type Exchange } from "#lib/state.svelte.ts";
   import FrameFields from "./FrameFields.svelte";
 
   let list = $state<HTMLElement>();

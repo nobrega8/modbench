@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { slidePill } from "$lib/motion";
-  import { bench } from "$lib/state.svelte";
+  import { slidePill } from "#lib/motion.ts";
+  import { bench } from "#lib/state.svelte.ts";
   import IntInput from "./IntInput.svelte";
   import SerialScan from "./SerialScan.svelte";
 

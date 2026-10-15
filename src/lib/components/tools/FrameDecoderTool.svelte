@@ -1,5 +1,5 @@
 <script module lang="ts">
-  import type { Direction, Framing } from "$lib/frames";
+  import type { Direction, Framing } from "#lib/frames.ts";
 
   // Kept while other tools are shown.
   let input = $state("01 03 00 00 00 0A C5 CD");
@@ -8,8 +8,8 @@
 </script>
 
 <script lang="ts">
-  import { decodeFrame, parseHex } from "$lib/frames";
-  import { slidePill } from "$lib/motion";
+  import { decodeFrame, parseHex } from "#lib/frames.ts";
+  import { slidePill } from "#lib/motion.ts";
   import FrameFields from "../FrameFields.svelte";
 
   const framings: { id: Framing; label: string }[] = [

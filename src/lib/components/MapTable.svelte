@@ -1,8 +1,8 @@
 <script lang="ts">
   import { save } from "@tauri-apps/plugin-dialog";
-  import { api, errorText } from "$lib/api";
-  import { valuesCsv } from "$lib/csv";
-  import { settings } from "$lib/settings.svelte";
+  import { api, errorText } from "#lib/api.ts";
+  import { valuesCsv } from "#lib/csv.ts";
+  import { settings } from "#lib/settings.svelte.ts";
   import {
     AREA_TAG,
     AREA_NAME,
@@ -12,12 +12,12 @@
     parseForRegister,
     limitError,
     valueTitle,
-  } from "$lib/format";
-  import { bench, type OpenMap } from "$lib/state.svelte";
-  import { appliesTo, rangeText, versionText } from "$lib/identity";
-  import { byIndex, check, limitsText } from "$lib/alarms";
-  import { diagnosticWhere, type Register } from "$lib/types";
-  import { isCustom } from "$lib/custom-registers";
+  } from "#lib/format.ts";
+  import { bench, type OpenMap } from "#lib/state.svelte.ts";
+  import { appliesTo, rangeText, versionText } from "#lib/identity.ts";
+  import { byIndex, check, limitsText } from "#lib/alarms.ts";
+  import { diagnosticWhere, type Register } from "#lib/types.ts";
+  import { isCustom } from "#lib/custom-registers.ts";
   import AddressFormat from "./AddressFormat.svelte";
   import CustomRegisterForm from "./CustomRegisterForm.svelte";
   import Select from "./Select.svelte";
