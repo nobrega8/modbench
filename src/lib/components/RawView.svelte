@@ -160,11 +160,11 @@
   }
 
   .out {
-    color: var(--text);
+    color: var(--tx);
   }
 
   .in {
-    color: var(--ok);
+    color: var(--rx);
   }
 
   code {

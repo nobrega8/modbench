@@ -292,7 +292,7 @@
 
   .panel :global(.bar > div) {
     height: 100%;
-    background: var(--accent);
+    background: var(--tx);
     transition: width 0.2s var(--ease);
   }
 </style>

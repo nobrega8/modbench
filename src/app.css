@@ -30,6 +30,10 @@
   --edge-2-rgb: 210 210 215;
   --alert-rgb: 200 38 38;
   --alert-fg-rgb: 255 255 255;
+  /* The logo's two arrows, darkened to read on white: blue is what Modbench
+     sends (requests, writes), green what the device answers (replies, live, ok) */
+  --tx-rgb: 21 101 192;
+  --rx-rgb: 19 116 58;
 
   --e1: 0 1px 2px rgb(17 17 17 / 0.05);
   --e2: 0 1px 2px rgb(17 17 17 / 0.04), 0 4px 12px -2px rgb(17 17 17 / 0.06);
@@ -39,19 +43,17 @@
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
-  /* Chart series, in fixed order (validated for colour-vision deficiency) */
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
+  /* Chart series, in fixed order; the first two are the logo's blue and green */
+  --series-1: #1565c0;
+  --series-2: #13743a;
+  --series-3: #eb6834;
   --series-4: #eda100;
   --series-5: #e87ba4;
-  --series-6: #008300;
+  --series-6: #9a6b3f;
   --series-7: #6250d6;
   --series-8: #e34948;
 
-  /* Map status (x_status), from the logo's colours; darker tones on white */
-  --status-verified: #15803d;
-  --status-unverified: #1976d2;
+  /* Map status (x_status) */
   --status-unofficial: #868c95;
 }
 
@@ -70,6 +72,8 @@
     --edge-2-rgb: 72 72 74;
     --alert-rgb: 248 113 113;
     --alert-fg-rgb: 17 17 17;
+    --tx-rgb: 74 168 245;
+    --rx-rgb: 34 211 107;
     --e1: inset 0 0 0 1px rgb(255 255 255 / 0.06);
     --e2:
       inset 0 0 0 1px rgb(255 255 255 / 0.09), 0 6px 20px -6px rgb(0 0 0 / 0.6);
@@ -78,16 +82,14 @@
       0 20px 56px -14px rgb(0 0 0 / 0.8);
     --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
     --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
+    --series-1: #4aa8f5;
+    --series-2: #22d36b;
+    --series-3: #d95926;
     --series-4: #c98500;
     --series-5: #d55181;
-    --series-6: #008300;
+    --series-6: #b88a5c;
     --series-7: #9085e9;
     --series-8: #e66767;
-    --status-verified: #22d36b;
-    --status-unverified: #2196f3;
     --status-unofficial: #a9afb8;
   }
 }
@@ -105,6 +107,8 @@
   --edge-2-rgb: 72 72 74;
   --alert-rgb: 248 113 113;
   --alert-fg-rgb: 17 17 17;
+  --tx-rgb: 74 168 245;
+  --rx-rgb: 34 211 107;
   --e1: inset 0 0 0 1px rgb(255 255 255 / 0.06);
   --e2:
     inset 0 0 0 1px rgb(255 255 255 / 0.09), 0 6px 20px -6px rgb(0 0 0 / 0.6);
@@ -112,16 +116,14 @@
     inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 20px 56px -14px rgb(0 0 0 / 0.8);
   --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
+  --series-1: #4aa8f5;
+  --series-2: #22d36b;
+  --series-3: #d95926;
   --series-4: #c98500;
   --series-5: #d55181;
-  --series-6: #008300;
+  --series-6: #b88a5c;
   --series-7: #9085e9;
   --series-8: #e66767;
-  --status-verified: #22d36b;
-  --status-unverified: #2196f3;
   --status-unofficial: #a9afb8;
 }
 
@@ -142,8 +144,14 @@
   --on-accent: rgb(var(--surface-rgb));
   --accent-soft: rgb(var(--fg-rgb) / 0.06);
   --cell: rgb(var(--surface-2-rgb));
-  --changed: rgb(var(--fg-rgb) / 0.12);
-  --ok: rgb(var(--fg-rgb));
+  /* edited, not written yet: tinted blue, it is about to be sent */
+  --changed: rgb(var(--tx-rgb) / 0.16);
+  --tx: rgb(var(--tx-rgb));
+  --rx: rgb(var(--rx-rgb));
+  --ok: rgb(var(--rx-rgb));
+  --live: rgb(var(--rx-rgb));
+  --status-verified: var(--rx);
+  --status-unverified: var(--tx);
   --bad: rgb(var(--alert-rgb));
   --warn: rgb(var(--alert-rgb));
   --lcd: rgb(var(--surface-2-rgb));

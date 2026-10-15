@@ -617,8 +617,8 @@
   }
 
   .refs.ok {
-    background: var(--accent-soft);
-    color: var(--text);
+    background: rgb(var(--rx-rgb) / 0.1);
+    color: var(--ok);
   }
 
   .mismatch {
@@ -789,8 +789,8 @@
   }
 
   .refmark.ok {
-    background: var(--accent);
-    color: var(--on-accent);
+    background: var(--ok);
+    color: rgb(var(--surface-rgb));
   }
 
   .refmark.bad {

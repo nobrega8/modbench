@@ -316,7 +316,10 @@
             <td class="num mono">{e.unit}</td>
             <td>{functionName(e.function)}</td>
             <td class="mono">{where(e)}</td>
-            <td class:bad={!!e.error} class:wrote={e.wrote}
+            <td
+              class:bad={!!e.error}
+              class:wrote={!e.error && e.wrote}
+              class:ok={!e.error && !e.wrote}
               >{e.error ?? (e.wrote ? "written" : "OK")}</td
             >
           </tr>
@@ -363,7 +366,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--text);
+    background: var(--live);
     animation: pulse 1.2s ease-in-out infinite;
   }
 
@@ -457,6 +460,11 @@
   }
 
   td.wrote {
+    color: var(--tx);
     font-weight: 600;
+  }
+
+  td.ok {
+    color: var(--ok);
   }
 </style>
