@@ -1,0 +1,390 @@
+/* The app's look: its colour tokens, Inter, cards and grouped lists
+   (see src/app.css). Light, or dark with the system. */
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --bg-rgb: 242 242 245;
+  --surface-rgb: 255 255 255;
+  --surface-2-rgb: 240 240 243;
+  --fg-rgb: 23 23 23;
+  --fg-2-rgb: 92 92 96;
+  --fg-3-rgb: 142 142 147;
+  --edge-rgb: 226 226 230;
+  --e2: 0 1px 2px rgb(17 17 17 / 0.04), 0 4px 12px -2px rgb(17 17 17 / 0.06);
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-rgb: 0 0 0;
+    --surface-rgb: 32 32 35;
+    --surface-2-rgb: 48 48 51;
+    --fg-rgb: 245 245 245;
+    --fg-2-rgb: 174 174 178;
+    --fg-3-rgb: 122 122 128;
+    --edge-rgb: 56 56 58;
+    --e2: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 72px;
+}
+
+body {
+  margin: 0;
+  background: rgb(var(--bg-rgb));
+  color: rgb(var(--fg-rgb));
+  font:
+    15px/1.55 "Inter",
+    system-ui,
+    sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+code,
+pre {
+  font-family: var(--mono);
+  font-size: 0.88em;
+}
+
+/* ── Top bar: the app's title bar ── */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px max(16px, calc((100% - 1080px) / 2));
+  background: rgb(var(--bg-rgb) / 0.82);
+  backdrop-filter: saturate(1.6) blur(16px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.brand img {
+  border-radius: 7px;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  overflow-x: auto;
+}
+
+.tabs a {
+  padding: 6px 12px;
+  border-radius: 9px;
+  color: rgb(var(--fg-2-rgb));
+  text-decoration: none;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color 0.14s var(--ease),
+    color 0.14s var(--ease);
+}
+
+.tabs a:hover {
+  background: rgb(var(--surface-rgb));
+  color: rgb(var(--fg-rgb));
+  box-shadow: var(--e2);
+}
+
+main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ── Hero ── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 64px 0 40px;
+}
+
+.hero-icon {
+  border-radius: 24px;
+  box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.35);
+}
+
+h1 {
+  margin: 22px 0 0;
+  font-size: clamp(36px, 6vw, 52px);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.lead {
+  max-width: 40em;
+  margin: 14px 0 0;
+  color: rgb(var(--fg-2-rgb));
+  font-size: 17px;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 26px;
+}
+
+.meta {
+  margin: 14px 0 0;
+  color: rgb(var(--fg-3-rgb));
+  font-size: 13px;
+}
+
+/* ── Buttons, as in the app ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 9px;
+  background: rgb(var(--surface-2-rgb));
+  color: rgb(var(--fg-rgb));
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    filter 0.14s var(--ease),
+    transform 0.14s var(--ease);
+}
+
+.btn:hover {
+  filter: brightness(0.96);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn.primary {
+  background: rgb(var(--fg-rgb));
+  color: rgb(var(--bg-rgb));
+}
+
+.hero .btn {
+  height: 42px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+
+/* ── Screenshots: the window as it is, corners and shadow included ── */
+.shot {
+  margin: 0;
+}
+
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.hero-shot {
+  margin: 0 -2%;
+}
+
+.shot figcaption {
+  margin-top: 10px;
+  color: rgb(var(--fg-2-rgb));
+  font-size: 13px;
+  text-align: center;
+}
+
+.pair .shot img {
+  border-radius: 14px;
+  background: rgb(var(--surface-rgb));
+  box-shadow: var(--e2);
+}
+
+/* ── Sections ── */
+.section {
+  padding: 56px 0 0;
+}
+
+.key {
+  margin: 0 0 6px;
+  color: rgb(var(--fg-3-rgb));
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+h2 {
+  margin: 0 0 22px;
+  font-size: clamp(24px, 3.4vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.021em;
+  line-height: 1.2;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+}
+
+.card {
+  padding: 20px;
+  border-radius: 14px;
+  background: rgb(var(--surface-rgb));
+  box-shadow: var(--e2);
+}
+
+.icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: rgb(var(--fg-rgb));
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.card h3 {
+  margin: 12px 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.card p {
+  margin: 0;
+  color: rgb(var(--fg-2-rgb));
+  font-size: 14px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Download: a grouped list, as in Settings ── */
+.group {
+  border-radius: 12px;
+  background: rgb(var(--surface-rgb));
+  box-shadow: var(--e2);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 16px;
+}
+
+.row + .row {
+  box-shadow: inset 0 1px 0 rgb(var(--edge-rgb));
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 500;
+}
+
+.hint {
+  color: rgb(var(--fg-2-rgb));
+  font-size: 13px;
+}
+
+.sub {
+  margin: 22px 0 8px;
+  color: rgb(var(--fg-2-rgb));
+  font-size: 14px;
+}
+
+pre {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgb(var(--surface-rgb));
+  box-shadow: var(--e2);
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+/* ── Footer ── */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 20px;
+  max-width: 1080px;
+  margin: 64px auto 0;
+  padding: 22px 16px 40px;
+  border-top: 1px solid rgb(var(--edge-rgb));
+  color: rgb(var(--fg-3-rgb));
+  font-size: 13px;
+}
+
+.foot .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.foot a {
+  color: rgb(var(--fg-2-rgb));
+  text-decoration: none;
+}
+
+.foot a:hover {
+  color: rgb(var(--fg-rgb));
+}
+
+/* A phone: the links that only jump down the page give way */
+@media (max-width: 520px) {
+  .tabs a[href^="#"] {
+    display: none;
+  }
+}

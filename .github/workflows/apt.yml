@@ -1,12 +1,18 @@
 name: APT repository
 
 # Rebuilds the signed APT repository from the .deb files of the latest releases
-# and publishes it on GitHub Pages, so `apt upgrade` picks up new versions.
-# Runs after each release, or by hand from the Actions tab.
+# and publishes it on GitHub Pages with the website (site/), so `apt upgrade`
+# picks up new versions. Both share one Pages site: a deploy replaces all of it.
+# Runs after each release, when the website changes, or by hand.
 on:
   workflow_run:
     workflows: [Release]
     types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "manual/screenshots/**"
   workflow_dispatch:
 
 permissions:
@@ -20,12 +26,14 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v7
+
       - name: Download the .deb of the last 5 releases
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,6 +70,9 @@ jobs:
           sign --clearsign -o dists/stable/InRelease dists/stable/Release
           sign --armor --detach-sign -o dists/stable/Release.gpg dists/stable/Release
           gpg --armor --export > key.asc
+
+      - name: Add the website
+        run: site/build.sh repo
 
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -11,7 +11,7 @@
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/nobrega)
 
-A lightweight Modbus TCP/RTU/ASCII client for Windows, Linux and macOS. Test any address by hand, or open a device map and read every register by name, already scaled, with units and labels.
+A lightweight Modbus TCP/RTU/ASCII client for Windows, Linux and macOS ([website](https://nobrega8.github.io/modbench/)). Test any address by hand, or open a device map and read every register by name, already scaled, with units and labels.
 
 ![Modbench reading an energy meter through its device map](assets/screenshots/device-map.png)
 
