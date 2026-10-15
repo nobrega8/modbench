@@ -142,6 +142,11 @@
     display: flex;
     flex-direction: column;
     gap: 18px;
-    overflow: auto;
+    /* Two charts can overflow. A scrollbar that comes and goes changes the
+       width, the plots redraw a frame late and briefly overflow sideways, and
+       the two scrollbars chase each other: the charts shake. Keep the gutter
+       and never scroll sideways. */
+    overflow: hidden auto;
+    scrollbar-gutter: stable;
   }
 </style>
