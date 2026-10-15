@@ -44,20 +44,6 @@ jobs:
           workspaces: src-tauri
 
       - run: npm ci
-
-      - name: Check the macOS bundle (temporary)
-        if: runner.os == 'macOS'
-        run: |
-          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
-          if [ -n "$xcode" ]; then sudo xcode-select -s "$xcode"; fi
-          out=src-tauri/target/macos-icon
-          mkdir -p "$out"
-          xcrun actool src-tauri/icons/Modbench.icon --compile "$out" --output-format human-readable-text --notices --warnings --errors --output-partial-info-plist "$out/partial.plist" --app-icon Modbench --include-all-app-icons --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 10.15 --platform macosx
-          npm run tauri build -- --target aarch64-apple-darwin --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
-          app=src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Modbench.app
-          ls -la "$app/Contents/Resources"
-          plutil -p "$app/Contents/Info.plist" | grep -E "CFBundleIcon|CFBundleVersion|CFBundleShortVersion"
-          xcrun assetutil --info "$app/Contents/Resources/Assets.car" | grep -E '"Name"|"AssetType"' | sort | uniq -c | head
       - run: npm run format:check
       - run: npm run check
       - run: npm test
