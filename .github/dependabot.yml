@@ -1,0 +1,40 @@
+# Monthly, grouped updates so they arrive as a few PRs, each checked by CI.
+# Majors come on their own. Tauri's crates and npm packages are grouped
+# apart: their versions have to move together.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      tauri:
+        patterns: ["tauri", "tauri-*"]
+      rust:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      tauri:
+        patterns: ["@tauri-apps/*"]
+      npm:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The device map library, pinned as a submodule.
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly
