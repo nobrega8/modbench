@@ -12,6 +12,10 @@
   import StatsTool from "./tools/StatsTool.svelte";
   import TrendPlayerTool from "./tools/TrendPlayerTool.svelte";
 
+  /** Shows only this tool, without the list (the simulator's window). */
+  let { only }: { only?: ToolId } = $props();
+  const tool = $derived(only ?? bench.tool);
+
   const sections: {
     title: string;
     tools: { id: ToolId; name: string; hint: string }[];
@@ -83,42 +87,44 @@
   }
 </script>
 
-<div class="tools">
-  <nav aria-label="Tools">
-    {#each sections as s (s.title)}
-      <h2 class="key">{s.title}</h2>
-      {#each s.tools as t (t.id)}
-        <button
-          class:on={bench.tool === t.id}
-          aria-current={bench.tool === t.id ? "page" : undefined}
-          onclick={() => (bench.tool = t.id)}
-        >
-          <span class="glyph"><Icon name={t.id} size={16} /></span>
-          <span class="name"
-            >{t.name}{#if busy(t.id)}<span class="dot" aria-hidden="true"
-              ></span>{/if}</span
+<div class="tools" class:alone={only}>
+  {#if !only}
+    <nav aria-label="Tools">
+      {#each sections as s (s.title)}
+        <h2 class="key">{s.title}</h2>
+        {#each s.tools as t (t.id)}
+          <button
+            class:on={bench.tool === t.id}
+            aria-current={bench.tool === t.id ? "page" : undefined}
+            onclick={() => (bench.tool = t.id)}
           >
-          <span class="hint">{t.hint}</span>
-        </button>
+            <span class="glyph"><Icon name={t.id} size={16} /></span>
+            <span class="name"
+              >{t.name}{#if busy(t.id)}<span class="dot" aria-hidden="true"
+                ></span>{/if}</span
+            >
+            <span class="hint">{t.hint}</span>
+          </button>
+        {/each}
       {/each}
-    {/each}
-  </nav>
+    </nav>
+  {/if}
 
-  {#key bench.tool}
+  {#key tool}
     <div class="panel" in:viewIn>
-      {#if bench.tool === "simulator"}
+      {#if tool === "simulator"}
         <SimulatorTool />
-      {:else if bench.tool === "identify"}
+      {:else if tool === "identify"}
         <DeviceIdTool />
-      {:else if bench.tool === "addresses"}
+      {:else if tool === "addresses"}
         <AddressScanTool />
-      {:else if bench.tool === "decoder"}
+      {:else if tool === "decoder"}
         <DataDecoderTool />
-      {:else if bench.tool === "frames"}
+      {:else if tool === "frames"}
         <FrameDecoderTool />
-      {:else if bench.tool === "stats"}
+      {:else if tool === "stats"}
         <StatsTool />
-      {:else if bench.tool === "alarms"}
+      {:else if tool === "alarms"}
         <AlarmsTool />
       {:else}
         <TrendPlayerTool />
@@ -134,6 +140,10 @@
     display: grid;
     grid-template-columns: 244px 1fr;
     gap: 22px;
+  }
+
+  .tools.alone {
+    grid-template-columns: 1fr;
   }
 
   nav {

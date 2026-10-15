@@ -271,6 +271,19 @@ export interface SimView {
   defined: boolean[];
 }
 
+/** The simulator as the backend has it (see `sim_info`). */
+export interface SimInfo {
+  port: number | null;
+  public: boolean;
+  unit: number | null;
+  map: DeviceMap | null;
+  source: string | null;
+  strict: boolean;
+  generators: Generator[];
+  problems: (string | null)[];
+  window_open: boolean;
+}
+
 /** Where a simulator generator writes (or a copy reads): a register of the
  * loaded map, in engineering units, or one raw address. */
 export type GeneratorTarget =
