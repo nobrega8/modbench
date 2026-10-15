@@ -8,6 +8,7 @@
     AREA_LABELS,
     KINDS,
     describe,
+    draftFor,
     fromDraft,
     newDraft,
     registerOf as findRegister,
@@ -18,13 +19,16 @@
   import { fieldIn, slidePill } from "$lib/motion";
   import { settings } from "$lib/settings.svelte";
   import { sim } from "$lib/simulator.svelte";
-  import type { Area, GeneratorTarget } from "$lib/types";
+  import type { Area, GeneratorTarget, Register } from "$lib/types";
+  import { tick } from "svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";
+  import RegisterInfo from "./RegisterInfo.svelte";
 
   /** The generator being edited: its index, "new", or null for none. */
   let editing = $state<number | "new" | null>(null);
   let draft = $state<Draft>(newDraft([]));
+  let editor: HTMLDivElement | undefined = $state();
 
   const areas = (Object.keys(AREA_LABELS) as Area[]).map((a) => ({
     value: a,
@@ -64,6 +68,18 @@
   function edit(i: number) {
     draft = toDraft(sim.generators[i], sim.registers);
     editing = i;
+  }
+
+  /** Opens the form for a register: its generator if it has one (`index`),
+   * else a new one shaped by what the map says about it. */
+  export async function generateFor(r: Register, index: number | null) {
+    if (index !== null) edit(index);
+    else {
+      draft = draftFor(r, sim.registers);
+      editing = "new";
+    }
+    await tick();
+    editor?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   function save() {
@@ -185,11 +201,16 @@
   {/if}
 
   {#if editing !== null}
-    <div class="editor" in:fieldIn>
+    <div class="editor" bind:this={editor} in:fieldIn>
       <div class="field">
         <span>Value to change</span>
         {@render target(draft.to, "Value")}
       </div>
+      {#if drafted}
+        <div class="about">
+          <RegisterInfo register={drafted} />
+        </div>
+      {/if}
 
       <div class="row">
         <div class="field">
@@ -373,6 +394,12 @@
     padding: 14px;
     border-radius: 10px;
     background: var(--subtle);
+  }
+
+  .about {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--card);
   }
 
   .target {

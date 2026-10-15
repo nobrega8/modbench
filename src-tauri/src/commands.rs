@@ -839,6 +839,25 @@ pub fn sim_set_generators(state: State<'_, AppState>, list: Vec<Generator>) -> V
     problems
 }
 
+/// The value of every register of the map the simulator was shaped after,
+/// in engineering units and map order; empty without a map.
+#[tauri::command]
+pub fn sim_values(state: State<'_, AppState>) -> Vec<Option<crate::codec::Value>> {
+    generators::values(&state.sim_memory.lock().unwrap())
+}
+
+/// Sets a register of the loaded map, in engineering units.
+#[tauri::command]
+pub fn sim_set_value(
+    state: State<'_, AppState>,
+    register: String,
+    value: f64,
+) -> Result<(), ModbusError> {
+    let target = generators::Target::Register { register };
+    generators::write(&mut state.sim_memory.lock().unwrap(), &target, value)
+        .map_err(ModbusError::Invalid)
+}
+
 /// Values held by the simulator, and which of those addresses exist.
 #[derive(serde::Serialize)]
 pub struct SimView {

@@ -109,6 +109,10 @@ export const api = {
     invoke<SimView>("sim_read", { area, address, count }),
   simWrite: (area: Area, address: number, data: RawData) =>
     invoke<void>("sim_write", { area, address, data }),
+  /** Every register of the simulator's map, in engineering units. */
+  simValues: () => invoke<(Value | null)[]>("sim_values"),
+  simSetValue: (register: string, value: number) =>
+    invoke<void>("sim_set_value", { register, value }),
   /** Replaces the generators; returns why each one cannot run, or null. */
   simSetGenerators: (list: Generator[]) =>
     invoke<(string | null)[]>("sim_set_generators", { list }),

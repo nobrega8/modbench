@@ -201,3 +201,51 @@ export function describe(
       return `Follows ${name(g.from)}`;
   }
 }
+
+/** A register's reference value in engineering units, when it is a number. */
+export function referenceValue(r: Register): number | null {
+  const text = r.reference?.trim();
+  if (!text) return null;
+  const raw = /^0x[0-9a-f]+$/i.test(text) ? parseInt(text, 16) : Number(text);
+  return Number.isFinite(raw) ? raw * r.scale + r.offset : null;
+}
+
+/**
+ * A new generator for one register, shaped by what the map says about it:
+ * a bit toggles, an enum steps through its values, a number swings around
+ * its reference within its write limits.
+ */
+export function draftFor(r: Register, registers: Register[]): Draft {
+  const d = newDraft(registers);
+  d.to = { ...d.to, mode: "register", register: r.name };
+  const isBit = r.type === "bool" || r.area === "coil" || r.area === "discrete";
+  if (isBit) {
+    return { ...d, kind: "increment", step: 1, min: 0, max: 1, every_ms: 2000 };
+  }
+  if (r.enum.length) {
+    const keys = r.enum.map(([k]) => k * r.scale + r.offset);
+    return {
+      ...d,
+      kind: "increment",
+      step: r.scale,
+      min: Math.min(...keys),
+      max: Math.max(...keys),
+      every_ms: 2000,
+    };
+  }
+  const lo = r.write_min;
+  const hi = r.write_max;
+  const centre =
+    referenceValue(r) ?? (lo !== null && hi !== null ? (lo + hi) / 2 : 0);
+  const swing =
+    lo !== null && hi !== null ? (hi - lo) / 4 : Math.abs(centre) * 0.05 || 10;
+  const round = (n: number) => Number(n.toPrecision(4));
+  return {
+    ...d,
+    kind: "sine",
+    offset: round(centre),
+    amplitude: round(swing),
+    min: round(lo ?? centre - 2 * swing),
+    max: round(hi ?? centre + 2 * swing),
+  };
+}

@@ -4,7 +4,10 @@
 import { api, errorText } from "./api";
 import type { DeviceMap, Generator, Register, SimEvent } from "./types";
 
+/** Requests kept per list, reads and writes apiece. */
 const EVENT_LIMIT = 300;
+/** Function codes that change values (also when they fail). */
+const WRITES = new Set([5, 6, 15, 16, 22, 23]);
 
 class Simulator {
   /** Port it listens on while running; null when stopped. */
@@ -18,8 +21,14 @@ class Simulator {
   strict = $state(true);
   /** What the memory was shaped after: a map's name, or null when empty. */
   loaded = $state<string | null>(null);
+  /** The map it was shaped after, and the file it came from. */
+  map = $state.raw<DeviceMap | null>(null);
+  source = $state<string | null>(null);
   error = $state<string | null>(null);
-  events = $state.raw<SimEvent[]>([]);
+  /** Recent requests, oldest first: reads, and writes kept apart so a
+   * stream of reads does not push the writes out. */
+  reads = $state.raw<SimEvent[]>([]);
+  writes = $state.raw<SimEvent[]>([]);
   /** Bumped when a client writes, so the memory view reads again. */
   changes = $state(0);
   /** Values that change on their own while it runs; kept across stop and
@@ -47,12 +56,39 @@ class Simulator {
     this.running = null;
   }
 
+  /** Shapes the memory after a map file: one open on the Main page, or one
+   * from the library. Null empties the device. */
+  async pick(path: string | null, open?: DeviceMap) {
+    if (path === null) return this.clear();
+    this.error = null;
+    try {
+      const map = open ?? (await api.openMap(path)).map;
+      if (!map) {
+        this.error =
+          "This map has errors; open it on the Main page to see them.";
+        return;
+      }
+      await this.load(map, path.split(/[\\/]/).pop() ?? path, path);
+    } catch (e) {
+      this.error = errorText(e);
+    }
+  }
+
+  /** Loads the same map again, e.g. after "Only the map's addresses"
+   * changed. Values go back to the map's references. */
+  async reload() {
+    if (this.map && this.source)
+      await this.load(this.map, this.loaded ?? "", this.source);
+  }
+
   /** Shapes the memory after a map (its reference values, its addresses). */
-  async load(map: DeviceMap, name: string) {
+  async load(map: DeviceMap, name: string, path: string | null = null) {
     this.error = null;
     try {
       await api.simLoad(map, this.strict);
       this.loaded = name;
+      this.map = map;
+      this.source = path;
       this.registers = map.registers.filter((r) => r.type !== "string");
       this.changes++;
       await this.setGenerators(this.generators);
@@ -65,6 +101,8 @@ class Simulator {
   async clear() {
     await api.simLoad(null, false);
     this.loaded = null;
+    this.map = null;
+    this.source = null;
     this.registers = [];
     this.changes++;
     await this.setGenerators(this.generators);
@@ -86,7 +124,12 @@ class Simulator {
     this.flushQueued = true;
     requestAnimationFrame(() => {
       const wrote = this.pending.some((e) => e.wrote);
-      this.events = [...this.events, ...this.pending].slice(-EVENT_LIMIT);
+      const writes = this.pending.filter((e) => WRITES.has(e.function));
+      const reads = this.pending.filter((e) => !WRITES.has(e.function));
+      if (reads.length)
+        this.reads = [...this.reads, ...reads].slice(-EVENT_LIMIT);
+      if (writes.length)
+        this.writes = [...this.writes, ...writes].slice(-EVENT_LIMIT);
       this.pending = [];
       this.flushQueued = false;
       if (wrote) this.changes++;
@@ -94,7 +137,8 @@ class Simulator {
   }
 
   clearEvents() {
-    this.events = [];
+    this.reads = [];
+    this.writes = [];
   }
 }
 
