@@ -37,7 +37,8 @@
   import Icon from "../Icon.svelte";
   import { bench } from "#lib/state.svelte.ts";
   import { MAP_EXTENSIONS, type SimEvent, type SimView } from "#lib/types.ts";
-  import { open as openDialog } from "@tauri-apps/plugin-dialog";
+  import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
+  import { SETUP_EXTENSION } from "#lib/sim-setup.ts";
   import AddressFormat from "../AddressFormat.svelte";
   import AddressInput from "../AddressInput.svelte";
   import IntInput from "../IntInput.svelte";
@@ -246,6 +247,48 @@
     editing = null;
   }
 
+  const setupFilter = [
+    { name: "Simulator setup", extensions: [SETUP_EXTENSION] },
+  ];
+  /** The outcome of the last setup save or open. */
+  let setupNote = $state<{ ok: boolean; text: string } | null>(null);
+
+  async function saveSetup() {
+    setupNote = null;
+    const path = await save({
+      defaultPath: `simulator.${SETUP_EXTENSION}`,
+      filters: setupFilter,
+    });
+    if (!path) return;
+    try {
+      await api.saveText(path, sim.setupText());
+      setupNote = { ok: true, text: "Setup saved." };
+    } catch (e) {
+      setupNote = { ok: false, text: `Not saved: ${errorText(e)}` };
+    }
+  }
+
+  async function openSetup() {
+    setupNote = null;
+    const path = await openDialog({ multiple: false, filters: setupFilter });
+    if (typeof path !== "string") return;
+    let problem: string | null;
+    try {
+      problem = await sim.openSetup(await api.readText(path));
+    } catch (e) {
+      problem = errorText(e);
+    }
+    setupNote = problem
+      ? { ok: false, text: `Not opened: ${problem}` }
+      : {
+          ok: true,
+          text:
+            sim.running === null
+              ? "Setup opened."
+              : "Setup opened; stop the simulator to take its interface settings too.",
+        };
+  }
+
   /** Points step 1 of Main at the simulator, and its unit ID at the
    * device shown. Only over the network: a serial port has another end. */
   function useInMain() {
@@ -293,6 +336,24 @@
   <header class="tool-head">
     <div class="title-row">
       <h1>Simulator</h1>
+      <span class="spacer"></span>
+      {#if setupNote}
+        <span
+          class="setup-note"
+          class:bad={!setupNote.ok}
+          role={setupNote.ok ? undefined : "alert"}>{setupNote.text}</span
+        >
+      {/if}
+      <button
+        class="btn ghost"
+        title="Load the interface, devices, unit IDs, maps and generators saved with Save setup…"
+        onclick={openSetup}>Open setup…</button
+      >
+      <button
+        class="btn ghost"
+        title="Save the interface, devices, unit IDs, maps and generators to a file"
+        onclick={saveSetup}>Save setup…</button
+      >
       {#if IN_SIM_WINDOW}
         <button
           class="btn ghost"
@@ -739,6 +800,15 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+  }
+
+  .setup-note {
+    color: var(--text-3);
+    font-size: 12px;
+  }
+
+  .setup-note.bad {
+    color: var(--bad);
   }
 
   .spacer {

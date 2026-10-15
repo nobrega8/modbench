@@ -5,6 +5,12 @@
 
 import { listen } from "@tauri-apps/api/event";
 import { api, errorText } from "./api";
+import {
+  parseSetup,
+  setupText,
+  type SetupDevice,
+  type SetupListen,
+} from "./sim-setup";
 import type {
   DeviceMap,
   Generator,
@@ -308,6 +314,77 @@ class Simulator {
       this.problems = await api.simSetGenerators(this.selected, list);
     } catch (e) {
       this.error = errorText(e);
+    }
+  }
+
+  /** The setup as a file keeps it: listen settings and every device. */
+  setupText(): string {
+    const listen: SetupListen = {
+      kind: this.kind,
+      port: this.port,
+      public: this.isPublic,
+      serial_port: this.serialPort,
+      baudrate: this.baudrate,
+      parity: this.parity,
+      data_bits: this.dataBits,
+      stop_bits: this.stopBits,
+    };
+    const devices: SetupDevice[] = this.devices.map((d) => ({
+      unit: d.unit,
+      strict: d.strict,
+      source: d.source,
+      map: d.map,
+      generators: d.generators,
+    }));
+    return setupText(listen, devices);
+  }
+
+  /**
+   * Replaces the devices with those of a setup file. The listen settings
+   * are taken only while stopped. Each map is read again from its file when
+   * that is still there, else the copy in the setup is used. Returns what
+   * went wrong, or null.
+   */
+  async openSetup(text: string): Promise<string | null> {
+    const setup = parseSetup(text);
+    if ("error" in setup) return setup.error;
+    this.error = null;
+    try {
+      if (this.running === null) {
+        const l = setup.listen;
+        this.kind = l.kind;
+        this.port = l.port;
+        this.isPublic = l.public;
+        this.serialPort = l.serial_port;
+        this.baudrate = l.baudrate;
+        this.parity = l.parity;
+        this.dataBits = l.data_bits;
+        this.stopBits = l.stop_bits;
+      }
+      // Down to one device, then shape each after the setup in turn.
+      for (let i = this.devices.length - 1; i > 0; i--)
+        await api.simRemoveDevice(i);
+      for (const [i, d] of setup.devices.entries()) {
+        if (i === 0) await api.simSetUnit(0, d.unit);
+        else await api.simAddDevice(d.unit);
+        let map = d.map;
+        if (d.source) {
+          try {
+            map = (await api.openMap(d.source)).map ?? map;
+          } catch {
+            // Moved or deleted: the copy in the setup will do.
+          }
+        }
+        await api.simLoad(i, map, d.strict, map ? d.source : null);
+        await api.simSetGenerators(i, d.generators);
+      }
+      this.selected = 0;
+      await this.sync();
+      this.show(0);
+      return null;
+    } catch (e) {
+      await this.sync();
+      return errorText(e);
     }
   }
 
