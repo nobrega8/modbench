@@ -1,0 +1,10 @@
+# Sections of the release notes GitHub writes from the merged pull requests
+# (see the notes job in workflows/release.yml).
+changelog:
+  categories:
+    - title: What's new
+      labels: ["*"]
+      exclude:
+        labels: [dependencies]
+    - title: Dependencies
+      labels: [dependencies]

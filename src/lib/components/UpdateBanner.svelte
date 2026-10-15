@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { changes, summary } from "#lib/release-notes.ts";
   import { relaunch } from "@tauri-apps/plugin-process";
   import { settings } from "#lib/settings.svelte.ts";
   import { APT_UPGRADE, updates } from "#lib/updates.svelte.ts";
@@ -46,7 +47,9 @@
     {:else if downloading}
       <span>Downloading…{progress === null ? "" : ` ${progress}%`}</span>
     {:else if update.body}
-      <span class="notes" title={update.body}>{update.body}</span>
+      <span class="notes" title={changes(update.body).join("\n")}
+        >{summary(update.body)}</span
+      >
     {/if}
     <span class="spacer"></span>
     {#if updates.viaApt}
