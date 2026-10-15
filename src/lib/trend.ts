@@ -128,3 +128,17 @@ export function nearest(samples: Sample[], t: number): Sample | null {
   const prev = samples[lo - 1];
   return prev && t - prev.t < samples[lo].t - t ? prev : samples[lo];
 }
+
+/** A value on a chart's axis, legend or tip: six digits at most. */
+export function valueLabel(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  const abs = Math.abs(v);
+  if (abs !== 0 && (abs >= 1e6 || abs < 1e-3)) return v.toExponential(2);
+  return String(Number(v.toPrecision(6)));
+}
+
+/** The newest value of a line, as its legend shows it. */
+export function lastLabel(samples: Sample[]): string {
+  const last = samples.at(-1);
+  return last ? valueLabel(last.v) : "—";
+}

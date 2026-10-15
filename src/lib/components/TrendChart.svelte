@@ -1,6 +1,13 @@
 <script lang="ts">
   import { clock } from "#lib/format.ts";
-  import { nearest, niceTicks, yRange, type Sample } from "#lib/trend.ts";
+  import {
+    lastLabel,
+    nearest,
+    niceTicks,
+    valueLabel as label,
+    yRange,
+    type Sample,
+  } from "#lib/trend.ts";
   import type { Register } from "#lib/types.ts";
 
   export interface Line {
@@ -108,18 +115,6 @@
     return d;
   }
 
-  function label(v: number): string {
-    if (!Number.isFinite(v)) return "—";
-    const abs = Math.abs(v);
-    if (abs !== 0 && (abs >= 1e6 || abs < 1e-3)) return v.toExponential(2);
-    return String(Number(v.toPrecision(6)));
-  }
-
-  function lastValue(samples: Sample[]): string {
-    const last = samples.at(-1);
-    return last ? label(last.v) : "—";
-  }
-
   const hover = $derived.by(() => {
     if (hoverX === null) return null;
     const t = from + ((hoverX - M.left) / plotW) * span;
@@ -149,7 +144,7 @@
           <span class="name" title={l.reg.description || undefined}
             >{l.reg.name}</span
           >
-          <span class="last mono">{lastValue(l.samples)}</span>
+          <span class="last mono">{lastLabel(l.samples)}</span>
           <button
             class="remove"
             title="Remove {l.reg.name} from the chart"
@@ -164,6 +159,7 @@
   <div class="plot" bind:clientWidth={width} bind:clientHeight={height}>
     {#if width > 0 && height > 0}
       <svg
+        data-trend-plot
         {width}
         {height}
         role="img"

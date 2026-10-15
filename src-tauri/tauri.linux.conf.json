@@ -1,0 +1,20 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "linux": {
+      "deb": {
+        "files": {
+          "/usr/share/mime/packages/modbench.xml": "linux/modbench-mime.xml",
+          "/usr/share/icons/hicolor/32x32/mimetypes/text-x-mbmap.png": "icons/files/mbmap-32.png",
+          "/usr/share/icons/hicolor/64x64/mimetypes/text-x-mbmap.png": "icons/files/mbmap-64.png",
+          "/usr/share/icons/hicolor/128x128/mimetypes/text-x-mbmap.png": "icons/files/mbmap-128.png",
+          "/usr/share/icons/hicolor/256x256/mimetypes/text-x-mbmap.png": "icons/files/mbmap-256.png",
+          "/usr/share/icons/hicolor/32x32/mimetypes/application-x-mbsim.png": "icons/files/mbsim-32.png",
+          "/usr/share/icons/hicolor/64x64/mimetypes/application-x-mbsim.png": "icons/files/mbsim-64.png",
+          "/usr/share/icons/hicolor/128x128/mimetypes/application-x-mbsim.png": "icons/files/mbsim-128.png",
+          "/usr/share/icons/hicolor/256x256/mimetypes/application-x-mbsim.png": "icons/files/mbsim-256.png"
+        }
+      }
+    }
+  }
+}

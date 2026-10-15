@@ -248,3 +248,11 @@ export function clock(ms: number): string {
   const p = (n: number, w = 2) => n.toString().padStart(w, "0");
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
 }
+
+/** A length of time, e.g. "5 min 0 s" or "1 h 2 min". */
+export function duration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h ? `${h} h ${m} min` : m ? `${m} min ${s % 60} s` : `${s} s`;
+}

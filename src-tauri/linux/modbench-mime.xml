@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Modbench's file types, so file managers know them and show their icons.
+     Installed by the .deb (tauri.linux.conf.json). -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-mbmap">
+    <comment>Modbus device map</comment>
+    <glob pattern="*.mbmap"/>
+    <glob pattern="*.mbmap.json"/>
+  </mime-type>
+  <mime-type type="application/x-mbsim">
+    <comment>Modbench simulator setup</comment>
+    <sub-class-of type="application/json"/>
+    <glob pattern="*.mbsim"/>
+  </mime-type>
+</mime-info>

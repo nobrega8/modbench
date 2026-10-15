@@ -8,6 +8,7 @@
   import Select from "./Select.svelte";
   import { MAX_SERIES } from "#lib/trend.ts";
   import TrendChart, { type Line } from "./TrendChart.svelte";
+  import ChartExport from "./ChartExport.svelte";
 
   let {
     groups,
@@ -45,6 +46,7 @@
   let windowMs = $state(5 * 60_000);
   /** The add menu; it goes back to its prompt after a pick. */
   let pick = $state(-1);
+  let charts: HTMLDivElement | undefined = $state();
 
   const full = $derived(count >= MAX_SERIES);
 
@@ -87,6 +89,14 @@
   />
   <span class="spacer"></span>
   {#if note}<span class="dim">{note}</span>{/if}
+  <ChartExport
+    {charts}
+    {groups}
+    from={span?.from ?? 0}
+    to={span?.to ?? 0}
+    name="chart"
+    disabled={!span || !count}
+  />
   <button class="btn" disabled={!span} onclick={onclear}>Clear</button>
 </div>
 
@@ -99,7 +109,7 @@
       : "Press Start to record values."}
   </p>
 {:else}
-  <div class="charts">
+  <div class="charts" bind:this={charts}>
     {#each groups as g (g.unit)}
       <TrendChart
         unit={g.unit}

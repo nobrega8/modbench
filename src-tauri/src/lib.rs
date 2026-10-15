@@ -23,7 +23,7 @@ pub fn run() {
         // Must be registered first: a second launch (e.g. double-clicking a
         // .mbmap) hands its file to the running window and exits.
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            if let Some(path) = argv.iter().skip(1).find(|a| mbmap::is_map_file(a)) {
+            if let Some(path) = argv.iter().skip(1).find(|a| commands::is_openable_file(a)) {
                 let _ = app.emit("open-file", path);
             }
             if let Some(window) = app.get_webview_window("main") {
@@ -58,6 +58,7 @@ pub fn run() {
             commands::poll_map_once,
             commands::write_map_value,
             commands::save_text,
+            commands::save_bytes,
             commands::append_text,
             commands::read_text,
             commands::scan_units,

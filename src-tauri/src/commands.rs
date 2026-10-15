@@ -542,10 +542,16 @@ pub async fn vendor_icon(app: AppHandle, website: String) -> Option<String> {
     online::vendor_icon(&dir, &website).await
 }
 
-/// A `.mbmap` passed on the command line (e.g. by double-clicking a file).
+/// A file Modbench opens when given one: a map, or a simulator setup.
+pub fn is_openable_file(name: &str) -> bool {
+    mbmap::is_map_file(name) || name.to_ascii_lowercase().ends_with(".mbsim")
+}
+
+/// A map or simulator setup passed on the command line (e.g. by
+/// double-clicking a file).
 #[tauri::command]
 pub fn startup_file() -> Option<String> {
-    std::env::args().skip(1).find(|a| mbmap::is_map_file(a))
+    std::env::args().skip(1).find(|a| is_openable_file(a))
 }
 
 /// Converts a version 1 map file to version 2, next to it (`x.mbmap` ->
@@ -567,6 +573,13 @@ pub async fn convert_map(path: String) -> Result<String, ModbusError> {
 #[tauri::command]
 pub async fn save_text(path: String, text: String) -> Result<(), ModbusError> {
     tokio::fs::write(&path, text).await?;
+    Ok(())
+}
+
+/// Writes bytes to a file chosen by the user (chart image export).
+#[tauri::command]
+pub async fn save_bytes(path: String, bytes: Vec<u8>) -> Result<(), ModbusError> {
+    tokio::fs::write(&path, bytes).await?;
     Ok(())
 }
 
