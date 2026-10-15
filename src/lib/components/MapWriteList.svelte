@@ -25,6 +25,10 @@
   let drafts = $state<Record<number, string>>({});
   let notes = $state<Record<number, { ok: boolean; text: string }>>({});
   let busy = $state<number | null>(null);
+  /** Rows with labelled values where a value of one's own is typed. */
+  let custom = $state<Record<number, boolean>>({});
+  /** Picked in a labelled list to type a value instead. */
+  const CUSTOM = "__custom__";
 
   const rows = $derived(
     open.map.registers
@@ -352,13 +356,24 @@
                     >{boolLabel(reg, on)}</button
                   >
                 {/each}
-              {:else if reg.enum.length}
+              {:else if reg.enum.length && !custom[index]}
                 <Select
                   bind:value={drafts[index]}
                   width="260px"
                   label="Value for {reg.name}"
                   placeholder="Choose…"
-                  options={reg.enum.map(([, l]) => ({ value: l, label: l }))}
+                  options={[
+                    ...reg.enum.map(([v, l]) => ({
+                      value: l,
+                      label: `${l} (${v})`,
+                    })),
+                    { value: CUSTOM, label: "Custom value…" },
+                  ]}
+                  onchange={(v) => {
+                    if (v !== CUSTOM) return;
+                    custom[index] = true;
+                    drafts[index] = "";
+                  }}
                 />
                 <button
                   class="btn accent"
@@ -382,6 +397,17 @@
                   class="btn accent"
                   disabled={busy !== null || !drafts[index]}>Write</button
                 >
+                {#if reg.enum.length}
+                  <button
+                    type="button"
+                    class="btn ghost"
+                    title="Pick one of the map's values again"
+                    onclick={() => {
+                      custom[index] = false;
+                      drafts[index] = "";
+                    }}>Options</button
+                  >
+                {/if}
               {/if}
               {#if busy === index}<span class="dim">Writing…</span>{/if}
               {#if note}<span class:good={note.ok} class:bad={!note.ok}
