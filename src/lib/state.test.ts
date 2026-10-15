@@ -152,6 +152,16 @@ describe("remembered choices per device", () => {
     expect(bench.loop).toBe(false);
   });
 
+  it("keep the time between loops with the connection", () => {
+    bench.setLoopMs(1500.4);
+    expect(bench.loopMs).toBe(1500);
+    expect(
+      JSON.parse(localStorage.getItem("modbench.connection") ?? "{}").loopMs,
+    ).toBe(1500);
+    bench.setLoopMs(-5);
+    expect(bench.loopMs).toBe(0);
+  });
+
   it("survive the map being edited", () => {
     openMap("/maps/meter.mbmap", ["V", "A", "W", "PF"]);
     useDevice(1);

@@ -124,6 +124,7 @@ const CONNECTION_FIELDS = [
   "dataBits",
   "stopBits",
   "delayMs",
+  "loopMs",
   "timeoutMs",
   "maxRegisters",
   "unitId",
@@ -149,6 +150,9 @@ class Bench {
   dataBits = $state(8);
   stopBits = $state(1);
   delayMs = $state(100);
+  /** With Loop on: time from the start of one cycle to the start of the
+   * next. 0 repeats as soon as Delay allows. */
+  loopMs = $state(0);
   timeoutMs = $state(1000);
   /** Largest register block per read request; longer reads are split. */
   maxRegisters = $state(125);
@@ -495,6 +499,13 @@ This writes to the device.`,
     this.persistDevice();
   }
 
+  /** Changes the time between loop cycles; a running map poll picks it up. */
+  setLoopMs(ms: number) {
+    this.loopMs = Math.max(0, Math.round(ms) || 0);
+    this.saveConnection();
+    this.refreshPolling();
+  }
+
   /** Fills the connection settings with a map's defaults. */
   applyDefaults(map: DeviceMap) {
     const m = map.meta;
@@ -580,13 +591,15 @@ This writes to the device.`,
         ? "write"
         : this.tab;
     do {
+      const started = Date.now();
       await this.sendOnce();
       if (!this.loop || !this.running) break;
       if (this.status && !this.status.ok && (await this.lost())) {
         await this.reopen();
         continue;
       }
-      await sleep(Math.max(this.delayMs, 10));
+      const rest = this.loopMs - (Date.now() - started);
+      await sleep(Math.max(rest, this.delayMs, 10));
     } while (this.running);
     if (this.running) await this.stop();
   }
@@ -712,8 +725,9 @@ This writes to the device.`,
       scale_registers,
       byte_order: m.byte_order ?? "ABCD",
       byte_order_override: this.orderOverride,
-      // Like a manual loop: Delay is the pause between every two requests.
-      interval_ms: 0,
+      // Like a manual loop: Delay is the pause between every two requests,
+      // and a cycle starts at most every loopMs.
+      interval_ms: Math.max(0, Math.round(this.loopMs) || 0),
       delay_ms: this.delayMs,
       reconnect: settings.autoReconnect,
       limits: {
