@@ -7,9 +7,33 @@ name: Release
 # The notes list the pull requests merged since the previous tag.
 # The macOS app is one universal build (Apple Silicon and Intel), signed
 # ad hoc: it has no Apple Developer ID, so Gatekeeper asks once on first open.
+#
+# To release one system only (e.g. a fix that only macOS needs), run this
+# workflow by hand from the Actions tab: give the new tag and the system. The
+# tag is created on the branch it runs on, and the notes say where the other
+# systems' installers are. Its latest.json then lists that system only.
+#
+# The update banner in the app shows the notes of latest.json on one line, so
+# they get a short summary instead of the release's Markdown: the `summary`
+# given when run by hand, else the message of an annotated tag
+# (git tag -a v0.3.0 -m "Charts · Simulator setups"), else the pull request
+# titles joined with " · ".
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "New tag, e.g. v0.2.1 (created on the branch this runs on)"
+        required: true
+      platforms:
+        description: "Systems to build"
+        type: choice
+        options: [all, macos, windows, linux]
+        default: all
+      summary:
+        description: "One line for the app's update banner (optional; the pull request titles otherwise)"
+        required: false
 
 permissions:
   contents: write
@@ -20,6 +44,9 @@ jobs:
     outputs:
       name: ${{ steps.notes.outputs.name }}
       body: ${{ steps.notes.outputs.body }}
+      tag: ${{ steps.notes.outputs.tag }}
+      matrix: ${{ steps.notes.outputs.matrix }}
+      summary: ${{ steps.notes.outputs.summary }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -29,24 +56,55 @@ jobs:
         id: notes
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          PLATFORMS: ${{ inputs.platforms || 'all' }}
+          SUMMARY: ${{ inputs.summary }}
           DOWNLOAD: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux, `.dmg` for macOS (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
+          DOWNLOAD_MACOS: "Download the `.dmg` (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
+          DOWNLOAD_WINDOWS: "Download the `-setup.exe` or the `.msi`. Installed copies update themselves from here."
+          DOWNLOAD_LINUX: "Download the `.AppImage` or the `.deb`. Installed copies update themselves from here."
         run: |
-          tag="$GITHUB_REF_NAME"
+          tag="$TAG"
           line=$(echo "${tag#v}" | cut -d. -f1,2)
           codename=$(jq -r --arg l "$line" '.[$l] // empty' .github/release-names.json)
           name="Modbench $tag${codename:+ — $codename}"
-          prev=$(git describe --tags --abbrev=0 --match 'v*' "$tag^" 2>/dev/null || true)
+          # A run by hand creates the tag later, on this commit
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then from="$tag^"; else from=HEAD; fi
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "$from" 2>/dev/null || true)
           args=(-f tag_name="$tag")
           [ -n "$prev" ] && args+=(-f previous_tag_name="$prev")
-          changes=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body)
+          # Without the comment GitHub puts first
+          changes=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body | sed '/^<!--.*-->$/d')
+          summary="$SUMMARY"
+          if [ -z "$summary" ] && [ "$(git cat-file -t "refs/tags/$tag" 2>/dev/null)" = tag ]; then
+            summary=$(git tag -l --format='%(contents:subject)' "$tag")
+          fi
+          if [ -z "$summary" ]; then
+            summary=$(sed -n 's/^[*-] \(.*\)$/\1/p' <<<"$changes" | sed -E 's/ by @[^ ]+ in [^ ]+$//' | paste -sd'\t' | sed 's/\t/ · /g')
+          fi
+          all='[{"platform":"windows","os":"windows-latest"},{"platform":"linux","os":"ubuntu-22.04"},{"platform":"macos","os":"macos-latest","args":"--target universal-apple-darwin"}]'
+          matrix=$(jq -c --arg p "$PLATFORMS" 'map(select($p == "all" or .platform == $p))' <<<"$all")
+          download="$DOWNLOAD"
+          if [ "$PLATFORMS" != all ]; then
+            case "$PLATFORMS" in
+              macos) system=macOS; download="$DOWNLOAD_MACOS" ;;
+              windows) system=Windows; download="$DOWNLOAD_WINDOWS" ;;
+              linux) system=Linux; download="$DOWNLOAD_LINUX" ;;
+            esac
+            download="**$system only.** The other systems stay on [$prev](https://github.com/$GITHUB_REPOSITORY/releases/tag/$prev): get their installers there. $download"
+          fi
           echo "$name"
           echo "$changes"
+          echo "$matrix"
           {
             echo "name=$name"
+            echo "tag=$tag"
+            echo "matrix=$matrix"
+            echo "summary=$summary"
             echo "body<<NOTES_END"
             echo "$changes"
             echo
-            echo "$DOWNLOAD"
+            echo "$download"
             echo "NOTES_END"
           } >> "$GITHUB_OUTPUT"
 
@@ -55,11 +113,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-          - os: ubuntu-22.04
-          - os: macos-latest
-            args: --target universal-apple-darwin
+        include: ${{ fromJSON(needs.notes.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -115,10 +169,27 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
+          tagName: ${{ needs.notes.outputs.tag }}
           releaseName: ${{ needs.notes.outputs.name }}
           releaseBody: ${{ needs.notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+  # The app's update banner shows latest.json's notes on one line: give it the
+  # summary rather than the release's Markdown.
+  updater-notes:
+    needs: [notes, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary in latest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.notes.outputs.tag }}
+          SUMMARY: ${{ needs.notes.outputs.summary }}
+        run: |
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p latest.json
+          jq --arg notes "$SUMMARY" '.notes = $notes' latest.json > notes.json
+          mv notes.json latest.json
+          gh release upload "$TAG" latest.json --clobber -R "$GITHUB_REPOSITORY"
