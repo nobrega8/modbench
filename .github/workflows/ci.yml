@@ -24,6 +24,19 @@ jobs:
         with:
           submodules: true
 
+      - name: Diagnose the macOS icon (temporary)
+        if: runner.os == 'macOS'
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$xcode" ]; then sudo xcode-select -s "$xcode"; fi
+          xcrun actool --version --output-format human-readable-text
+          for target in 10.15 26.0; do
+            echo "=== minimum deployment target $target"
+            rm -rf out && mkdir out
+            xcrun actool src-tauri/icons/Modbench.icon --compile out               --output-format human-readable-text --notices --warnings --errors               --output-partial-info-plist out/partial.plist --app-icon Modbench               --include-all-app-icons --enable-on-demand-resources NO               --development-region en --target-device mac               --minimum-deployment-target "$target" --platform macosx || echo "actool exit $?"
+            ls -la out
+          done
+
       - name: Linux system deps
         if: runner.os == 'Linux'
         run: |
