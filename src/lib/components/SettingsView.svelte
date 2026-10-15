@@ -134,26 +134,20 @@
     <div class="panel" in:viewIn>
       {#if section === "about"}
         <section class="about">
-          <img src="/favicon.png" alt="" width="56" height="56" />
-          <div class="who">
-            <h1>Modbench</h1>
-            <p class="version">
-              Version <span class="mono">{version}</span>
-              {#if updates.available}
-                · <strong>{updates.available.version} is available</strong>
-              {:else if updates.message}
-                · {updates.message}
-              {/if}
-            </p>
-            <p class="tagline">Modbus TCP/RTU client · GPL-3.0 licence</p>
-          </div>
-          <button
-            class="btn"
-            disabled={updates.checking}
-            onclick={() => updates.check(false)}
-            >{updates.checking ? "Checking…" : "Check for updates"}</button
-          >
-          <div class="links">
+          <img src="/favicon.png" alt="" width="88" height="88" />
+          <h1>Modbench</h1>
+          <p class="version">
+            Version <span class="mono">{version}</span>
+            {#if updates.available}
+              · <strong>{updates.available.version} is available</strong>
+            {:else if updates.message}
+              · {updates.message}
+            {/if}
+          </p>
+          <p class="tagline">
+            A Modbus TCP and RTU client to test, map and simulate devices.
+          </p>
+          <div class="hero-buttons">
             <button
               class="btn primary"
               onclick={() => run(() => api.openLink("repo"))}
@@ -161,31 +155,87 @@
             >
             <button
               class="btn"
-              onclick={() => run(() => api.openLink("manual"))}
-              >User manual (PDF) {@render external()}</button
+              disabled={updates.checking}
+              onclick={() => updates.check(false)}
+              >{updates.checking ? "Checking…" : "Check for updates"}</button
             >
+          </div>
+        </section>
+
+        <h2 class="key">Help</h2>
+        <div class="group">
+          <div class="setting">
+            <div class="text">
+              <span class="name">User manual</span>
+              <span class="hint"
+                >Every page and tool explained, with screenshots. A PDF.</span
+              >
+            </div>
             <button
               class="btn"
-              onclick={() => run(() => api.openLink("issues"))}
-              >Report a problem {@render external()}</button
+              onclick={() => run(() => api.openLink("manual"))}
+              >Open {@render external()}</button
             >
+          </div>
+          <div class="setting">
+            <div class="text">
+              <span class="name">Release notes</span>
+              <span class="hint">What changed in each version.</span>
+            </div>
             <button
               class="btn"
               onclick={() => run(() => api.openLink("releases"))}
-              >Release notes {@render external()}</button
+              >Open {@render external()}</button
             >
+          </div>
+          <div class="setting">
+            <div class="text">
+              <span class="name">Report a problem</span>
+              <span class="hint"
+                >Something wrong, or a device Modbench does not handle? Open an
+                issue on GitHub.</span
+              >
+            </div>
             <button
               class="btn"
-              title="Modbench is free and open source. Support its development on Ko-fi."
+              onclick={() => run(() => api.openLink("issues"))}
+              >Report {@render external()}</button
+            >
+          </div>
+        </div>
+
+        <h2 class="key">Project</h2>
+        <div class="group">
+          <div class="setting">
+            <div class="text">
+              <span class="name">Licence</span>
+              <span class="hint"
+                >Free and open source under the GPL-3.0. The source code is on
+                GitHub.</span
+              >
+            </div>
+            <button class="btn" onclick={() => run(() => api.openLink("repo"))}
+              >Source code {@render external()}</button
+            >
+          </div>
+          <div class="setting">
+            <div class="text">
+              <span class="name">Support this project</span>
+              <span class="hint"
+                >Modbench is free. A coffee on Ko-fi helps its development.</span
+              >
+            </div>
+            <button
+              class="btn"
               onclick={() => run(() => api.openLink("support"))}
               ><svg class="heart" viewBox="0 0 16 16" aria-hidden="true"
                 ><path
                   d="M8 13.5S2 10 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 7.5-6 7.5z"
                 /></svg
-              >Support this project {@render external()}</button
+              >Ko-fi {@render external()}</button
             >
           </div>
-        </section>
+        </div>
       {:else if section === "appearance"}
         <header class="head">
           <h1>Appearance</h1>
@@ -582,34 +632,33 @@
     color: var(--text-2);
   }
 
-  /* ── About ── */
+  /* ── About: the app on top, then its links as settings rows ── */
   .about {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px 18px;
-    padding: 22px;
+    text-align: center;
+    padding: 34px 22px 28px;
     border-radius: 14px;
     background: var(--subtle);
   }
 
   .about img {
-    border-radius: 13px;
-    align-self: start;
+    border-radius: 20px;
+    margin-bottom: 14px;
   }
 
-  h1 {
+  .about h1 {
     margin: 0;
-    font-size: 22px;
+    font-size: 28px;
     font-weight: 600;
     letter-spacing: -0.021em;
     line-height: 1.15;
   }
 
   .version {
-    margin: 3px 0 0;
+    margin: 6px 0 0;
     color: var(--text-2);
-    font-size: 13px;
   }
 
   .version strong {
@@ -618,21 +667,20 @@
   }
 
   .tagline {
-    margin: 1px 0 0;
+    margin: 4px 0 0;
     color: var(--text-3);
-    font-size: 13px;
   }
 
-  .about > .btn {
-    align-self: start;
-  }
-
-  .links {
-    grid-column: 2 / -1;
+  .hero-buttons {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 12px;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .panel > h2 {
+    margin: 10px 0 -6px 4px;
   }
 
   .heart {
