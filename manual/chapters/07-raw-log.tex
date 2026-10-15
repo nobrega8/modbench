@@ -7,9 +7,8 @@ what was really sent and received.
 \label{sec:raw}
 
 \screenshot[6cm]{raw-data}{A request and its answer on the Raw data tab.}
-  {The Raw data tab with one request (Data out) and its answer (Data in),
-   decoded field by field: unit ID, function, address, quantity, byte count,
-   values and a valid CRC.}
+  {The Raw data tab with Decode fields on: the request (Data out) and its
+   answer (Data in) field by field, and the history of frames below.}
 
 The bytes exactly as sent to and received from the device, newest last:
 \sent{Data out} in blue, \received{Data in} in green, as in the logo. Each
@@ -28,9 +27,9 @@ Frame decoder (Section~\ref{sec:frame-decoder}): it decodes it the same way.
 \section{The Log tab}
 \label{sec:log}
 
-\screenshot[6cm]{log}{The Log tab.}
+\screenshot[6cm]{log}{The Log tab, with three timeouts in red.}
   {The Log tab after a test with a few timeouts: time, function, address,
-   result and duration of each request.}
+   quantity, duration and result of each request.}
 
 Every request: \field{Time}, \field{Function},
 \field{Address}, \field{Result} (OK, the exception, or a timeout) and
@@ -41,7 +40,7 @@ Every request: \field{Time}, \field{Function},
   \item[\ui{Clear log}] Empties it.
   \item[Right-click] \nav{Copy line}, \nav{Copy error}, \nav{Copy all}, and
     \nav{Show errors only} to keep just the failed requests in view.
-  \item[Size] \nav{Settings\then Requests kept in the log} sets how many
+  \item[Size] \nav{Settings\then Connection\then Requests kept in the log} sets how many
     requests are kept; older ones are dropped first.
 \end{description}
 

@@ -13,7 +13,9 @@ cd manual
 latexmk modbench-manual.tex
 ```
 
-The PDF is written to `build/modbench-manual.pdf`.
+The PDF is written to `build/modbench-manual.pdf` and copied to
+`modbench-manual.pdf`, the copy kept in the repository (the app's Settings
+link to it).
 
 ## Layout
 

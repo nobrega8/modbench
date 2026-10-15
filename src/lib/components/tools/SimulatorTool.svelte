@@ -74,6 +74,14 @@
     if (serial && stopped) refreshPorts();
   });
 
+  // The list is only read while stopped: keep the port it listens on shown.
+  const portOptions = $derived(
+    (sim.serialPort && !ports.includes(sim.serialPort)
+      ? [sim.serialPort, ...ports]
+      : ports
+    ).map((p) => ({ value: p, label: p })),
+  );
+
   /** A device's tab: its unit ID and what it is shaped after. */
   function deviceLabel(d: (typeof sim.devices)[number]) {
     const unit = d.unit === null ? "All units" : `Unit ${d.unit}`;
@@ -381,7 +389,7 @@
             disabled={!stopped}
             label="Serial port"
             placeholder="No ports found"
-            options={ports.map((p) => ({ value: p, label: p }))}
+            options={portOptions}
           />
           <button
             class="btn icon"
