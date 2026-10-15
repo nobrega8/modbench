@@ -48,6 +48,11 @@
   --series-6: #008300;
   --series-7: #6250d6;
   --series-8: #e34948;
+
+  /* Map status (x_status), from the logo's colours; darker tones on white */
+  --status-verified: #15803d;
+  --status-unverified: #1976d2;
+  --status-unofficial: #868c95;
 }
 
 /* Dark (OLED): follows the system unless Settings forces light or dark */
@@ -81,6 +86,9 @@
     --series-6: #008300;
     --series-7: #9085e9;
     --series-8: #e66767;
+    --status-verified: #22d36b;
+    --status-unverified: #2196f3;
+    --status-unofficial: #a9afb8;
   }
 }
 
@@ -112,6 +120,9 @@
   --series-6: #008300;
   --series-7: #9085e9;
   --series-8: #e66767;
+  --status-verified: #22d36b;
+  --status-unverified: #2196f3;
+  --status-unofficial: #a9afb8;
 }
 
 /* ───────────── named colours used by the components ───────────── */

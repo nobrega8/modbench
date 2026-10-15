@@ -2,6 +2,7 @@
   import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
   import type { OnlineEntry } from "$lib/types";
+  import MapStatus from "./MapStatus.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
   interface Props {
@@ -216,11 +217,7 @@
               <div class="desc" title={e.description}>{e.description}</div>
             {/if}
           </div>
-          {#if e.status === "unverified"}<span
-              class="tag"
-              title="Converted from another catalogue. Not checked against the manufacturer's documentation yet."
-              >Unverified</span
-            >{/if}
+          <MapStatus status={e.status} />
           <span class="count">{e.registers} registers</span>
           {#if inLibrary}
             <button
@@ -382,18 +379,6 @@
     font-size: 13px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .tag {
-    padding: 1px 7px;
-    border-radius: 5px;
-    background: var(--field);
-    color: var(--text-2);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     white-space: nowrap;
   }
 

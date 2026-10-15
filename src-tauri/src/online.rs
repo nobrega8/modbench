@@ -22,7 +22,7 @@ pub struct OnlineEntry {
     pub model: String,
     pub description: Option<String>,
     pub vendor_website: Option<String>,
-    /// "unverified" for maps converted from other catalogues.
+    /// `x_status` of the map: "verified", "unverified" or "unofficial".
     #[serde(default)]
     pub status: Option<String>,
     pub registers: usize,
