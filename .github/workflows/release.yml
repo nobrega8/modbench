@@ -174,7 +174,7 @@ jobs:
           releaseBody: ${{ needs.notes.outputs.body }}
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          uploadUpdaterJson: true
           args: ${{ matrix.args }}
 
   # The app's update banner shows latest.json's notes on one line: give it the
