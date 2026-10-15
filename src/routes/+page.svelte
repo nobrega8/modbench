@@ -79,10 +79,7 @@
   const pages = $derived([
     { id: "main", label: "Main" },
     { id: "tools", label: "Tools" },
-    {
-      id: "library",
-      label: `Library${bench.library.length ? ` (${bench.library.length})` : ""}`,
-    },
+    { id: "library", label: "Library" },
     { id: "settings", label: "Settings" },
   ] as { id: Page; label: string }[]);
 

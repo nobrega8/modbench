@@ -4,6 +4,7 @@
   import { api, errorText } from "$lib/api";
   import { bench } from "$lib/state.svelte";
   import { MAP_EXTENSIONS } from "$lib/types";
+  import MapStatus from "./MapStatus.svelte";
   import OnlineLibrary from "./OnlineLibrary.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
@@ -193,7 +194,11 @@
               />{e.vendor}</span
             ></td
           >
-          <td class="model">{e.model}</td>
+          <td class="model"
+            ><span class="model-name"
+              >{e.model}<MapStatus status={e.status} /></span
+            ></td
+          >
           <td class="desc">
             {#if e.error}
               <span class="bad" title={e.error}>Has errors: {e.error}</span>
@@ -328,6 +333,12 @@
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  .model-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   td {
