@@ -4,7 +4,10 @@
 import { api, errorText } from "./api";
 import type { DeviceMap, Generator, Register, SimEvent } from "./types";
 
+/** Requests kept per list, reads and writes apiece. */
 const EVENT_LIMIT = 300;
+/** Function codes that change values (also when they fail). */
+const WRITES = new Set([5, 6, 15, 16, 22, 23]);
 
 class Simulator {
   /** Port it listens on while running; null when stopped. */
@@ -22,7 +25,10 @@ class Simulator {
   map = $state.raw<DeviceMap | null>(null);
   source = $state<string | null>(null);
   error = $state<string | null>(null);
-  events = $state.raw<SimEvent[]>([]);
+  /** Recent requests, oldest first: reads, and writes kept apart so a
+   * stream of reads does not push the writes out. */
+  reads = $state.raw<SimEvent[]>([]);
+  writes = $state.raw<SimEvent[]>([]);
   /** Bumped when a client writes, so the memory view reads again. */
   changes = $state(0);
   /** Values that change on their own while it runs; kept across stop and
@@ -118,7 +124,12 @@ class Simulator {
     this.flushQueued = true;
     requestAnimationFrame(() => {
       const wrote = this.pending.some((e) => e.wrote);
-      this.events = [...this.events, ...this.pending].slice(-EVENT_LIMIT);
+      const writes = this.pending.filter((e) => WRITES.has(e.function));
+      const reads = this.pending.filter((e) => !WRITES.has(e.function));
+      if (reads.length)
+        this.reads = [...this.reads, ...reads].slice(-EVENT_LIMIT);
+      if (writes.length)
+        this.writes = [...this.writes, ...writes].slice(-EVENT_LIMIT);
       this.pending = [];
       this.flushQueued = false;
       if (wrote) this.changes++;
@@ -126,7 +137,8 @@ class Simulator {
   }
 
   clearEvents() {
-    this.events = [];
+    this.reads = [];
+    this.writes = [];
   }
 }
 

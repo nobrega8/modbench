@@ -17,7 +17,7 @@
   import { settings } from "$lib/settings.svelte";
   import { sim } from "$lib/simulator.svelte";
   import { bench } from "$lib/state.svelte";
-  import type { SimView } from "$lib/types";
+  import type { SimEvent, SimView } from "$lib/types";
   import AddressFormat from "../AddressFormat.svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";
@@ -59,7 +59,9 @@
 
   const bits = $derived(area === "coil" || area === "discrete");
   const first = $derived(Math.min(start, 0x10000 - SHOWN));
-  const recent = $derived(sim.events.slice(-120).reverse());
+  const SHOWN_EVENTS = 120;
+  const reads = $derived(sim.reads.slice(-SHOWN_EVENTS).reverse());
+  const writes = $derived(sim.writes.slice(-SHOWN_EVENTS).reverse());
 
   // Read again when the page changes or a client wrote something.
   $effect(() => {
@@ -357,51 +359,70 @@
 
 <SimGenerators bind:this={generators} />
 
+{#snippet log(title: string, list: SimEvent[], total: number, empty: string)}
+  <div class="pane">
+    <h3>{title} <span class="dim">{total}</span></h3>
+    {#if list.length}
+      <div class="log">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Time</th><th>Client</th><th class="num">Unit</th><th
+                >Request</th
+              ><th>Address</th><th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each list as e, i (total - i)}
+              <tr>
+                <td class="mono dim">{clock(e.time_ms)}</td>
+                <td class="mono">{e.peer}</td>
+                <td class="num mono">{e.unit}</td>
+                <td>{functionName(e.function)}</td>
+                <td class="mono">{where(e)}</td>
+                <td
+                  class:bad={!!e.error}
+                  class:wrote={!e.error && e.wrote}
+                  class:ok={!e.error && !e.wrote}
+                  >{e.error ?? (e.wrote ? "written" : "OK")}</td
+                >
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {:else}
+      <p class="empty">{empty}</p>
+    {/if}
+  </div>
+{/snippet}
+
 <section class="activity">
   <div class="row">
     <h2 class="key">Activity</h2>
     <span class="spacer"></span>
     <button
       class="btn ghost"
-      disabled={!sim.events.length}
+      disabled={!sim.reads.length && !sim.writes.length}
       onclick={() => sim.clearEvents()}>Clear</button
     >
   </div>
-  {#if recent.length}
-    <div class="log">
-      <table class="data">
-        <thead>
-          <tr>
-            <th>Time</th><th>Client</th><th class="num">Unit</th><th>Request</th
-            ><th>Address</th><th>Result</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each recent as e, i (sim.events.length - i)}
-            <tr>
-              <td class="mono dim">{clock(e.time_ms)}</td>
-              <td class="mono">{e.peer}</td>
-              <td class="num mono">{e.unit}</td>
-              <td>{functionName(e.function)}</td>
-              <td class="mono">{where(e)}</td>
-              <td
-                class:bad={!!e.error}
-                class:wrote={!e.error && e.wrote}
-                class:ok={!e.error && !e.wrote}
-                >{e.error ?? (e.wrote ? "written" : "OK")}</td
-              >
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-  {:else}
-    <p class="empty">
-      {sim.running === null
+  <div class="panes">
+    {@render log(
+      "Reads",
+      reads,
+      sim.reads.length,
+      sim.running === null
         ? "Start the simulator, then connect to it from the Main page or another program."
-        : "Waiting for a client…"}
-    </p>
-  {/if}
+        : "Waiting for a client…",
+    )}
+    {@render log(
+      "Writes",
+      writes,
+      sim.writes.length,
+      "No client has written anything yet.",
+    )}
+  </div>
 </section>
 
 <style>
@@ -535,6 +556,33 @@
     position: sticky;
     top: 0;
     background: var(--card);
+  }
+
+  /* Reads and writes side by side; one above the other when narrow */
+  .panes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+    gap: 10px 24px;
+  }
+
+  .pane {
+    min-width: 0;
+  }
+
+  .pane h3 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .pane h3 .dim {
+    margin-left: 4px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .log td {
+    white-space: nowrap;
   }
 
   .activity h2 {
