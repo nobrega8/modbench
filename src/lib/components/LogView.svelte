@@ -1,7 +1,12 @@
 <script lang="ts">
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
-  import { FUNCTION_NAME, clock, formatAddress } from "#lib/format.ts";
+  import {
+    FUNCTION_NAME,
+    areaOfFunction,
+    clock,
+    formatAddress,
+  } from "#lib/format.ts";
   import AddressFormat from "./AddressFormat.svelte";
   import { logCsv } from "#lib/csv.ts";
   import { settings } from "#lib/settings.svelte.ts";
@@ -17,13 +22,17 @@
     errorsOnly ? bench.log.filter((t) => t.error !== null) : bench.log,
   );
 
-  function addr(n: number) {
-    return formatAddress(n, settings.addressFormat);
+  function addr(t: TrafficEntry) {
+    return formatAddress(
+      t.address,
+      settings.addressFormat,
+      areaOfFunction(t.function),
+    );
   }
 
   function line(t: TrafficEntry): string {
     const fc = String(t.function).padStart(2, "0");
-    return `${clock(t.time_ms)}\tFC${fc}\t${FUNCTION_NAME[t.function] ?? ""}\t${addr(t.address)}\t${t.count}\t${t.duration_ms.toFixed(1)} ms\t${t.error ?? "OK"}`;
+    return `${clock(t.time_ms)}\tFC${fc}\t${FUNCTION_NAME[t.function] ?? ""}\t${addr(t)}\t${t.count}\t${t.duration_ms.toFixed(1)} ms\t${t.error ?? "OK"}`;
   }
 
   $effect(() => {
@@ -93,7 +102,7 @@
             ><span class="mono">{String(t.function).padStart(2, "0")}</span>
             {FUNCTION_NAME[t.function] ?? ""}</td
           >
-          <td class="mono">{addr(t.address)}</td>
+          <td class="mono">{addr(t)}</td>
           <td class="mono">{t.count}</td>
           <td class="mono dim">{t.duration_ms.toFixed(1)} ms</td>
           <td class="res">{t.error ?? "OK"}</td>

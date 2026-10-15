@@ -58,7 +58,7 @@
   }
 
   function addr(n: number) {
-    return formatAddress(n, settings.addressFormat, true);
+    return formatAddress(n, settings.addressFormat, read?.area ?? null, true);
   }
 
   function word(w: number): string {

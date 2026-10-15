@@ -2,7 +2,8 @@
   import { FUNCTION_NAME } from "#lib/format.ts";
   import { fieldIn, slidePill } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
-  import type { ByteOrder } from "#lib/types.ts";
+  import type { Area, ByteOrder } from "#lib/types.ts";
+  import AddressInput from "./AddressInput.svelte";
   import IntInput from "./IntInput.svelte";
   import MapPicker from "./MapPicker.svelte";
   import ScanPanel from "./ScanPanel.svelte";
@@ -26,6 +27,32 @@
   function onFunction() {
     if (single) bench.setQuantity(1);
     else if (bench.quantity > maxQuantity) bench.setQuantity(maxQuantity);
+  }
+
+  const READ_FC: Record<Area, number> = {
+    coil: 1,
+    discrete: 2,
+    holding: 3,
+    input: 4,
+  };
+
+  /** Follows an address that names its area (400101, %MW100): the same
+   * kind of command in that area, or a read where it cannot be written. */
+  function setArea(area: Area) {
+    const write = [5, 6, 15, 16].includes(bench.fc);
+    const fc =
+      write && area === "coil"
+        ? single
+          ? 5
+          : 15
+        : write && area === "holding"
+          ? single
+            ? 6
+            : 16
+          : READ_FC[area];
+    if (fc === bench.fc) return;
+    bench.fc = fc;
+    onFunction();
   }
 </script>
 
@@ -98,13 +125,14 @@
             ? "Address"
             : "Register"}</span
         >
-        <IntInput
+        <AddressInput
           value={bench.address}
-          min={0}
-          max={65535}
           label="Start address"
           disabled={locked}
-          onchange={(n) => (bench.address = n)}
+          onchange={(n, area) => {
+            bench.address = n;
+            if (area) setArea(area);
+          }}
         />
       </label>
       <label in:fieldIn class="field">

@@ -33,25 +33,108 @@ export function hex(n: number, digits = 4): string {
 
 /**
  * How addresses are shown: as sent on the wire (0-based), as most manuals
- * number them (1-based), or in hexadecimal (wire address).
+ * number them (1-based), in hexadecimal (wire address), in Modicon notation
+ * (`400101`: the area's digit, then the 1-based address in five digits) or
+ * in IEC 61131-3 notation (`%MW100`: the area's prefix, then the 0-based
+ * address).
  */
-export type AddressFormat = "base0" | "base1" | "hex";
+export type AddressFormat = "base0" | "base1" | "hex" | "modicon" | "iec";
 
 export const ADDRESS_FORMATS: { id: AddressFormat; label: string }[] = [
   { id: "base0", label: "0-based" },
   { id: "base1", label: "1-based" },
   { id: "hex", label: "Hexadecimal" },
+  { id: "modicon", label: "Modicon (400001)" },
+  { id: "iec", label: "IEC 61131-3 (%MW0)" },
 ];
 
-/** A wire address for display. `pad` zero-pads decimal forms to 5 digits. */
+/** First digit of a Modicon address, by area. */
+const MODICON_DIGIT: Record<Area, string> = {
+  coil: "0",
+  discrete: "1",
+  input: "3",
+  holding: "4",
+};
+
+/** Prefix of an IEC 61131-3 address, by area. */
+const IEC_PREFIX: Record<Area, string> = {
+  coil: "%Q",
+  discrete: "%I",
+  input: "%IW",
+  holding: "%MW",
+};
+
+/** The area a function code reads or writes, or null for other functions. */
+export function areaOfFunction(fc: number): Area | null {
+  if (fc === 1 || fc === 5 || fc === 15) return "coil";
+  if (fc === 2) return "discrete";
+  if (fc === 4) return "input";
+  if (fc === 3 || fc === 6 || fc === 16) return "holding";
+  return null;
+}
+
+/**
+ * A wire address for display. Modicon and IEC need the area; without one
+ * they fall back to 1-based and 0-based. `pad` zero-pads decimal forms to 5
+ * digits.
+ */
 export function formatAddress(
   n: number,
   format: AddressFormat,
+  area: Area | null = null,
   pad = false,
 ): string {
   if (format === "hex") return `${hex(n)}h`;
-  const s = String(format === "base1" ? n + 1 : n);
+  if (format === "modicon" && area)
+    return MODICON_DIGIT[area] + String(n + 1).padStart(5, "0");
+  if (format === "iec" && area) return IEC_PREFIX[area] + n;
+  const s = String(format === "base1" || format === "modicon" ? n + 1 : n);
   return pad ? s.padStart(5, "0") : s;
+}
+
+/** A typed address: the wire address, and the area its notation names. */
+export interface ParsedAddress {
+  address: number;
+  /** Set by a Modicon or IEC address; null for a plain number. */
+  area: Area | null;
+}
+
+/**
+ * An address typed by a person. IEC 61131-3 addresses (`%MW100`, `%IW0`,
+ * `%I3`, `%Q16#1F`) and six-digit Modicon addresses above 65535 (`400101`)
+ * are read in any format, and name their area. With the Modicon format, five
+ * and six digits starting with 0, 1, 3 or 4 are Modicon too (`40101`).
+ * Anything else is a plain number (see `parseInteger`), returned as typed.
+ * Null when the text is not an address.
+ */
+export function parseAddress(
+  text: string,
+  format: AddressFormat,
+): ParsedAddress | null {
+  const t = text.trim();
+  const iec = /^%(IW|MW|I|Q)X?\s*(.+)$/i.exec(t);
+  if (iec) {
+    const digits = iec[2].trim();
+    const radix = /^16#([0-9a-f]+)$/i.exec(digits);
+    const n = radix ? parseInt(radix[1], 16) : parseInteger(digits);
+    if (n === null || n < 0 || n > 0xffff) return null;
+    const area = (Object.keys(IEC_PREFIX) as Area[]).find(
+      (a) => IEC_PREFIX[a] === `%${iec[1].toUpperCase()}`,
+    )!;
+    return { address: n, area };
+  }
+  const modicon =
+    /^\d{5,6}$/.test(t) &&
+    (format === "modicon" || (t.length === 6 && Number(t) > 0xffff));
+  if (modicon) {
+    const area = (Object.keys(MODICON_DIGIT) as Area[]).find(
+      (a) => MODICON_DIGIT[a] === t[0],
+    );
+    const n = Number(t.slice(1));
+    if (area && n >= 1 && n <= 0x10000) return { address: n - 1, area };
+  }
+  const n = parseInteger(t);
+  return n === null ? null : { address: n, area: null };
 }
 
 /**

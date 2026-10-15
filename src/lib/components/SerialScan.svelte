@@ -2,6 +2,7 @@
   import Select from "./Select.svelte";
   import { bench } from "#lib/state.svelte.ts";
   import type { Area, Parity, SerialHit } from "#lib/types.ts";
+  import AddressInput from "./AddressInput.svelte";
   import IntInput from "./IntInput.svelte";
 
   // Most common first: they are tried in this order.
@@ -159,14 +160,16 @@
   </label>
   <label class="field">
     <span>Address</span>
-    <IntInput
+    <AddressInput
       value={address}
-      min={0}
-      max={65535}
+      areas={["holding", "input"]}
       width="88px"
       label="Register address"
       disabled={busy}
-      onchange={(n) => (address = n)}
+      onchange={(n, a) => {
+        address = n;
+        if (a) area = a;
+      }}
     />
   </label>
   <label class="field" title="How long to wait for each answer">

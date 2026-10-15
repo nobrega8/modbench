@@ -182,7 +182,7 @@
         >
           <td class="tag mono">{AREA_TAG[r.area]}</td>
           <td class="mono"
-            >{formatAddress(r.address, settings.addressFormat)}</td
+            >{formatAddress(r.address, settings.addressFormat, r.area)}</td
           >
           <td>
             <span class="name">{r.name}</span>

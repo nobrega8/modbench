@@ -42,7 +42,7 @@
     <dd>
       {AREA_NAME[r.area]}
       <span class="mono"
-        >{formatAddress(r.address, settings.addressFormat)}</span
+        >{formatAddress(r.address, settings.addressFormat, r.area)}</span
       >
     </dd>
     <dt>Type</dt>

@@ -8,7 +8,7 @@
     customRegister,
     type CustomFields,
   } from "#lib/custom-registers.ts";
-  import { parseInteger } from "#lib/format.ts";
+  import { parseAddress } from "#lib/format.ts";
   import { fieldIn } from "#lib/motion.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import { bench, type OpenMap } from "#lib/state.svelte.ts";
@@ -49,11 +49,17 @@
   const bits = $derived(area === "coil" || area === "discrete");
   const writable = $derived(area === "holding" || area === "coil");
 
-  /** The address as typed, in the format the table shows, on the wire. */
+  /** The address as typed, in the format the table shows, on the wire. A
+   * Modicon or IEC address also picks the area. */
   function wire(text: string): number {
-    const n = parseInteger(text);
-    if (n === null) return NaN;
-    return settings.addressFormat === "base1" ? n - 1 : n;
+    const p = parseAddress(text, settings.addressFormat);
+    if (p === null) return NaN;
+    if (p.area) {
+      area = p.area;
+      return p.address;
+    }
+    const base1 = ["base1", "modicon"].includes(settings.addressFormat);
+    return base1 ? p.address - 1 : p.address;
   }
 
   function add(e: SubmitEvent) {
@@ -115,7 +121,13 @@
         class="input num"
         bind:value={address}
         spellcheck="false"
-        placeholder={settings.addressFormat === "hex" ? "0x0400" : "1024"}
+        placeholder={{
+          base0: "1024",
+          base1: "1025",
+          hex: "0x0400",
+          modicon: "401025",
+          iec: "%MW1024",
+        }[settings.addressFormat]}
         style:width="100px"
       />
     </label>
