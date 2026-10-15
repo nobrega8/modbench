@@ -2,6 +2,9 @@ name: Release
 
 # Push a tag like v0.2.0 to build signed installers for Windows, Linux and
 # macOS and publish them, with the updater's latest.json, as a GitHub release.
+# Each 0.X line has a name from .github/release-names.json (pioneers of
+# electricity, in alphabetical order), which its fixes (0.X.1, ...) keep.
+# The notes list the pull requests merged since the previous tag.
 # The macOS app is one universal build (Apple Silicon and Intel), signed
 # ad hoc: it has no Apple Developer ID, so Gatekeeper asks once on first open.
 on:
@@ -12,7 +15,43 @@ permissions:
   contents: write
 
 jobs:
+  notes:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.notes.outputs.name }}
+      body: ${{ steps.notes.outputs.body }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Name and notes
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOWNLOAD: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux, `.dmg` for macOS (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
+        run: |
+          tag="$GITHUB_REF_NAME"
+          line=$(echo "${tag#v}" | cut -d. -f1,2)
+          codename=$(jq -r --arg l "$line" '.[$l] // empty' .github/release-names.json)
+          name="Modbench $tag${codename:+ — $codename}"
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "$tag^" 2>/dev/null || true)
+          args=(-f tag_name="$tag")
+          [ -n "$prev" ] && args+=(-f previous_tag_name="$prev")
+          changes=$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" "${args[@]}" --jq .body)
+          echo "$name"
+          echo "$changes"
+          {
+            echo "name=$name"
+            echo "body<<NOTES_END"
+            echo "$changes"
+            echo
+            echo "$DOWNLOAD"
+            echo "NOTES_END"
+          } >> "$GITHUB_OUTPUT"
+
   build:
+    needs: notes
     strategy:
       fail-fast: false
       matrix:
@@ -77,8 +116,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: Modbench ${{ github.ref_name }}
-          releaseBody: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux, `.dmg` for macOS (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
+          releaseName: ${{ needs.notes.outputs.name }}
+          releaseBody: ${{ needs.notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
