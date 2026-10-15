@@ -27,15 +27,18 @@ jobs:
       - name: Diagnose the macOS icon (temporary)
         if: runner.os == 'macOS'
         run: |
+          set +e
           xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
           if [ -n "$xcode" ]; then sudo xcode-select -s "$xcode"; fi
           xcrun actool --version --output-format human-readable-text
-          for target in 10.15 26.0; do
-            echo "=== minimum deployment target $target"
-            rm -rf out && mkdir out
-            xcrun actool src-tauri/icons/Modbench.icon --compile out               --output-format human-readable-text --notices --warnings --errors               --output-partial-info-plist out/partial.plist --app-icon Modbench               --include-all-app-icons --enable-on-demand-resources NO               --development-region en --target-device mac               --minimum-deployment-target "$target" --platform macosx || echo "actool exit $?"
-            ls -la out
-          done
+          # Exactly as tauri-bundler 2 runs it (bundle/macos/icon.rs)
+          t=$(mktemp -d); cp -R src-tauri/icons/Modbench.icon "$t/Icon.icon"; mkdir "$t/out"
+          actool "$t/Icon.icon" --compile "$t/out" --output-format human-readable-text             --notices --warnings --output-partial-info-plist "$t/out/assetcatalog_generated_info.plist"             --app-icon Icon --include-all-app-icons --accent-color AccentColor             --enable-on-demand-resources NO --development-region en --target-device mac             --minimum-deployment-target 26.0 --platform macosx; echo "actool exit $?"
+          ls -la "$t/out"
+          echo "=== without --accent-color"
+          rm -rf "$t/out"; mkdir "$t/out"
+          actool "$t/Icon.icon" --compile "$t/out" --output-format human-readable-text             --notices --warnings --output-partial-info-plist "$t/out/assetcatalog_generated_info.plist"             --app-icon Icon --include-all-app-icons             --enable-on-demand-resources NO --development-region en --target-device mac             --minimum-deployment-target 26.0 --platform macosx; echo "actool exit $?"
+          which -a actool; ls -la "$t/out"
 
       - name: Linux system deps
         if: runner.os == 'Linux'
