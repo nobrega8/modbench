@@ -223,7 +223,9 @@
 
 <div class="toolbar">
   <div class="title">
-    <strong>{meta.vendor} {meta.model}</strong>
+    <strong title="{meta.vendor} {meta.model}"
+      >{meta.vendor} {meta.model}</strong
+    >
     {#if meta.revision}<span
         class="rev"
         title="Revision {meta.revision} of this map{meta.revised
@@ -614,9 +616,13 @@
   }
 
   /* Title and description share the toolbar row; the description gives way */
+  /* Room for the name first; when the window is narrow the title takes a
+     line of its own (the toolbar wraps) instead of running under the
+     buttons. */
   .title {
-    flex: 1;
+    flex: 1 1 280px;
     min-width: 0;
+    overflow: hidden;
     display: flex;
     align-items: baseline;
     gap: 10px;
@@ -624,7 +630,10 @@
   }
 
   .title strong {
-    flex: none;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .title .desc {
