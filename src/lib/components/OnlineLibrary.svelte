@@ -1,7 +1,10 @@
 <script lang="ts">
   import { api, errorText } from "$lib/api";
+  import { slideIn, smoothResize } from "$lib/motion";
   import { bench } from "$lib/state.svelte";
   import type { OnlineEntry } from "$lib/types";
+  import { fade } from "svelte/transition";
+  import Icon from "./Icon.svelte";
   import MapStatus from "./MapStatus.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
@@ -14,6 +17,7 @@
   let { open = $bindable(), onadded }: Props = $props();
 
   let dialog: HTMLDialogElement | undefined = $state();
+  let searchBox: HTMLInputElement | undefined = $state();
   let entries = $state.raw<OnlineEntry[] | null>(null);
   let loadError = $state<string | null>(null);
   let loading = $state(false);
@@ -32,6 +36,7 @@
   });
 
   async function load() {
+    dir = 0;
     loading = true;
     loadError = null;
     try {
@@ -52,6 +57,13 @@
 
   /** The vendor whose maps are shown, or null for the list of vendors. */
   let vendor = $state<string | null>(null);
+  /** Where the next view slides in from: 1 going into a vendor, -1 back. */
+  let dir = $state(0);
+
+  /** What the list shows; a change swaps the whole view. */
+  const view = $derived(
+    loading ? "loading" : loadError ? "error" : `vendor:${vendor ?? ""}`,
+  );
 
   const vendorKey = (name: string) => name.trim().toLowerCase();
   const query = $derived(search.trim().toLowerCase());
@@ -109,13 +121,24 @@
   );
 
   function openVendor(name: string) {
+    dir = 1;
     vendor = vendorKey(name);
     search = "";
+    searchBox?.focus();
   }
 
   function back() {
+    dir = -1;
     vendor = null;
     search = "";
+    searchBox?.focus();
+  }
+
+  /** Esc inside a vendor goes back to the vendors; on them it closes. */
+  function oncancel(e: Event) {
+    if (vendor === null) return;
+    e.preventDefault();
+    back();
   }
 
   async function add(entry: OnlineEntry) {
@@ -145,27 +168,42 @@
 
 <dialog
   bind:this={dialog}
+  use:smoothResize
   onclose={() => (open = false)}
+  {oncancel}
   aria-labelledby="online-title"
 >
-  <header>
-    <div>
-      <h2 id="online-title">Online library</h2>
-      <p>
-        {#if vendor !== null}
-          <button class="crumb" onclick={back}>All vendors</button>
-          <span aria-hidden="true">/</span>
-          {vendorName}
-        {:else}
-          Maps shared in the
-          <span class="mono">nobrega8/mbmap-library</span> repository on GitHub.
-        {/if}
-      </p>
+  <header data-size>
+    {#if vendor !== null}
+      <button
+        class="btn back"
+        onclick={back}
+        title="Back to all vendors (Esc)"
+        in:fade={{ duration: 160 }}
+        ><Icon name="back" size={16} />Vendors</button
+      >
+    {/if}
+    <div class="heading">
+      {#key vendor}
+        <div in:slideIn={{ dir }}>
+          {#if vendor !== null}
+            <h2 id="online-title">{vendorName}</h2>
+            <p>Online library</p>
+          {:else}
+            <h2 id="online-title">Online library</h2>
+            <p>
+              Maps shared in the
+              <span class="mono">nobrega8/mbmap-library</span> repository on GitHub.
+            </p>
+          {/if}
+        </div>
+      {/key}
     </div>
     <input
       class="input search"
       type="search"
       placeholder={vendor === null ? "Search vendor or model" : "Search models"}
+      bind:this={searchBox}
       bind:value={search}
       aria-label={vendor === null
         ? "Search vendors"
@@ -174,72 +212,91 @@
   </header>
 
   <div class="list">
-    {#if loading}
-      <p class="note">Loading the online library…</p>
-    {:else if loadError}
-      <div class="note">
-        <p class="bad">{loadError}</p>
-        <button class="btn" onclick={load}>Try again</button>
-      </div>
-    {:else if vendor === null}
-      {#each vendors as g (g.name.toLowerCase())}
-        <button class="row vendor-row" onclick={() => openVendor(g.name)}>
-          <VendorIcon vendor={g.name} website={g.website} size={28} />
-          <div class="text">
-            <span class="model">{g.name}</span>
-          </div>
-          <span class="count"
-            >{g.shown} map{g.shown === 1 ? "" : "s"}{query &&
-            g.shown !== g.total
-              ? ` of ${g.total}`
-              : ""}</span
-          >
-          <span class="chev" aria-hidden="true">›</span>
-        </button>
-      {:else}
-        <p class="note">
-          {entries?.length ? `Nothing matches “${search}”.` : "No maps yet."}
-        </p>
-      {/each}
-    {:else}
-      {#each shown as e (e.path)}
-        {@const inLibrary = local.has(key(e.vendor, e.model))}
-        {@const busy = pending.has(e.path)}
-        <div class="row">
-          <VendorIcon vendor={e.vendor} website={e.vendor_website} size={28} />
-          <div class="text">
-            <div class="title">
-              <span class="model">{e.model}</span>
+    <div data-size>
+      {#key view}
+        <div in:slideIn={{ dir }}>
+          {#if loading}
+            <p class="note">Loading the online library…</p>
+          {:else if loadError}
+            <div class="note">
+              <p class="bad">{loadError}</p>
+              <button class="btn" onclick={load}>Try again</button>
             </div>
-            {#if rowError[e.path]}
-              <div class="desc bad">{rowError[e.path]}</div>
-            {:else if e.description}
-              <div class="desc" title={e.description}>{e.description}</div>
-            {/if}
-          </div>
-          <MapStatus status={e.status} />
-          <span class="count">{e.registers} registers</span>
-          {#if inLibrary}
-            <button
-              class="btn ghost small"
-              disabled={busy}
-              title="Download it again and replace the copy in your library"
-              onclick={() => add(e)}>{busy ? "Downloading…" : "Replace"}</button
-            >
+          {:else if vendor === null}
+            {#each vendors as g (g.name.toLowerCase())}
+              <button
+                class="row vendor-row"
+                onclick={() => openVendor(g.name)}
+                in:fade={{ duration: 140 }}
+              >
+                <VendorIcon vendor={g.name} website={g.website} size={28} />
+                <div class="text">
+                  <span class="model">{g.name}</span>
+                </div>
+                <span class="count"
+                  >{g.shown} map{g.shown === 1 ? "" : "s"}{query &&
+                  g.shown !== g.total
+                    ? ` of ${g.total}`
+                    : ""}</span
+                >
+                <span class="chev" aria-hidden="true">›</span>
+              </button>
+            {:else}
+              <p class="note">
+                {entries?.length
+                  ? `Nothing matches “${search}”.`
+                  : "No maps yet."}
+              </p>
+            {/each}
           {:else}
-            <button
-              class="btn accent small"
-              disabled={busy}
-              onclick={() => add(e)}>{busy ? "Adding…" : "Add"}</button
-            >
+            {#each shown as e (e.path)}
+              {@const inLibrary = local.has(key(e.vendor, e.model))}
+              {@const busy = pending.has(e.path)}
+              <div class="row" in:fade={{ duration: 140 }}>
+                <VendorIcon
+                  vendor={e.vendor}
+                  website={e.vendor_website}
+                  size={28}
+                />
+                <div class="text">
+                  <div class="title">
+                    <span class="model">{e.model}</span>
+                  </div>
+                  {#if rowError[e.path]}
+                    <div class="desc bad">{rowError[e.path]}</div>
+                  {:else if e.description}
+                    <div class="desc" title={e.description}>
+                      {e.description}
+                    </div>
+                  {/if}
+                </div>
+                <MapStatus status={e.status} />
+                <span class="count">{e.registers} registers</span>
+                {#if inLibrary}
+                  <button
+                    class="btn ghost small"
+                    disabled={busy}
+                    title="Download it again and replace the copy in your library"
+                    onclick={() => add(e)}
+                    >{busy ? "Downloading…" : "Replace"}</button
+                  >
+                {:else}
+                  <button
+                    class="btn accent small"
+                    disabled={busy}
+                    onclick={() => add(e)}>{busy ? "Adding…" : "Add"}</button
+                  >
+                {/if}
+              </div>
+            {:else}
+              <p class="note">
+                No maps match “{search}”.
+              </p>
+            {/each}
           {/if}
         </div>
-      {:else}
-        <p class="note">
-          No maps match “{search}”.
-        </p>
-      {/each}
-    {/if}
+      {/key}
+    </div>
   </div>
 
   <footer>
@@ -284,9 +341,20 @@
   header {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     padding: 20px 22px 12px;
+  }
+
+  .heading {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .back {
+    flex: none;
+    gap: 4px;
+    padding: 0 12px 0 6px;
+    margin-top: 3px;
   }
 
   h2 {
@@ -311,6 +379,8 @@
     flex: 1;
     min-height: 120px;
     overflow: auto;
+    /* views slide in sideways; no horizontal scrollbar while they do */
+    overflow-x: clip;
     padding: 0 12px;
   }
 
@@ -337,19 +407,6 @@
   .chev {
     color: var(--text-3);
     font-size: 18px;
-  }
-
-  .crumb {
-    border: 0;
-    padding: 0;
-    background: none;
-    color: var(--accent);
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .crumb:hover {
-    text-decoration: underline;
   }
 
   .row + .row {

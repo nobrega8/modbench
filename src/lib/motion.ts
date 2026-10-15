@@ -1,6 +1,6 @@
 // Small motion helpers: a pill that slides under the selected option of a
-// segmented control, a container that eases to its new height, and the
-// fade-in used when fields are swapped. All of them respect the system's
+// segmented control, containers that ease to their new height, and the
+// fade-ins used when fields or views are swapped. All of them respect the system's
 // reduced-motion setting.
 
 import { cubicOut } from "svelte/easing";
@@ -101,6 +101,64 @@ export function smoothHeight(node: HTMLElement, enabled = true) {
       sizes.disconnect();
       node.removeEventListener("transitionend", done);
     },
+  };
+}
+
+/**
+ * Eases a box whose height follows its content (a dialog) to its new height,
+ * instead of jumping, when the size of any of its `[data-size]` descendants
+ * changes. Those must be sized by their content, not by the box.
+ */
+export function smoothResize(node: HTMLElement) {
+  let last = 0;
+  let anim: Animation | null = null;
+
+  const measure = () => {
+    // Read the height on screen first: an animation may be halfway.
+    const from = anim ? node.getBoundingClientRect().height : last;
+    anim?.cancel();
+    anim = null;
+    const to = node.getBoundingClientRect().height;
+    last = to;
+    // Hidden (a closed dialog) or just shown: nothing to ease from.
+    if (!from || !to || reduced() || Math.abs(to - from) < 2) return;
+    anim = node.animate([{ height: `${from}px` }, { height: `${to}px` }], {
+      duration: 260,
+      easing: "cubic-bezier(0.32, 0.72, 0, 1)",
+    });
+    anim.onfinish = () => (anim = null);
+  };
+
+  const sizes = new ResizeObserver(measure);
+  for (const el of node.querySelectorAll("[data-size]")) sizes.observe(el);
+  // A window resize changes the box without easing; only remember it.
+  const remember = () => {
+    if (!anim) last = node.getBoundingClientRect().height;
+  };
+  window.addEventListener("resize", remember);
+
+  return {
+    destroy() {
+      sizes.disconnect();
+      anim?.cancel();
+      window.removeEventListener("resize", remember);
+    },
+  };
+}
+
+/**
+ * A view that replaces another inside a panel: a fade with a short slide,
+ * from the right going forward (`dir` 1), from the left going back (-1).
+ */
+export function slideIn(
+  _node: Element,
+  { dir = 0 }: { dir?: number } = {},
+): TransitionConfig {
+  if (reduced()) return { duration: 0 };
+  return {
+    duration: 220,
+    easing: cubicOut,
+    css: (t) => `opacity: ${t}; transform: translateX(${(1 - t) * 16 * dir}px)`,
   };
 }
 
