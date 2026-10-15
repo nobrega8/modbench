@@ -1,0 +1,51 @@
+name: Dependencies
+
+# GitHub's dependency graph reads package manifests, not git submodules.
+# This submits each submodule (at the commit this repository pins) so it is
+# listed as a dependency.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  submodules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Submit submodules to the dependency graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          resolved='{}'
+          while read -r key path; do
+            name="${key#submodule.}"
+            name="${name%.path}"
+            url=$(git config -f .gitmodules --get "submodule.$name.url")
+            sha=$(git ls-tree HEAD "$path" | awk '{print $3}')
+            repo=$(echo "$url" | sed -E 's#^(https://|git@)github\.com[:/]##; s#\.git$##')
+            [ -n "$sha" ] || continue
+            resolved=$(jq --arg n "${repo#*/}" --arg p "pkg:github/$repo@$sha" \
+              '. + {($n): {package_url: $p, relationship: "direct", scope: "runtime"}}' <<<"$resolved")
+          done < <(git config -f .gitmodules --get-regexp '\.path$')
+          jq -n \
+            --arg sha "$GITHUB_SHA" --arg ref "$GITHUB_REF" \
+            --arg run "$GITHUB_RUN_ID" --arg time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --argjson resolved "$resolved" '{
+              version: 0, sha: $sha, ref: $ref, scanned: $time,
+              job: {correlator: "submodules", id: $run},
+              detector: {name: "git-submodules", version: "1.0.0", url: $url},
+              manifests: {".gitmodules": {
+                name: ".gitmodules",
+                file: {source_location: ".gitmodules"},
+                resolved: $resolved
+              }}
+            }' > snapshot.json
+          cat snapshot.json
+          gh api "repos/$GITHUB_REPOSITORY/dependency-graph/snapshots" --input snapshot.json
