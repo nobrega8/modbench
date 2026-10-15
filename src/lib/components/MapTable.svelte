@@ -28,6 +28,10 @@
   let group = $state("");
   let editing = $state<number | null>(null);
   let draft = $state("");
+  /** A value of one's own is typed instead of picking a label. */
+  let custom = $state(false);
+  /** Picked in a labelled list to type a value instead. */
+  const CUSTOM = "__custom__";
   let note = $state<{ index: number; ok: boolean; text: string } | null>(null);
   let busy = $state(false);
   let converting = $state(false);
@@ -184,6 +188,7 @@
 
   function edit(index: number) {
     editing = index;
+    custom = false;
     note = null;
     const reg = open.map.registers[index];
     const v = bench.mapResults.get(index)?.value;
@@ -517,14 +522,23 @@
                       >{label}</button
                     >
                   {/each}
-                {:else if reg.enum.length}
+                {:else if reg.enum.length && !custom}
                   <Select
                     bind:value={draft}
                     label="Value for {reg.name}"
-                    options={reg.enum.map(([v, l]) => ({
-                      value: l,
-                      label: `${l} (${v})`,
-                    }))}
+                    placeholder="Choose…"
+                    options={[
+                      ...reg.enum.map(([v, l]) => ({
+                        value: l,
+                        label: `${l} (${v})`,
+                      })),
+                      { value: CUSTOM, label: "Custom value…" },
+                    ]}
+                    onchange={(v) => {
+                      if (v !== CUSTOM) return;
+                      custom = true;
+                      draft = "";
+                    }}
                   />
                   <button class="btn accent" disabled={busy}>Write</button>
                 {:else}
@@ -538,6 +552,17 @@
                   />
                   {#if reg.unit}<span class="dim">{reg.unit}</span>{/if}
                   <button class="btn accent" disabled={busy}>Write</button>
+                  {#if reg.enum.length}
+                    <button
+                      type="button"
+                      class="btn ghost"
+                      title="Pick one of the map's values again"
+                      onclick={() => {
+                        custom = false;
+                        draft = "";
+                      }}>Options</button
+                    >
+                  {/if}
                 {/if}
                 <button
                   type="button"
