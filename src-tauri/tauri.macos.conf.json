@@ -22,15 +22,17 @@
     "targets": ["app", "dmg"],
     "macOS": {
       "minimumSystemVersion": "10.15",
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "files": {
+        "Resources/Assets.car": "target/macos-icon/Assets.car"
+      }
     },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
-      "icons/icon.ico",
-      "icons/Modbench.icon"
+      "icons/icon.ico"
     ]
   }
 }
