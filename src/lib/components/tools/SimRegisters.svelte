@@ -40,7 +40,7 @@
   $effect(() => {
     void sim.changes;
     api
-      .simValues()
+      .simValues(sim.selected)
       .then((v) => (values = v))
       .catch(() => (values = []));
   });
@@ -72,7 +72,7 @@
   async function set(r: Register, value: number) {
     problem = null;
     try {
-      await api.simSetValue(r.name, value);
+      await api.simSetValue(sim.selected, r.name, value);
       sim.changes++;
     } catch (e) {
       problem = errorText(e);

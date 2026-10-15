@@ -122,13 +122,36 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
-    /// Run a simulated Modbus TCP device, optionally shaped after a map
+    /// Run a simulated Modbus device (TCP, RTU over TCP, or RTU or ASCII on
+    /// a serial port), optionally shaped after a map
     Simulate {
         /// Map whose reference values and identity the device takes
         map: Option<String>,
         /// TCP port to listen on
         #[arg(long, default_value_t = 5020)]
         port: u16,
+        /// Serve RTU frames over TCP (like a serial gateway) instead of
+        /// Modbus TCP
+        #[arg(long, conflicts_with_all = ["rtu", "ascii"])]
+        rtu_over_tcp: bool,
+        /// Serve Modbus RTU on this serial port instead of TCP
+        #[arg(long, conflicts_with = "ascii")]
+        rtu: Option<String>,
+        /// Serve Modbus ASCII on this serial port instead of TCP
+        #[arg(long)]
+        ascii: Option<String>,
+        /// Serial baud rate (default 9600, or the map's)
+        #[arg(long)]
+        baud: Option<u32>,
+        /// Serial parity: N, E or O (default N, or the map's)
+        #[arg(long)]
+        parity: Option<String>,
+        /// Serial data bits (default 8, or the map's)
+        #[arg(long)]
+        data_bits: Option<u8>,
+        /// Serial stop bits (default 1, or the map's)
+        #[arg(long)]
+        stop_bits: Option<u8>,
         /// Answer only addresses the map defines (others get exception 2)
         #[arg(long)]
         strict: bool,
@@ -777,10 +800,9 @@ fn id_text(where_: &str, id: &modbus::DeviceIdentity) -> String {
 
 async fn simulate(
     map: Option<String>,
-    port: u16,
+    listen: Transport,
     strict: bool,
     unit: Option<u8>,
-    public: bool,
     generators: Option<String>,
 ) -> Result<(), String> {
     use modbench_lib::generators::{self, Generator};
@@ -813,7 +835,6 @@ async fn simulate(
         None => None,
     };
     let count = generators.as_ref().map_or(0, Vec::len);
-    let ip = if public { [0, 0, 0, 0] } else { [127, 0, 0, 1] };
     let logger: SimLogger = std::sync::Arc::new(|e| {
         let what = match (e.address, e.count) {
             (Some(a), Some(n)) => format!(" {a} x{n}"),
@@ -825,15 +846,12 @@ async fn simulate(
             e.peer, e.unit, e.function
         );
     });
-    let running = simulator::start(
-        (ip, port).into(),
-        std::sync::Arc::new(std::sync::Mutex::new(memory)),
-        unit,
-        Some(logger),
-        generators.map(|g| std::sync::Arc::new(std::sync::Mutex::new(g))),
-    )
-    .await
-    .map_err(|e| format!("port {port}: {e}"))?;
+    let device = simulator::Device::new(unit, memory);
+    *device.generators.lock().unwrap() = generators.unwrap_or_default();
+    let devices = std::sync::Arc::new(std::sync::Mutex::new(vec![device]));
+    let running = simulator::start(listen.clone(), devices, Some(logger))
+        .await
+        .map_err(|e| format!("{}: {e}", where_listening(&listen)))?;
     let changing = match count {
         0 => String::new(),
         1 => ", 1 generator".into(),
@@ -842,12 +860,22 @@ async fn simulate(
     println!(
         "Simulating {} on {}{changing} (Ctrl+C to stop)",
         map.as_deref().unwrap_or("an empty device"),
-        running.addr
+        where_listening(&running.listen)
     );
     // Runs until the process is stopped (Ctrl+C ends it).
     std::future::pending::<()>().await;
     running.stop();
     Ok(())
+}
+
+/// Where a simulator listens, for messages.
+fn where_listening(listen: &Transport) -> String {
+    match listen {
+        Transport::Tcp { host, port } => format!("{host}:{port} (Modbus TCP)"),
+        Transport::RtuOverTcp { host, port } => format!("{host}:{port} (RTU over TCP)"),
+        Transport::Rtu { port, .. } => format!("{port} (RTU)"),
+        Transport::Ascii { port, .. } => format!("{port} (ASCII)"),
+    }
 }
 
 async fn scan(cfg: &ConnectionConfig, from: u8, to: u8) -> Result<Vec<modbus::ScanHit>, String> {
@@ -1024,11 +1052,39 @@ async fn run(cli: Cli) -> Result<(), String> {
         Command::Simulate {
             map,
             port,
+            rtu_over_tcp,
+            rtu,
+            ascii,
+            baud,
+            parity,
+            data_bits,
+            stop_bits,
             strict,
             unit,
             public,
             generators,
-        } => simulate(map, port, strict, unit, public, generators).await?,
+        } => {
+            let host = if public { "0.0.0.0" } else { "127.0.0.1" }.to_string();
+            // The serial settings are read like a client's (see `Conn`).
+            let serial = Conn {
+                rtu,
+                ascii,
+                baud,
+                parity,
+                data_bits,
+                stop_bits,
+                ..Conn::default()
+            };
+            let listen = if serial.rtu.is_some() || serial.ascii.is_some() {
+                let map = map.as_deref().map(load_map).transpose()?;
+                serial.config(map.as_ref())?.transport
+            } else if rtu_over_tcp {
+                Transport::RtuOverTcp { host, port }
+            } else {
+                Transport::Tcp { host, port }
+            };
+            simulate(map, listen, strict, unit, generators).await?
+        }
         Command::Mcp => serve_mcp().await,
     }
     Ok(())

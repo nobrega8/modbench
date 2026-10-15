@@ -271,16 +271,22 @@ export interface SimView {
   defined: boolean[];
 }
 
-/** The simulator as the backend has it (see `sim_info`). */
-export interface SimInfo {
-  port: number | null;
-  public: boolean;
+/** One simulated device (see `sim_info`). */
+export interface SimDevice {
+  /** The unit ID it answers; null answers every one no other device has. */
   unit: number | null;
   map: DeviceMap | null;
   source: string | null;
   strict: boolean;
   generators: Generator[];
   problems: (string | null)[];
+}
+
+/** The simulator as the backend has it (see `sim_info`). */
+export interface SimInfo {
+  /** Where it listens while running; null when stopped. */
+  listen: Transport | null;
+  devices: SimDevice[];
   window_open: boolean;
 }
 

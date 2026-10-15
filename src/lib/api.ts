@@ -23,6 +23,7 @@ import type {
   SerialScan,
   SimInfo,
   SimView,
+  Transport,
   TypedAddress,
   Value,
 } from "./types";
@@ -99,30 +100,43 @@ export const api = {
     invoke<DeviceIdentity>("read_device_id", { level }),
   scanAddresses: (scan: AddressScan) =>
     invoke<AddressRange[]>("scan_addresses", { scan }),
-  /** Starts the simulated device; returns the port it listens on. */
-  simStart: (port: number, isPublic: boolean, unit: number | null) =>
-    invoke<number>("sim_start", { port, public: isPublic, unit }),
+  /** Starts the simulator; returns where it listens (with the port it
+   * picked when asked for port 0). */
+  simStart: (listen: Transport) => invoke<Transport>("sim_start", { listen }),
   simStop: () => invoke<void>("sim_stop"),
-  simStatus: () => invoke<number | null>("sim_status"),
-  /** Shapes the simulator after a map; `source` is the file it came from. */
-  simLoad: (map: DeviceMap | null, strict: boolean, source: string | null) =>
-    invoke<void>("sim_load", { map, strict, source }),
+  /** Adds a device with empty memory; returns its index. */
+  simAddDevice: (unit: number | null) =>
+    invoke<number>("sim_add_device", { unit }),
+  simRemoveDevice: (device: number) =>
+    invoke<void>("sim_remove_device", { device }),
+  /** The unit ID a device answers; null answers every other one. */
+  simSetUnit: (device: number, unit: number | null) =>
+    invoke<void>("sim_set_unit", { device, unit }),
+  /** Shapes a device after a map; `source` is the file it came from. */
+  simLoad: (
+    device: number,
+    map: DeviceMap | null,
+    strict: boolean,
+    source: string | null,
+  ) => invoke<void>("sim_load", { device, map, strict, source }),
   /** The simulator as the backend has it, for any window. */
   simInfo: () => invoke<SimInfo>("sim_info"),
   /** Shows the simulator in a window of its own, or brings it to the front. */
   simOpenWindow: () => invoke<void>("sim_open_window"),
   simCloseWindow: () => invoke<void>("sim_close_window"),
-  simRead: (area: Area, address: number, count: number) =>
-    invoke<SimView>("sim_read", { area, address, count }),
-  simWrite: (area: Area, address: number, data: RawData) =>
-    invoke<void>("sim_write", { area, address, data }),
-  /** Every register of the simulator's map, in engineering units. */
-  simValues: () => invoke<(Value | null)[]>("sim_values"),
-  simSetValue: (register: string, value: number) =>
-    invoke<void>("sim_set_value", { register, value }),
-  /** Replaces the generators; returns why each one cannot run, or null. */
-  simSetGenerators: (list: Generator[]) =>
-    invoke<(string | null)[]>("sim_set_generators", { list }),
+  simRead: (device: number, area: Area, address: number, count: number) =>
+    invoke<SimView>("sim_read", { device, area, address, count }),
+  simWrite: (device: number, area: Area, address: number, data: RawData) =>
+    invoke<void>("sim_write", { device, area, address, data }),
+  /** Every register of a device's map, in engineering units. */
+  simValues: (device: number) =>
+    invoke<(Value | null)[]>("sim_values", { device }),
+  simSetValue: (device: number, register: string, value: number) =>
+    invoke<void>("sim_set_value", { device, register, value }),
+  /** Replaces a device's generators; returns why each one cannot run, or
+   * null. */
+  simSetGenerators: (device: number, list: Generator[]) =>
+    invoke<(string | null)[]>("sim_set_generators", { device, list }),
 };
 
 /** Error text from a rejected command (commands reject with a string). */

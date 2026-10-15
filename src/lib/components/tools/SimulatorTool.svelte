@@ -15,7 +15,13 @@
   import { span } from "#lib/generators.ts";
   import { slidePill } from "#lib/motion.ts";
   import { settings } from "#lib/settings.svelte.ts";
-  import { IN_SIM_WINDOW, sim } from "#lib/simulator.svelte.ts";
+  import {
+    IN_SIM_WINDOW,
+    deviceName,
+    sim,
+    whereText,
+    type SimKind,
+  } from "#lib/simulator.svelte.ts";
   import Icon from "../Icon.svelte";
   import { bench } from "#lib/state.svelte.ts";
   import { MAP_EXTENSIONS, type SimEvent, type SimView } from "#lib/types.ts";
@@ -27,6 +33,36 @@
   import SimRegisters from "./SimRegisters.svelte";
 
   let generators: SimGenerators | undefined = $state();
+
+  const kinds: { value: SimKind; label: string }[] = [
+    { value: "tcp", label: "Modbus TCP" },
+    { value: "rtuovertcp", label: "RTU over TCP" },
+    { value: "rtu", label: "Serial RTU" },
+    { value: "ascii", label: "Serial ASCII" },
+  ];
+  const baudrates = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
+  const serial = $derived(sim.kind === "rtu" || sim.kind === "ascii");
+  const stopped = $derived(sim.running === null);
+  let ports = $state<string[]>([]);
+
+  async function refreshPorts() {
+    try {
+      ports = await api.listSerialPorts();
+      if (!ports.includes(sim.serialPort)) sim.serialPort = ports[0] ?? "";
+    } catch {
+      ports = [];
+    }
+  }
+
+  $effect(() => {
+    if (serial && stopped) refreshPorts();
+  });
+
+  /** A device's tab: its unit ID and what it is shaped after. */
+  function deviceLabel(d: (typeof sim.devices)[number]) {
+    const unit = d.unit === null ? "All units" : `Unit ${d.unit}`;
+    return `${unit} · ${deviceName(d) ?? "empty"}`;
+  }
 
   /** Maps to shape the device after: those open on Main, then the library. */
   let picks = $state(0);
@@ -93,12 +129,13 @@
   const reads = $derived(sim.reads.slice(-SHOWN_EVENTS).reverse());
   const writes = $derived(sim.writes.slice(-SHOWN_EVENTS).reverse());
 
-  // Read again when the page changes or a client wrote something.
+  // Read again when the page or the device changes, or a client wrote
+  // something.
   $effect(() => {
     void sim.changes;
-    const [a, s] = [area, first];
+    const [d, a, s] = [sim.selected, area, first];
     api
-      .simRead(a, s, SHOWN)
+      .simRead(d, a, s, SHOWN)
       .then((v) => (view = v))
       .catch(() => (view = null));
   });
@@ -129,6 +166,7 @@
     problem = null;
     try {
       await api.simWrite(
+        sim.selected,
         area,
         first + offset,
         typeof value === "boolean"
@@ -162,10 +200,14 @@
     editing = null;
   }
 
+  /** Points step 1 of Main at the simulator, and its unit ID at the
+   * device shown. Only over TCP: a serial port has another end. */
   function useInMain() {
-    bench.transport = "tcp";
+    const t = sim.running;
+    if (t?.kind !== "tcp" && t?.kind !== "rtuovertcp") return;
+    bench.transport = t.kind;
     bench.host = "127.0.0.1";
-    bench.tcpPort = sim.running ?? sim.port;
+    bench.tcpPort = t.port;
     if (sim.unit !== null) bench.unitId = sim.unit;
     bench.page = "main";
   }
@@ -188,7 +230,7 @@
     <h1>Simulator</h1>
     <p>
       The simulator is open in its own window{sim.running !== null
-        ? `, listening on port ${sim.running}`
+        ? `, listening on ${whereText(sim.running)}`
         : ""}.
     </p>
   </header>
@@ -220,55 +262,130 @@
       {/if}
     </div>
     <p>
-      A Modbus TCP device that runs inside Modbench. Shape it after a map to try
-      the map, the alarms or another program without hardware: it answers with
-      the map's reference values, and with exception 2 at addresses the map does
-      not have. Generators make values move on their own.
+      Modbus devices that run inside Modbench, over TCP, RTU over TCP or a
+      serial port. Shape each after a map to try the map, the alarms or another
+      program without hardware: it answers with the map's reference values, and
+      with exception 2 at addresses the map does not have. Several devices
+      answer their own unit IDs at the same address, like devices behind a
+      gateway or on one RS-485 line; other unit IDs get no answer. Generators
+      make values move on their own.
     </p>
   </header>
 
   <div class="row">
     <label class="field">
-      <span>Port</span>
-      <IntInput
-        value={sim.port}
-        min={1}
-        max={65535}
-        width="80px"
-        label="Port"
-        disabled={sim.running !== null}
-        onchange={(n) => (sim.port = n)}
+      <span>Interface</span>
+      <Select
+        bind:value={sim.kind}
+        options={kinds}
+        label="How clients reach the simulator"
+        disabled={!stopped}
       />
     </label>
-    <label class="field" title="Leave empty to answer every unit ID">
-      <span>Unit ID</span>
-      <input
-        class="input num"
-        style:width="80px"
-        value={sim.unit ?? ""}
-        placeholder="All"
-        disabled={sim.running !== null}
-        aria-label="Unit ID"
-        onchange={(e) => {
-          const n = parseInteger(e.currentTarget.value);
-          sim.unit = n !== null && n >= 0 && n <= 255 ? n : null;
-          e.currentTarget.value = sim.unit === null ? "" : String(sim.unit);
-        }}
-      />
-    </label>
-    <label
-      class="check switch-row"
-      title="Let other computers on the network connect (the firewall may ask)"
-    >
-      <input
-        type="checkbox"
-        class="switch"
-        role="switch"
-        bind:checked={sim.isPublic}
-        disabled={sim.running !== null}
-      />
-      Other computers
-    </label>
+    {#if serial}
+      <label class="field">
+        <span>Serial port</span>
+        <span class="with-btn">
+          <Select
+            bind:value={sim.serialPort}
+            disabled={!stopped}
+            label="Serial port"
+            placeholder="No ports found"
+            options={ports.map((p) => ({ value: p, label: p }))}
+          />
+          <button
+            class="btn icon"
+            title="Search for serial ports again"
+            aria-label="Search for serial ports again"
+            disabled={!stopped}
+            onclick={refreshPorts}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
+              ><path
+                d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+            >
+          </button>
+        </span>
+      </label>
+      <label class="field">
+        <span>Baud rate</span>
+        <Select
+          bind:value={sim.baudrate}
+          disabled={!stopped}
+          label="Baud rate"
+          options={baudrates.map((b) => ({ value: b, label: String(b) }))}
+        />
+      </label>
+      <label class="field">
+        <span>Data bits</span>
+        <Select
+          bind:value={sim.dataBits}
+          disabled={!stopped}
+          label="Data bits"
+          options={[
+            { value: 8, label: "8 bits" },
+            { value: 7, label: "7 bits" },
+          ]}
+        />
+      </label>
+      <label class="field">
+        <span>Parity</span>
+        <Select
+          bind:value={sim.parity}
+          disabled={!stopped}
+          label="Parity"
+          options={[
+            { value: "N", label: "None" },
+            { value: "E", label: "Even" },
+            { value: "O", label: "Odd" },
+          ]}
+        />
+      </label>
+      <label class="field">
+        <span>Stop bits</span>
+        <Select
+          bind:value={sim.stopBits}
+          disabled={!stopped}
+          label="Stop bits"
+          options={[
+            { value: 1, label: "1 stop bit" },
+            { value: 2, label: "2 stop bits" },
+          ]}
+        />
+      </label>
+    {:else}
+      <label class="field">
+        <span>Port</span>
+        <IntInput
+          value={sim.port}
+          min={1}
+          max={65535}
+          width="80px"
+          label="Port"
+          disabled={!stopped}
+          onchange={(n) => (sim.port = n)}
+        />
+      </label>
+      <label
+        class="check switch-row"
+        title="Let other computers on the network connect (the firewall may ask)"
+      >
+        <input
+          type="checkbox"
+          class="switch"
+          role="switch"
+          bind:checked={sim.isPublic}
+          disabled={!stopped}
+        />
+        Other computers
+      </label>
+    {/if}
     {#if sim.running === null}
       <button class="btn accent" onclick={() => sim.start()}>Start</button>
     {:else}
@@ -277,22 +394,70 @@
     <span class="status" aria-live="polite">
       {#if sim.running !== null}
         <span class="live"
-          ><span class="dot"></span>Listening on {sim.isPublic
-            ? "every interface"
-            : "127.0.0.1"}:{sim.running}</span
+          ><span class="dot"></span>Listening on {whereText(sim.running)}</span
         >
-        <button class="btn ghost" onclick={useInMain}>Connect Main to it</button
-        >
+        {#if sim.running.kind === "tcp" || sim.running.kind === "rtuovertcp"}
+          <button class="btn ghost" onclick={useInMain}
+            >Connect Main to it</button
+          >
+        {/if}
       {:else}
         <span class="dim">Stopped</span>
       {/if}
     </span>
   </div>
 
+  {#if serial}
+    <p class="dim hint">
+      Clients connect to the other end of the line. To try it on this computer,
+      use a virtual null-modem pair (such as com0com or socat) and open its
+      other port on the Main page. Unit ID 0 is a broadcast: every device takes
+      the write and none answers.
+    </p>
+  {/if}
+
+  <div class="devices" role="tablist" aria-label="Simulated devices">
+    {#each sim.devices as d, i (i)}
+      <button
+        role="tab"
+        class="device"
+        aria-selected={sim.selected === i}
+        class:on={sim.selected === i}
+        onclick={() => sim.show(i)}>{deviceLabel(d)}</button
+      >
+    {/each}
+    <button
+      class="btn ghost"
+      title="Another device at the same address, on its own unit ID"
+      onclick={() => sim.addDevice()}>Add device</button
+    >
+  </div>
+
   <div class="row source">
+    <label
+      class="field"
+      title="Leave empty to answer every unit ID that no other device has"
+    >
+      <span>Unit ID</span>
+      {#key sim.selected}
+        <input
+          class="input num"
+          style:width="80px"
+          value={sim.unit ?? ""}
+          placeholder="All"
+          aria-label="Unit ID"
+          onchange={async (e) => {
+            const input = e.currentTarget;
+            const n = parseInteger(input.value);
+            await sim.setUnit(n !== null && n >= 0 && n <= 255 ? n : null);
+            input.value = sim.unit === null ? "" : String(sim.unit);
+          }}
+        />
+      {/key}
+    </label>
     <label class="field">
-      <span>Device</span>
-      {#key picks}
+      <span>Map</span>
+      {#key [picks, sim.selected]}
         <Select
           value={sim.source ?? ""}
           options={sources}
@@ -315,6 +480,13 @@
       Only the map's addresses
     </label>
     <span class="spacer"></span>
+    {#if sim.devices.length > 1}
+      <button
+        class="btn ghost"
+        title="Remove this device; its unit ID gets no answer"
+        onclick={() => sim.removeDevice()}>Remove device</button
+      >
+    {/if}
     {#if sim.map}
       <button
         class="btn ghost"
@@ -540,6 +712,42 @@
     50% {
       opacity: 0.3;
     }
+  }
+
+  .with-btn {
+    display: flex;
+    gap: 4px;
+  }
+
+  .devices {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: -6px;
+  }
+
+  .device {
+    height: 30px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px 9px 0 0;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .device:hover {
+    color: var(--text);
+  }
+
+  .device.on {
+    background: var(--subtle);
+    color: var(--text);
+    font-weight: 600;
   }
 
   .source {
