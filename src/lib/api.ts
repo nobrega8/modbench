@@ -94,6 +94,8 @@ export const api = {
   readText: (path: string) => invoke<string>("read_text", { path }),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),
+  saveBytes: (path: string, bytes: Uint8Array) =>
+    invoke<void>("save_bytes", { path, bytes: Array.from(bytes) }),
   appendText: (path: string, text: string) =>
     invoke<void>("append_text", { path, text }),
   readDeviceId: (level: number) =>

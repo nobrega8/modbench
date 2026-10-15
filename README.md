@@ -42,7 +42,7 @@ Updates then arrive with `sudo apt upgrade`.
 - **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
 - **Checks the device**: reference values catch a wrong address or byte order, and a map can declare which models and firmware versions it fits.
 - **Write safely**: typed controls for writable registers, limits from the map, optional confirmation, and a read-only mode that blocks every write.
-- **Chart, raw bytes and log**: plot map registers, or addresses of a manual read, over time, see the exact frames, export values or record every cycle to CSV.
+- **Chart, raw bytes and log**: plot map registers, or addresses of a manual read, over time and save the charts as PNG or SVG, see the exact frames, export values or record every cycle to CSV.
 - **Find devices**: scan for unit IDs, or for the baud rate, parity and stop bits of a serial device.
 - **Tools**:
   - **Simulator**: Modbus devices inside Modbench, each optionally shaped after a map (its reference values and addresses), to try maps and other programs without hardware. Several devices answer their own unit IDs at one address, like devices behind a gateway or on one RS-485 line; other unit IDs stay silent. It listens on Modbus TCP or UDP, RTU over TCP or UDP, or a serial port (RTU or ASCII, with the baud rate, parity and stop bits you choose). Generators make values move on their own (increment, sine, random, or a copy of another address), in a map register's own units.
@@ -51,7 +51,7 @@ Updates then arrive with `sudo apt upgrade`.
   - **Data decoder** and **frame decoder**: hex as every type in every byte order, and frames field by field with CRC/LRC checks (also on the Raw data tab).
   - **Statistics**: failures by cause (timeouts, each exception, bad frames) and response times per function code, and a suggested timeout (4 × the slowest answer) that one click puts in step 1.
   - **Alarms**: low/high limits on map registers, shown in red on the Device map tab.
-  - **Trend player**: play back a CSV recording with a scrub bar and up to 60× speed.
+  - **Trend player**: play back a CSV recording with a scrub bar and up to 60× speed, and save the charts as an image.
 - **Bit view**: see the 16 bits of each register and switch a single bit of a holding register.
 - **Value templates**: copy the settings of one device to another of the same model.
 - **Reconnects by itself** when a link drops during a test.

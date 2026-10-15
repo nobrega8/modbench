@@ -570,6 +570,13 @@ pub async fn save_text(path: String, text: String) -> Result<(), ModbusError> {
     Ok(())
 }
 
+/// Writes bytes to a file chosen by the user (chart image export).
+#[tauri::command]
+pub async fn save_bytes(path: String, bytes: Vec<u8>) -> Result<(), ModbusError> {
+    tokio::fs::write(&path, bytes).await?;
+    Ok(())
+}
+
 /// Adds text to the end of a file, creating it if needed (CSV recording).
 #[tauri::command]
 pub async fn append_text(path: String, text: String) -> Result<(), ModbusError> {

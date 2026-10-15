@@ -15,11 +15,12 @@
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
   import { parseRecording, upTo } from "#lib/playback.ts";
-  import { clock } from "#lib/format.ts";
+  import { clock, duration } from "#lib/format.ts";
   import { MAX_SERIES } from "#lib/trend.ts";
   import type { Register } from "#lib/types.ts";
   import Select from "../Select.svelte";
   import TrendChart, { type Line } from "../TrendChart.svelte";
+  import ChartExport from "../ChartExport.svelte";
 
   const speeds = [1, 2, 4, 8, 16, 60];
   const windows = [
@@ -32,6 +33,7 @@
 
   let playing = $state(false);
   let problem = $state<string | null>(null);
+  let charts: HTMLDivElement | undefined = $state();
 
   /** Registers made up from the column headers, for the chart. */
   const registers = $derived(
@@ -131,13 +133,6 @@
     });
     return () => cancelAnimationFrame(frame);
   });
-
-  function duration(ms: number): string {
-    const s = Math.round(ms / 1000);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    return h ? `${h} h ${m} min` : m ? `${m} min ${s % 60} s` : `${s} s`;
-  }
 </script>
 
 <header class="tool-head">
@@ -202,12 +197,20 @@
       label="Time span"
       options={windows.map((w) => ({ value: w.ms, label: w.label }))}
     />
+    <ChartExport
+      {charts}
+      {groups}
+      from={span.from}
+      to={span.to}
+      name={fileName.replace(/\.csv$/i, "")}
+      disabled={!shown.length}
+    />
   </div>
 
   {#if !shown.length}
     <p class="empty">Choose columns to plot.</p>
   {:else}
-    <div class="charts">
+    <div class="charts" bind:this={charts}>
       {#each groups as g (g.unit)}
         <TrendChart
           unit={g.unit}
