@@ -1,0 +1,62 @@
+\chapter{Troubleshooting}
+
+\section{No answer (timeouts)}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[On a serial line] Check, in this order: the unit ID; baud rate,
+    parity and stop bits (\ui{Find…} tries them,
+    Section~\ref{sec:find-devices}); the A and B wires, which are often
+    swapped; the termination at both ends of a long line; and that no other
+    master talks on the same line.
+  \item[On the network] Ping the address; check the port (502, or the
+    converter's); some devices accept one client at a time, so close other
+    programs connected to it. Through a gateway, the unit ID selects the
+    device behind it.
+  \item[Slow devices] Raise \field{Timeout}, and add a \field{Delay} between
+    requests. Statistics suggests a timeout from the measured answers
+    (Section~\ref{sec:statistics}).
+\end{description}
+
+\section{Values look wrong}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Off by one register] The manual counts from 1 and the map, or your
+    request, from 0, or the other way round. Try the address one lower or
+    higher, or check \val{address\_base} in the map.
+  \item[Huge or tiny numbers] Usually the byte or word order. Try the
+    \field{Byte order} override in step 2, or paste the registers into the
+    Data decoder (Section~\ref{sec:data-decoder}).
+  \item[Wrong by a factor of 10, 100\ldots] The scale. Maps give it per register;
+    some devices also have a scale factor register.
+  \item[A mismatch banner] The device is not the one the map is for, or its
+    firmware differs (Chapter~\ref{ch:maps}).
+\end{description}
+
+\section{Bad frames}
+
+A CRC or LRC error means the bytes arrived damaged: noise on the line, a
+missing termination, a wrong baud rate, or two devices answering at once
+because they share a unit ID. The Raw data tab shows the frame
+(Section~\ref{sec:raw}).
+
+\section{Exception codes}
+\label{app:exceptions}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l l L}
+  \toprule
+  \thead{Code} & \thead{Name} & \thead{Usually means} \\
+  \midrule
+  \val{01} & Illegal function & The device does not support this function code. \\
+  \val{02} & Illegal data address & The address, or part of the range, does not
+    exist. Read fewer registers, or check the address base. \\
+  \val{03} & Illegal data value & A value or a quantity the device refuses. \\
+  \val{04} & Server device failure & The device failed to do it. \\
+  \val{05} & Acknowledge & Accepted; the result comes later. \\
+  \val{06} & Server device busy & Try again later. \\
+  \val{08} & Memory parity error & The device's memory failed a check. \\
+  \val{0A} & Gateway path unavailable & The gateway has no route to that unit ID. \\
+  \val{0B} & Gateway target failed to respond & The device behind the gateway did not answer. \\
+  \bottomrule
+\end{tabularx}
+\end{center}

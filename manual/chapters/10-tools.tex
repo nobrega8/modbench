@@ -1,0 +1,136 @@
+\chapter{Tools}
+\label{ch:tools}
+
+The Tools page groups the tools by what they work on: the \emph{device}, the
+\emph{data}, and the \emph{test}. A dot next to a tool means it has something
+going on (the simulator running, a scan in progress).
+
+\screenshot[6cm]{tools}{The Tools page.}
+  {The Tools page: the list of tools on the left (Device, Data, Test) and one
+   tool open on the right.}
+
+Tools that talk to a device use the connection of step 1 on the Main page, and
+only read.
+
+\section{Identify}
+
+Asks the device for its vendor, product code and revision with \emph{Read
+Device Identification} (FC43/14). Choose how much to \field{Ask for} (basic,
+regular or extended objects) and \uiaccent{Read}. Each object the device
+returns is listed with its value.
+
+\screenshot[4cm]{identify}{A device that answered FC43.}
+  {The Identify tool after a read: vendor name, product code, revision and a
+   few more objects.}
+
+Not every device supports FC43: many answer exception 1 (illegal function).
+
+\section{Find addresses}
+
+Finds which addresses answer on a device without a manual. It reads blocks of
+addresses, and splits the blocks that fail until it knows which addresses
+exist.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Area, First address, Last address] What to search.
+  \item[Block size] Addresses read at once before splitting. Larger blocks are
+    faster on devices with long runs of registers.
+  \item[Wait (ms)] How long to wait for each answer.
+\end{description}
+
+The result lists the ranges that answered. \nav{Read these addresses on the
+Main page} sets up a manual request for a range.
+
+\screenshot[5cm]{find-addresses}{Address ranges found on a device.}
+  {Find addresses after a scan of holding registers 0--2000: three ranges
+   that answer, with their counts.}
+
+\section{Data decoder}
+\label{sec:data-decoder}
+
+Type or paste registers (in hex) to see them as every type at once, in all
+four byte orders: signed and unsigned 16-, 32- and 64-bit integers, floats,
+and text. \ui{Use last read} takes the registers last read on the Main page.
+
+This is the quickest way to find a value's type and byte order before
+writing a map: look for the column where the number makes sense (a voltage
+near 230, a frequency near 50).
+
+\screenshot[6cm]{data-decoder}{Two registers decoded in every type and order.}
+  {The Data decoder with two registers that hold a float, the row where the
+   value reads 230.4~V standing out.}
+
+It works without a connection.
+
+\section{Frame decoder}
+\label{sec:frame-decoder}
+
+Paste a frame from a log, a bus analyser or another tool (for example
+\val{01 03 00 00 00 0A C5 CD}) to read it field by field, with its CRC or LRC
+checked. Choose the \field{Framing} (RTU, ASCII, TCP) and who sent it
+(\field{Client} or \field{Device}), since a request and an answer with the same
+function code have different fields.
+
+\screenshot[5cm]{frame-decoder}{An RTU request decoded.}
+  {The Frame decoder with an RTU request: unit 1, function 3, address 0,
+   quantity 10, CRC valid.}
+
+\section{Trend player}
+\label{sec:trend-player}
+
+Plays back a CSV file made with \ui{Record…} on the Device map tab, so a test
+can be looked at again later.
+
+\begin{steps}
+  \item \uiaccent{Open recording…} and choose the file.
+  \item Tick the columns to plot (up to eight; text columns cannot be
+        plotted).
+  \item \ui{Play} at 1× to 60× speed, or drag the slider to any moment.
+\end{steps}
+
+\screenshot[7cm]{trend-player}{A recording played back.}
+  {The Trend player with a one-hour recording: columns ticked, the slider
+   half-way, speed 8×, and the charts.}
+
+\field{Time span} works as on the Chart tab, and \ui{Export image…} saves the
+charts (Section~\ref{sec:chart-image}).
+
+\section{Statistics}
+\label{sec:statistics}
+
+Every request sent on the Main page since the last \ui{Reset}:
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[By result] How many succeeded, timed out, came back as each exception,
+    or arrived as bad frames.
+  \item[By function] Requests, failures, and minimum, average and maximum
+    response time per function code.
+\end{description}
+
+A pattern points to the cause: timeouts to wiring, baud rate or unit ID;
+exception 2 to an address the device does not have; bad frames to noise or
+two devices with the same unit ID.
+
+\screenshot[5cm]{statistics}{Statistics of a long test.}
+  {The Statistics tool after a long test: results by cause, the table by
+   function, and the suggested timeout with Use in step 1.}
+
+\field{Suggested timeout} is four times the slowest answer;
+\ui{Use in step 1} puts it in the connection settings.
+
+\section{Alarms}
+
+Limits on the registers of the open map. A value below \field{Low} or above
+\field{High}, or a bit in its alarm state, turns red on the Device map tab.
+
+\begin{steps}
+  \item Open a map on the Main page.
+  \item \ui{Add an alarm on a register…} and choose the register.
+  \item Set the limits, or for a bit, the state that is an alarm.
+\end{steps}
+
+\screenshot[4cm]{alarms}{Alarms on a meter's map.}
+  {The Alarms tool with three alarms (a voltage range, a temperature limit and
+   a fault bit), and the Device map tab with one value in red.}
+
+Alarms are kept per map on this computer. Nothing is sent to the device.

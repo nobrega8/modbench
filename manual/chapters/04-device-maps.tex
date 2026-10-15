@@ -1,0 +1,139 @@
+\chapter{Device maps}
+\label{ch:maps}
+
+A device map describes the registers of a device model: their names, areas,
+addresses, types, byte and word order, scaling, units and state labels, plus
+the device's connection defaults. With a map, Modbench reads a device by
+name, as its manual describes it, instead of as a list of numbers.
+
+Maps are \file{.mbmap.json} files in an open format. Over 400 of them, for
+meters, inverters, drives and controllers, are shared in the
+\emph{mbmap-library} and can be downloaded from the Library page
+(Chapter~\ref{ch:library}).
+
+\section{Opening a map}
+
+\begin{itemize}
+  \item In step 2 of the Main page, set \field{Source} to the map, and pick it
+        in \field{Map}: the maps of your library are listed there.
+  \item \nav{From a file…} opens any \file{.mbmap.json} or \file{.mbmap}.
+  \item Double-click a map file: it opens in Modbench.
+  \item From the Library page: right-click a map and choose \nav{Use}.
+\end{itemize}
+
+Several maps can be open at once; step 2 switches between them.
+The map's connection defaults (unit ID, port, baud rate, parity) fill step 1
+when it is opened.
+
+\begin{note}[Older maps]
+A \file{.mbmap} file in the version 1 format opens with a warning, and
+Modbench offers to convert it: the converted copy is saved next to it as
+\file{.mbmap.json}, and the original is kept.
+\end{note}
+
+\section{The Device map tab}
+
+\screenshot[8cm]{device-map}{The Device map tab during a test.}
+  {The Device map tab with a meter's map: groups, names, values with units,
+   some state labels, a value just changed (highlighted), the search field,
+   Read all / Read none and the address menu.}
+
+Every register of the map is a row: its name, address, value with its unit,
+and its group. Values update with each cycle of the test.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Choosing what to read] Untick a register to stop reading it;
+    \ui{Read all} and \ui{Read none} change them all. Fewer registers make
+    each cycle shorter. Modbench joins neighbouring registers into as few
+    requests as the device allows.
+  \item[Search] \field{Search name or address} filters the list.
+  \item[State labels] Registers that hold a state (\val{0} Stopped, \val{1}
+    Running…) show its label; reserved values the map declares (such as
+    \val{0xFFFF} for ``not implemented'') show their meaning instead of a
+    number.
+  \item[Bits and bit fields] Registers that pack several flags show each bit
+    or field by its own name.
+  \item[Changed values] A value that changes stays highlighted for a while
+    (\nav{Settings\then Values}), so changes stand out in a long list.
+  \item[Right-click] Copy a value, a name or an address, add the register to
+    the chart, or write it.
+\end{description}
+
+\subsection{Registers the map is missing}
+
+\ui{Add a register the map is missing…} adds a register on this computer
+only: its address, type and name. It is read with the others and marked as
+added; it is not written into the map file.
+
+\section{Is it the right map?}
+
+A wrong map, base address or byte order gives values that look like numbers
+but mean nothing. Modbench checks in two ways:
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Reference values] A map can give the value a healthy device holds in
+    some registers (a model code, a fixed protocol identifier). Modbench reads
+    them and shows \emph{match}, \emph{mismatch} or \emph{failed} (no answer).
+    A mismatch points to a wrong map or settings.
+  \item[Models and firmware] When the map says which models and firmware
+    versions it fits, and has registers that identify the device, Modbench
+    compares them with the connected device. \emph{Device recognised} confirms
+    it; otherwise a banner says the device does not match the map. Once the
+    firmware is known, registers that do not exist in that version are left
+    out.
+\end{description}
+
+\screenshot[2.5cm]{map-mismatch}{A device that does not match the map.}
+  {The banner on the Device map tab: \emph{The connected device does not match
+   this map.} \emph{Values may be wrong. Writes ask for confirmation first.}}
+
+\begin{warning}
+After a mismatch, writes ask for confirmation even when confirmation is off.
+\end{warning}
+
+\section{Map status}
+\label{sec:map-status}
+
+Maps from the library carry a status, shown as an icon in the library and in
+the map picker:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l L}
+  \toprule
+  \thead{Status} & \thead{Meaning} \\
+  \midrule
+  Verified & Checked against a real device. \\
+  Unverified & Written from the manufacturer's documentation, not yet
+    checked on a device. \\
+  Unofficial & Not from the manufacturer's documentation, for example
+    reverse-engineered. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Byte order override}
+
+\field{Byte order} in step 2 reads every value with another byte and word
+order than the map says: \emph{as the map says}, or one of the four orders.
+Use it to check a map whose values look wrong; it is remembered per device.
+
+\section{Exporting and recording}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[\ui{Export…}] Saves the values shown, in the order shown, to a CSV
+    file.
+  \item[\ui{Record…}] Appends every cycle of the test to a CSV file until
+    recording stops: one row per cycle, one column per register. The Trend
+    player plays such a file back (Section~\ref{sec:trend-player}).
+\end{description}
+
+The CSV separator is set in \nav{Settings} (comma or semicolon, for
+spreadsheets in languages that use a decimal comma).
+
+\section{What is remembered per device}
+
+For each device (map, connection and unit ID), Modbench remembers which
+registers were switched off, the byte order override and Loop. They come back
+when you return to that device; restoring them never writes and never starts
+a test. \nav{Settings\then Connection} turns this off, and forgets what was
+saved.

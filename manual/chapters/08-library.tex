@@ -1,0 +1,66 @@
+\chapter{The device library}
+\label{ch:library}
+
+The Library page keeps your device maps in one folder, and brings maps from
+the shared online library.
+
+\screenshot[7cm]{library}{The Library page.}
+  {The Library page with several maps: vendor icons, vendor, model,
+   description, number of registers and status icons; the search field and the
+   two import buttons.}
+
+\section{Your library}
+
+The list shows each map's vendor (with its icon), model, description, number
+of registers and status (Section~\ref{sec:map-status}). \field{Search vendor or
+model} filters it.
+
+Right-click a map:
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Use] Opens it on the Main page.
+  \item[Simulate this device] Opens the simulator with a device shaped after
+    this map (Chapter~\ref{ch:simulator}).
+  \item[Copy name, Copy file path] For notes and other programs.
+  \item[Open the library folder] Shows the folder in your file manager.
+  \item[Delete…] Removes the map from the library, after asking.
+\end{description}
+
+Maps with errors are listed with the problem, so they can be fixed in a text
+editor.
+
+\section{Adding maps}
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[\ui{From a file…}] Copies \file{.mbmap.json} or \file{.mbmap} files into
+    the library. Version 1 files are converted.
+  \item[\ui{From the online library…}] Opens the shared library (below).
+\end{description}
+
+The library is a folder (\nav{Settings\then Device library\then Library
+folder}): files copied into it by hand appear too.
+
+\section{The online library}
+
+\screenshot[7cm]{online-library}{Choosing a map in the online library.}
+  {The online library: vendors on the left with their icons, the models of one
+   vendor on the right, one map selected.}
+
+The online library lists the maps shared on GitHub
+(\web{github.com/nobrega8/mbmap-library}): over 400 maps of meters,
+inverters, drives and controllers.
+
+\begin{steps}
+  \item Choose a vendor; \ui{Back to all vendors} (or \key{Esc}) goes back.
+  \item \ui{Add} next to a model downloads its map into your library.
+  \item \ui{Done} closes the online library.
+\end{steps}
+
+A map already in your library can be downloaded again, to replace your copy
+with the newest one.
+
+\begin{tip}[Share your maps]
+A map that works with a real device helps the next person with the same
+device. The library's repository explains how to contribute one, and the
+format specification is linked from \nav{Settings\then Device library}.
+\end{tip}

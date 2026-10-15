@@ -1,0 +1,64 @@
+\chapter{Command line and AI assistants}
+
+\file{modbench-cli} reads devices and works with maps without the window: for
+scripts, for servers without a screen, and for a quick check. It comes with
+the app. It never writes to a device.
+
+\section{Commands}
+
+\begin{lstlisting}[language=bash]
+modbench-cli read --tcp 192.168.1.10 holding 0x0405 1
+modbench-cli read --udp 192.168.1.10 holding 0 10
+modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
+modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
+modbench-cli id --tcp 192.168.1.10
+modbench-cli simulate device.mbmap.json --strict
+modbench-cli simulate device.mbmap.json --generators moving.json
+modbench-cli simulate device.mbmap.json --rtu-over-tcp
+modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
+modbench-cli validate device.mbmap.json
+modbench-cli convert old-device.mbmap
+\end{lstlisting}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{l L}
+  \toprule
+  \thead{Command} & \thead{What it does} \\
+  \midrule
+  \val{read} & Reads coils or registers, like a manual request. \\
+  \val{map} & Reads every register of a map from a device, by name;
+    \val{--filter} keeps the names that match. \\
+  \val{scan} & Finds the unit IDs that answer. \\
+  \val{id} & Device identification (FC43). \\
+  \val{simulate} & A simulated device shaped after a map (port 5020 by
+    default); \val{--strict} answers only the map's addresses. \\
+  \val{validate} & Checks a map against the format, with the same messages as
+    the app. \\
+  \val{convert} & Converts a version 1 map to a \file{.mbmap.json} next to it. \\
+  \bottomrule
+\end{tabularx}
+\end{center}
+
+\val{modbench-cli --help} lists every command and option.
+
+\section{Generators file}
+
+\val{--generators} takes a JSON list. Each entry names a map register (in
+engineering units) or a raw \val{area} and \val{address}, a \val{kind}, and how
+often it changes (\val{every\_ms}, 1000 by default, at least 50):
+
+\begin{lstlisting}
+[
+  {"register": "Voltage L1", "kind": "sine", "offset": 230, "amplitude": 5, "period_s": 10, "every_ms": 500},
+  {"area": "input", "address": 0, "kind": "increment", "step": 1, "min": 0, "max": 100},
+  {"area": "holding", "address": 1, "kind": "random", "min": 10, "max": 20},
+  {"area": "discrete", "address": 0, "kind": "copy", "from": {"area": "coil", "address": 0}}
+]
+\end{lstlisting}
+
+\section{AI assistants (MCP)}
+
+\val{modbench-cli mcp} serves the same reads over the Model Context Protocol
+(stdio), so an AI assistant such as Claude Code can read devices and check
+maps: \val{read\_map} reads a device with a map, \val{validate\_map} checks a
+map file. Like the command line, it never writes to a device.

@@ -1,0 +1,4 @@
+# LuaLaTeX, with the build files in build/
+$pdf_mode = 4;
+$out_dir = 'build';
+$lualatex = 'lualatex -interaction=nonstopmode -file-line-error %O %S';
