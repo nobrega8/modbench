@@ -166,8 +166,14 @@ pub(crate) fn open_serial(
     parity: Parity,
     data_bits: u8,
     stop_bits: u8,
-) -> Result<tokio_serial::SerialStream, ModbusError> {
-    let builder = tokio_serial::new(port, baudrate)
+) -> Result<Box<dyn SerialLink>, ModbusError> {
+    let real = real_port(port);
+    if let Some(addr) = real.strip_prefix("tcp:") {
+        let stream = std::net::TcpStream::connect(addr)?;
+        stream.set_nonblocking(true)?;
+        return Ok(Box::new(tokio::net::TcpStream::from_std(stream)?));
+    }
+    let builder = tokio_serial::new(real, baudrate)
         .parity(match parity {
             Parity::N => tokio_serial::Parity::None,
             Parity::E => tokio_serial::Parity::Even,
@@ -187,7 +193,19 @@ pub(crate) fn open_serial(
                 return Err(ModbusError::Invalid(format!("unsupported stop bits: {n}")));
             }
         });
-    Ok(builder.open_native_async()?)
+    Ok(Box::new(builder.open_native_async()?))
+}
+
+/// What a serial port reads and writes through: the port itself, or in debug
+/// builds the socket a port alias names.
+pub(crate) trait SerialLink:
+    tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + std::fmt::Debug
+{
+}
+
+impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + std::fmt::Debug> SerialLink
+    for T
+{
 }
 
 /// Opens the transport a configuration describes.
@@ -887,8 +905,31 @@ pub fn list_serial_ports() -> Result<Vec<String>, ModbusError> {
     let names: Vec<String> = tokio_serial::available_ports()?
         .into_iter()
         .map(|p| p.port_name)
+        .chain(port_aliases().into_iter().map(|(alias, _)| alias))
         .collect();
     Ok(without_dial_in(names))
+}
+
+/// Debug builds only: `MODBENCH_PORT_ALIASES="/dev/cu.usbserial-A=tcp:127.0.0.1:5031;…"`
+/// lists made-up port names that open another port or a TCP socket (macOS
+/// will not set a baud rate on a pty), so screenshots show real adapters.
+fn port_aliases() -> Vec<(String, String)> {
+    if !cfg!(debug_assertions) {
+        return Vec::new();
+    }
+    std::env::var("MODBENCH_PORT_ALIASES")
+        .unwrap_or_default()
+        .split(';')
+        .filter_map(|pair| pair.split_once('='))
+        .map(|(alias, real)| (alias.trim().to_string(), real.trim().to_string()))
+        .collect()
+}
+
+fn real_port(port: &str) -> String {
+    port_aliases()
+        .into_iter()
+        .find(|(alias, _)| alias == port)
+        .map_or_else(|| port.to_string(), |(_, real)| real)
 }
 
 /// macOS lists each port twice: `/dev/tty.*` waits for a modem's carrier
