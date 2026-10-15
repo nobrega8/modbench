@@ -3,6 +3,12 @@
   import { decodeFrame, type Framing } from "#lib/frames.ts";
   import { bench, type Exchange } from "#lib/state.svelte.ts";
   import FrameFields from "./FrameFields.svelte";
+  import { showFrame } from "./tools/FrameDecoderTool.svelte";
+  import {
+    contextMenu,
+    copy,
+    type MenuEntry,
+  } from "#lib/contextmenu.svelte.ts";
 
   let list = $state<HTMLElement>();
   let follow = $state(true);
@@ -24,6 +30,51 @@
 
   function bytes(b: number[]): string {
     return b.map((x) => hex(x, 2)).join(" ");
+  }
+
+  /** A frame as the Frame decoder takes it: text for ASCII, else hex. */
+  function frameText(b: number[]): string {
+    return framing === "ascii" ? String.fromCharCode(...b).trim() : bytes(b);
+  }
+
+  function decodeInTool(b: number[], dir: "request" | "response") {
+    showFrame(frameText(b), framing, dir);
+    bench.tool = "frames";
+    bench.page = "tools";
+  }
+
+  /** What a right-click on an exchange offers. */
+  function exchangeMenu(x: Exchange): MenuEntry[] {
+    return [
+      { label: "Copy data out", action: () => copy(bytes(x.out)) },
+      x.in.length > 0 && {
+        label: "Copy data in",
+        action: () => copy(bytes(x.in)),
+      },
+      {
+        label: "Copy both",
+        action: () =>
+          copy(`TX ${bytes(x.out)}\nRX ${x.in.length ? bytes(x.in) : "—"}`),
+      },
+      null,
+      {
+        label: "Decode here",
+        action: () => {
+          decode = true;
+          picked = x === last ? null : x;
+        },
+      },
+      {
+        label: "Open request in Frame decoder",
+        action: () => decodeInTool(x.out, "request"),
+      },
+      x.in.length > 0 && {
+        label: "Open response in Frame decoder",
+        action: () => decodeInTool(x.in, "response"),
+      },
+      null,
+      { label: "Clear", danger: true, action: () => bench.clearRaw() },
+    ];
   }
 
   $effect(() => {
@@ -108,6 +159,7 @@
       tabindex="-1"
       title={decode ? "Decode this exchange" : undefined}
       onclick={() => (picked = x === last ? null : x)}
+      oncontextmenu={(e) => contextMenu.show(e, exchangeMenu(x))}
     >
       <span class="time">{clock(x.time_ms)}</span>
       <span class="dir out">TX</span><code>{bytes(x.out)}</code>

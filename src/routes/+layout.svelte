@@ -1,5 +1,6 @@
 <script lang="ts">
   import "../app.css";
+  import ContextMenu from "#lib/components/ContextMenu.svelte";
   import { settings } from "#lib/settings.svelte.ts";
 
   $effect(() => settings.applyTheme());
@@ -11,3 +12,4 @@
 </script>
 
 {@render children()}
+<ContextMenu />

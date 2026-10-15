@@ -4,6 +4,11 @@
   import { settings } from "#lib/settings.svelte.ts";
   import AddressFormat from "./AddressFormat.svelte";
   import { bench } from "#lib/state.svelte.ts";
+  import {
+    contextMenu,
+    copy,
+    type MenuEntry,
+  } from "#lib/contextmenu.svelte.ts";
   import type { ByteOrder } from "#lib/types.ts";
 
   type Format =
@@ -140,6 +145,53 @@
     return out;
   });
 
+  /** Sets up the Write tab to write these values from `address`. */
+  function writeFrom(address: number, values: number[]) {
+    const bits = read?.area === "coil";
+    bench.address = address;
+    bench.fc = bits ? (values.length > 1 ? 15 : 5) : values.length > 1 ? 16 : 6;
+    bench.setQuantity(values.length);
+    bench.writeValues = values;
+    bench.tab = "write";
+  }
+
+  /** What a right-click on a value offers. */
+  function cellMenu(c: Cell): MenuEntry[] {
+    if (!read) return [];
+    const r = read;
+    const at = r.address + c.offset;
+    const raw =
+      r.data.kind === "bits"
+        ? [r.data.values[c.offset] ? 1 : 0]
+        : r.data.values.slice(c.offset, c.offset + c.span);
+    const writable = r.area === "holding" || r.area === "coil";
+    return [
+      { label: "Copy value", action: () => copy(c.text) },
+      { label: "Copy address", action: () => copy(addr(at)) },
+      {
+        label: "Copy all values",
+        hint: "address, value",
+        action: () =>
+          copy(
+            cells
+              .map((x) => `${addr(r.address + x.offset)}\t${x.text}`)
+              .join("\n"),
+          ),
+      },
+      null,
+      writable && {
+        label: "Write here…",
+        disabled: settings.readOnly,
+        action: () => writeFrom(at, raw),
+      },
+      writable && {
+        label: "Write all…",
+        disabled: settings.readOnly,
+        action: () => bench.copyReadToWrite(),
+      },
+    ];
+  }
+
   const rows = $derived.by(() => {
     const out: Cell[][] = [];
     for (const c of cells) (out[Math.floor(c.offset / PER_ROW)] ??= []).push(c);
@@ -208,7 +260,24 @@
             onclick={() => flip(r.address + i, bit, !on)}>{on ? 1 : 0}</button
           >
         {/each}
-        <span class="cell hexcell">{hex(w)}</span>
+        <span
+          class="cell hexcell"
+          role="gridcell"
+          tabindex="-1"
+          oncontextmenu={(e) =>
+            contextMenu.show(e, [
+              { label: "Copy value", hint: "hex", action: () => copy(hex(w)) },
+              {
+                label: "Copy value",
+                hint: "decimal",
+                action: () => copy(String(w)),
+              },
+              {
+                label: "Copy address",
+                action: () => copy(addr(r.address + i)),
+              },
+            ])}>{hex(w)}</span
+        >
       {/each}
     </div>
   </div>
@@ -230,6 +299,9 @@
             class="cell"
             class:changed={c.changed}
             style:grid-column="span {c.span}"
+            role="gridcell"
+            tabindex="-1"
+            oncontextmenu={(e) => contextMenu.show(e, cellMenu(c))}
             title="Address {addr(r.address + c.offset)}">{c.text}</span
           >
         {/each}

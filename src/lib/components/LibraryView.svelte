@@ -3,7 +3,13 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
   import { bench } from "#lib/state.svelte.ts";
-  import { MAP_EXTENSIONS } from "#lib/types.ts";
+  import { MAP_EXTENSIONS, type LibraryEntry } from "#lib/types.ts";
+  import { sim } from "#lib/simulator.svelte.ts";
+  import {
+    contextMenu,
+    copy,
+    type MenuEntry,
+  } from "#lib/contextmenu.svelte.ts";
   import MapStatus from "./MapStatus.svelte";
   import OnlineLibrary from "./OnlineLibrary.svelte";
   import VendorIcon from "./VendorIcon.svelte";
@@ -110,6 +116,46 @@
   async function use(path: string) {
     await bench.openMap(path);
   }
+
+  /** Shapes the simulator after a map and shows it. */
+  async function simulate(path: string) {
+    await sim.pick(path);
+    bench.tool = "simulator";
+    bench.page = "tools";
+  }
+
+  /** What a right-click on a map offers. */
+  function rowMenu(e: LibraryEntry): MenuEntry[] {
+    return [
+      {
+        label: "Use",
+        disabled: !!e.error || bench.running,
+        hint: bench.running ? "stop first" : undefined,
+        action: () => use(e.path),
+      },
+      {
+        label: "Simulate this device",
+        disabled: !!e.error,
+        action: () => simulate(e.path),
+      },
+      null,
+      {
+        label: "Copy name",
+        action: () => copy(`${e.vendor} ${e.model}`),
+      },
+      { label: "Copy file path", action: () => copy(e.path) },
+      {
+        label: "Open the library folder",
+        action: () => api.libraryOpenFolder().catch(() => {}),
+      },
+      null,
+      {
+        label: "Delete…",
+        danger: true,
+        action: () => (confirmDelete = e.path),
+      },
+    ];
+  }
 </script>
 
 <div class="toolbar">
@@ -185,7 +231,11 @@
     </thead>
     <tbody>
       {#each shown as e (e.path)}
-        <tr class:invalid={!!e.error} class:active={current?.path === e.path}>
+        <tr
+          class:invalid={!!e.error}
+          class:active={current?.path === e.path}
+          oncontextmenu={(ev) => contextMenu.show(ev, rowMenu(e))}
+        >
           <td
             ><span class="vendor"
               ><VendorIcon

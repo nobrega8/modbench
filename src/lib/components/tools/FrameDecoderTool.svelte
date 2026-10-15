@@ -5,6 +5,13 @@
   let input = $state("01 03 00 00 00 0A C5 CD");
   let framing = $state<Framing>("rtu");
   let direction = $state<Direction>("request");
+
+  /** Puts a frame in the decoder, e.g. one from the Raw data tab. */
+  export function showFrame(text: string, kind: Framing, dir: Direction) {
+    input = text;
+    framing = kind;
+    direction = dir;
+  }
 </script>
 
 <script lang="ts">
