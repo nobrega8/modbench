@@ -368,31 +368,33 @@
     >
   </div>
   {#if recent.length}
-    <table class="data">
-      <thead>
-        <tr>
-          <th>Time</th><th>Client</th><th class="num">Unit</th><th>Request</th
-          ><th>Address</th><th>Result</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each recent as e, i (sim.events.length - i)}
+    <div class="log">
+      <table class="data">
+        <thead>
           <tr>
-            <td class="mono dim">{clock(e.time_ms)}</td>
-            <td class="mono">{e.peer}</td>
-            <td class="num mono">{e.unit}</td>
-            <td>{functionName(e.function)}</td>
-            <td class="mono">{where(e)}</td>
-            <td
-              class:bad={!!e.error}
-              class:wrote={!e.error && e.wrote}
-              class:ok={!e.error && !e.wrote}
-              >{e.error ?? (e.wrote ? "written" : "OK")}</td
-            >
+            <th>Time</th><th>Client</th><th class="num">Unit</th><th>Request</th
+            ><th>Address</th><th>Result</th>
           </tr>
-        {/each}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {#each recent as e, i (sim.events.length - i)}
+            <tr>
+              <td class="mono dim">{clock(e.time_ms)}</td>
+              <td class="mono">{e.peer}</td>
+              <td class="num mono">{e.unit}</td>
+              <td>{functionName(e.function)}</td>
+              <td class="mono">{where(e)}</td>
+              <td
+                class:bad={!!e.error}
+                class:wrote={!e.error && e.wrote}
+                class:ok={!e.error && !e.wrote}
+                >{e.error ?? (e.wrote ? "written" : "OK")}</td
+              >
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
   {:else}
     <p class="empty">
       {sim.running === null
@@ -520,6 +522,19 @@
     min-width: 0;
     width: 100%;
     border-radius: 3px;
+  }
+
+  /* The newest requests on top; older ones scroll inside, not the page */
+  .log {
+    max-height: 320px;
+    overflow: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .log :global(thead th) {
+    position: sticky;
+    top: 0;
+    background: var(--card);
   }
 
   .activity h2 {
