@@ -271,6 +271,20 @@ export interface SimView {
   defined: boolean[];
 }
 
+/** Where a simulator generator writes (or a copy reads): a register of the
+ * loaded map, in engineering units, or one raw address. */
+export type GeneratorTarget =
+  { register: string } | { area: Area; address: number };
+
+export type GeneratorKind =
+  | { kind: "increment"; step: number; min: number; max: number }
+  | { kind: "sine"; period_s: number; amplitude: number; offset: number }
+  | { kind: "random"; min: number; max: number }
+  | { kind: "copy"; from: GeneratorTarget };
+
+/** A value the simulator changes on its own every `every_ms`. */
+export type Generator = GeneratorTarget & GeneratorKind & { every_ms: number };
+
 export interface LibraryEntry {
   path: string;
   vendor: string;

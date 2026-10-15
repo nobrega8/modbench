@@ -9,6 +9,7 @@ import type {
   ConnectionConfig,
   DeviceIdentity,
   DeviceMap,
+  Generator,
   ImportResult,
   LibraryEntry,
   OnlineEntry,
@@ -108,6 +109,9 @@ export const api = {
     invoke<SimView>("sim_read", { area, address, count }),
   simWrite: (area: Area, address: number, data: RawData) =>
     invoke<void>("sim_write", { area, address, data }),
+  /** Replaces the generators; returns why each one cannot run, or null. */
+  simSetGenerators: (list: Generator[]) =>
+    invoke<(string | null)[]>("sim_set_generators", { list }),
 };
 
 /** Error text from a rejected command (commands reject with a string). */

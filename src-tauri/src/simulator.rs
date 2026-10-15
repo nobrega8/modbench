@@ -1,6 +1,7 @@
 //! A simulated Modbus TCP device. It keeps the four data areas in memory and
 //! answers any client, so maps, tools and other programs can be tried
-//! without hardware. Values can be seeded from a device map.
+//! without hardware. Values can be seeded from a device map, and changed on
+//! their own by generators (see [`crate::generators`]).
 
 use std::future::{Ready, ready};
 use std::net::SocketAddr;
@@ -16,6 +17,7 @@ use tokio_modbus::server::tcp::{Server, accept_tcp_connection};
 use tokio_modbus::{ExceptionCode, Request, Response, SlaveRequest};
 
 use crate::codec::{self, DataType, Value};
+use crate::generators;
 use crate::mbmap::{self, DeviceMap, Register};
 use crate::modbus::RawData;
 use crate::planner::Area;
@@ -33,6 +35,9 @@ pub struct Memory {
     defined: Option<[Vec<bool>; 4]>,
     /// Vendor, product code and revision for device identification (FC43).
     identity: [String; 3],
+    /// The map the memory was shaped after, for generators that name its
+    /// registers.
+    map: Option<DeviceMap>,
 }
 
 impl Default for Memory {
@@ -48,6 +53,7 @@ impl Default for Memory {
                 "Simulator".into(),
                 env!("CARGO_PKG_VERSION").into(),
             ],
+            map: None,
         }
     }
 }
@@ -89,7 +95,13 @@ impl Memory {
             map.meta.model.clone(),
             map.meta.firmware.clone().unwrap_or_else(|| "1.0".into()),
         ];
+        memory.map = Some(map.clone());
         memory
+    }
+
+    /// The map the memory was shaped after, if any.
+    pub fn map(&self) -> Option<&DeviceMap> {
+        self.map.as_ref()
     }
 
     /// Puts a register's reference value (the raw value a healthy device
@@ -393,35 +405,41 @@ impl tokio_modbus::server::Service for Service {
     }
 }
 
-/// A running simulator: stop it by dropping or aborting the task.
+/// A running simulator: stop it by dropping or aborting the tasks.
 pub struct Running {
     pub addr: SocketAddr,
     task: tokio::task::JoinHandle<()>,
+    generators: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl Running {
     pub fn stop(self) {
-        self.task.abort();
+        drop(self);
     }
 }
 
 impl Drop for Running {
     fn drop(&mut self) {
         self.task.abort();
+        if let Some(g) = &self.generators {
+            g.abort();
+        }
     }
 }
 
 /// Starts answering Modbus TCP clients on `addr` (port 0 picks a free
-/// one). Returns where it listens.
+/// one), and runs the generators while it does. Returns where it listens.
 pub async fn start(
     addr: SocketAddr,
     memory: Arc<Mutex<Memory>>,
     unit: Option<u8>,
     logger: Option<SimLogger>,
+    generators: Option<generators::Shared>,
 ) -> std::io::Result<Running> {
     let listener = TcpListener::bind(addr).await?;
     let addr = listener.local_addr()?;
     let server = Server::new(listener);
+    let generators = generators.map(|g| tokio::spawn(generators::drive(memory.clone(), g)));
     let task = tokio::spawn(async move {
         let on_connected = |stream, peer| {
             let accepted = accept_tcp_connection(stream, peer, |peer| {
@@ -437,7 +455,11 @@ pub async fn start(
         // A client that sends garbage only loses its own connection.
         let _ = server.serve(&on_connected, |_| {}).await;
     });
-    Ok(Running { addr, task })
+    Ok(Running {
+        addr,
+        task,
+        generators,
+    })
 }
 
 #[cfg(test)]
@@ -519,6 +541,7 @@ mod tests {
             memory.clone(),
             Some(1),
             Some(logger),
+            None,
         )
         .await
         .unwrap();
@@ -557,7 +580,7 @@ mod tests {
     #[tokio::test]
     async fn an_address_scan_finds_the_registers_of_a_sparse_map() {
         let memory = Arc::new(Mutex::new(Memory::from_map(&map(), true)));
-        let sim = start("127.0.0.1:0".parse().unwrap(), memory, None, None)
+        let sim = start("127.0.0.1:0".parse().unwrap(), memory, None, None, None)
             .await
             .unwrap();
         let mut s = session(sim.addr, 1).await;

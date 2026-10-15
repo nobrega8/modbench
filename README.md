@@ -44,7 +44,7 @@ Updates then arrive with `sudo apt upgrade`.
 - **Chart, raw bytes and log**: plot registers over time, see the exact frames, export values or record every cycle to CSV.
 - **Find devices**: scan for unit IDs, or for the baud rate, parity and stop bits of a serial device.
 - **Tools**:
-  - **Simulator**: a Modbus TCP device inside Modbench, optionally shaped after a map (its reference values and addresses), to try maps and other programs without hardware.
+  - **Simulator**: a Modbus TCP device inside Modbench, optionally shaped after a map (its reference values and addresses), to try maps and other programs without hardware. Generators make values move on their own (increment, sine, random, or a copy of another address), in a map register's own units.
   - **Identify**: read the device's vendor, product code and revision (FC43).
   - **Find addresses**: discover which registers answer on a device without a manual.
   - **Data decoder** and **frame decoder**: hex as every type in every byte order, and frames field by field with CRC/LRC checks (also on the Raw data tab).
@@ -76,8 +76,20 @@ modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
 modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
 modbench-cli id --tcp 192.168.1.10               # FC43 device identification
 modbench-cli simulate device.mbmap.json --strict  # a simulated device on port 5020
+modbench-cli simulate device.mbmap.json --generators moving.json
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap          # version 1 map -> old-device.mbmap.json
+```
+
+`--generators` takes a JSON list. Each entry names a map register (in engineering units) or a raw `area` and `address`, a `kind`, and how often it changes (`every_ms`, default 1000, at least 50):
+
+```json
+[
+  {"register": "Voltage L1", "kind": "sine", "offset": 230, "amplitude": 5, "period_s": 10, "every_ms": 500},
+  {"area": "input", "address": 0, "kind": "increment", "step": 1, "min": 0, "max": 100},
+  {"area": "holding", "address": 1, "kind": "random", "min": 10, "max": 20},
+  {"area": "discrete", "address": 0, "kind": "copy", "from": {"area": "coil", "address": 0}}
+]
 ```
 
 Run `modbench-cli --help` for every command and option. `modbench-cli mcp` serves the same operations over [MCP](https://modelcontextprotocol.io) (stdio), so AI assistants such as Claude Code can read devices; `.mcp.json` registers it for this project.
