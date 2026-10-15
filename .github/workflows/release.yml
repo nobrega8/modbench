@@ -150,6 +150,24 @@ jobs:
           if [ -n "$xcode" ]; then sudo xcode-select -s "$xcode"; fi
           xcrun actool --version --output-format human-readable-text
 
+      # The Liquid Glass icon (Icon Composer) is compiled here, not by the
+      # bundler: actool throws inside tauri build ("attempt to insert nil
+      # object") although the same command works on its own. The bundle takes
+      # the Assets.car from here (tauri.macos.conf.json) and its name from
+      # Info.plist.
+      - name: Liquid Glass icon
+        if: runner.os == 'macOS'
+        run: |
+          out=src-tauri/target/macos-icon
+          mkdir -p "$out"
+          xcrun actool src-tauri/icons/Modbench.icon --compile "$out" \
+            --output-format human-readable-text --notices --warnings --errors \
+            --output-partial-info-plist "$out/partial.plist" --app-icon Modbench \
+            --include-all-app-icons --enable-on-demand-resources NO \
+            --development-region en --target-device mac \
+            --minimum-deployment-target 10.15 --platform macosx
+          test -f "$out/Assets.car"
+
       # A universal build joins only the app's own binary for both
       # architectures; the bundle also holds modbench-cli, so join it first.
       - name: Universal modbench-cli
