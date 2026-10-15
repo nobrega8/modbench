@@ -15,7 +15,7 @@
     picked && bench.exchanges.includes(picked) ? picked : last,
   );
   const framing = $derived<Framing>(
-    bench.transport === "tcp"
+    bench.transport === "tcp" || bench.transport === "udp"
       ? "tcp"
       : bench.transport === "rtu" && bench.framing === "ascii"
         ? "ascii"

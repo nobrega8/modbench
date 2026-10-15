@@ -30,6 +30,19 @@ const WRITES = new Set([5, 6, 15, 16, 22, 23]);
 /** How the simulator is reached: the same kinds as step 1 of Main. */
 export type SimKind = Transport["kind"];
 
+/** Reached over the network (a host and port), not a serial port. */
+export function overNetwork(
+  t: Transport,
+): t is Extract<Transport, { host: string }> {
+  return t.kind !== "rtu" && t.kind !== "ascii";
+}
+
+const NETWORK_NAME: Record<string, string> = {
+  rtuovertcp: " · RTU over TCP",
+  udp: " · UDP",
+  rtuoverudp: " · RTU over UDP",
+};
+
 /** What a device is shaped after: a map's file name, or its vendor and
  * model; null when its memory is empty. */
 export function deviceName(d: SimDevice): string | null {
@@ -43,9 +56,10 @@ export function deviceName(d: SimDevice): string | null {
 export function whereText(t: Transport): string {
   switch (t.kind) {
     case "tcp":
-      return `${t.host === "0.0.0.0" ? "every interface" : t.host}:${t.port}`;
     case "rtuovertcp":
-      return `${t.host === "0.0.0.0" ? "every interface" : t.host}:${t.port} · RTU over TCP`;
+    case "udp":
+    case "rtuoverudp":
+      return `${t.host === "0.0.0.0" ? "every interface" : t.host}:${t.port}${NETWORK_NAME[t.kind] ?? ""}`;
     default:
       return `${t.port} · ${t.kind.toUpperCase()} ${t.baudrate} ${t.data_bits}${t.parity}${t.stop_bits}`;
   }
@@ -131,7 +145,7 @@ class Simulator {
   /** Takes the listen settings of a running simulator. */
   private listenFrom(t: Transport) {
     this.kind = t.kind;
-    if (t.kind === "tcp" || t.kind === "rtuovertcp") {
+    if (overNetwork(t)) {
       this.port = t.port;
       this.isPublic = t.host === "0.0.0.0";
     } else {
@@ -161,7 +175,7 @@ class Simulator {
 
   /** Where to listen, from the settings. */
   listenSettings(): Transport {
-    if (this.kind === "tcp" || this.kind === "rtuovertcp")
+    if (this.kind !== "rtu" && this.kind !== "ascii")
       return {
         kind: this.kind,
         host: this.isPublic ? "0.0.0.0" : "127.0.0.1",

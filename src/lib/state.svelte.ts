@@ -70,7 +70,7 @@ import type {
   TrafficEntry,
 } from "./types";
 
-export type TransportKind = "tcp" | "rtuovertcp" | "rtu";
+export type TransportKind = "tcp" | "rtuovertcp" | "udp" | "rtuoverudp" | "rtu";
 export type Page = "main" | "tools" | "library" | "settings";
 export type ToolId =
   | "simulator"

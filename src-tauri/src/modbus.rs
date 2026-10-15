@@ -16,6 +16,7 @@ use tokio_serial::SerialPortBuilderExt;
 use crate::ascii;
 use crate::planner::Area;
 use crate::tap::{RawSink, Tap};
+use crate::udp::UdpStream;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Parity {
@@ -34,6 +35,16 @@ pub enum Transport {
     /// RTU frames over a TCP socket, as used by many serial-to-Ethernet
     /// gateways ("Modbus over TCP").
     RtuOverTcp {
+        host: String,
+        port: u16,
+    },
+    /// Modbus TCP frames (MBAP) over UDP datagrams.
+    Udp {
+        host: String,
+        port: u16,
+    },
+    /// RTU frames over UDP datagrams, as some serial gateways send them.
+    RtuOverUdp {
         host: String,
         port: u16,
     },
@@ -196,6 +207,14 @@ async fn open(config: &ConnectionConfig, raw: Option<RawSink>) -> Result<Context
             let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
                 .await
                 .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
+            rtu::attach_slave(Tap::new(stream, raw), slave)
+        }
+        Transport::Udp { host, port } => {
+            let stream = UdpStream::connect(resolve(host, *port)?, wait).await?;
+            tcp::attach_slave(Tap::new(stream, raw), slave)
+        }
+        Transport::RtuOverUdp { host, port } => {
+            let stream = UdpStream::connect(resolve(host, *port)?, wait).await?;
             rtu::attach_slave(Tap::new(stream, raw), slave)
         }
         Transport::Rtu {

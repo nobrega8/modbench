@@ -15,6 +15,7 @@ pub mod poller;
 pub mod serve;
 pub mod simulator;
 pub mod tap;
+pub mod udp;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

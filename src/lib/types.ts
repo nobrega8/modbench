@@ -18,8 +18,11 @@ export type Access = "R" | "W" | "RW";
 export type Value = boolean | number | string;
 
 export type Transport =
-  | { kind: "tcp"; host: string; port: number }
-  | { kind: "rtuovertcp"; host: string; port: number }
+  | {
+      kind: "tcp" | "rtuovertcp" | "udp" | "rtuoverudp";
+      host: string;
+      port: number;
+    }
   | {
       kind: "rtu" | "ascii";
       port: string;

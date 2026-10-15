@@ -157,6 +157,8 @@
           options={[
             { value: "tcp", label: "Modbus TCP" },
             { value: "rtuovertcp", label: "Modbus RTU over TCP" },
+            { value: "udp", label: "Modbus UDP" },
+            { value: "rtuoverudp", label: "Modbus RTU over UDP" },
           ]}
         />
       </label>

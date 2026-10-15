@@ -37,7 +37,7 @@ Updates then arrive with `sudo apt upgrade`.
 
 ## Features
 
-- **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or RTU over TCP.
+- **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or UDP, or RTU over TCP or UDP.
 - **Address notations**: show addresses 0-based, 1-based, in hex, in Modicon (`400101`) or IEC 61131-3 (`%MW100`) notation. Address fields take the last two as typed, and switch to their area.
 - **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
 - **Checks the device**: reference values catch a wrong address or byte order, and a map can declare which models and firmware versions it fits.
@@ -45,7 +45,7 @@ Updates then arrive with `sudo apt upgrade`.
 - **Chart, raw bytes and log**: plot registers over time, see the exact frames, export values or record every cycle to CSV.
 - **Find devices**: scan for unit IDs, or for the baud rate, parity and stop bits of a serial device.
 - **Tools**:
-  - **Simulator**: Modbus devices inside Modbench, each optionally shaped after a map (its reference values and addresses), to try maps and other programs without hardware. Several devices answer their own unit IDs at one address, like devices behind a gateway or on one RS-485 line; other unit IDs stay silent. It listens on Modbus TCP, RTU over TCP, or a serial port (RTU or ASCII, with the baud rate, parity and stop bits you choose). Generators make values move on their own (increment, sine, random, or a copy of another address), in a map register's own units.
+  - **Simulator**: Modbus devices inside Modbench, each optionally shaped after a map (its reference values and addresses), to try maps and other programs without hardware. Several devices answer their own unit IDs at one address, like devices behind a gateway or on one RS-485 line; other unit IDs stay silent. It listens on Modbus TCP or UDP, RTU over TCP or UDP, or a serial port (RTU or ASCII, with the baud rate, parity and stop bits you choose). Generators make values move on their own (increment, sine, random, or a copy of another address), in a map register's own units.
   - **Identify**: read the device's vendor, product code and revision (FC43).
   - **Find addresses**: discover which registers answer on a device without a manual.
   - **Data decoder** and **frame decoder**: hex as every type in every byte order, and frames field by field with CRC/LRC checks (also on the Raw data tab).
@@ -76,6 +76,7 @@ modbench-cli read --tcp 192.168.1.10 holding 0x0405 1
 modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
 modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
 modbench-cli id --tcp 192.168.1.10               # FC43 device identification
+modbench-cli read --udp 192.168.1.10 holding 0 10   # Modbus UDP
 modbench-cli simulate device.mbmap.json --strict  # a simulated device on port 5020
 modbench-cli simulate device.mbmap.json --generators moving.json
 modbench-cli simulate device.mbmap.json --rtu-over-tcp   # RTU frames over TCP, like a gateway
