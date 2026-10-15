@@ -3,7 +3,7 @@
   backend holds the simulator's state; both windows follow it.
 -->
 <script lang="ts">
-  import { sim } from "#lib/simulator.svelte.ts";
+  import { sim, whereText } from "#lib/simulator.svelte.ts";
   import ToolsView from "./ToolsView.svelte";
   import WindowControls from "./WindowControls.svelte";
 
@@ -20,7 +20,7 @@
     >
     {#if sim.running !== null}
       <span class="live" data-tauri-drag-region
-        ><span class="dot"></span>Port {sim.running}</span
+        ><span class="dot"></span>{whereText(sim.running)}</span
       >
     {/if}
     <div class="drag" data-tauri-drag-region></div>

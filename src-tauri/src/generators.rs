@@ -13,7 +13,7 @@ use crate::codec::{self, DataType, Value};
 use crate::mbmap::Register;
 use crate::modbus::RawData;
 use crate::planner::Area;
-use crate::simulator::Memory;
+use crate::simulator::{Devices, Memory};
 
 /// Shortest update period, in milliseconds.
 pub const MIN_EVERY_MS: u64 = 50;
@@ -348,8 +348,8 @@ pub fn run(memory: &mut Memory, list: &[Generator], before: u64, now: u64, rng: 
     }
 }
 
-/// Runs the generators until the task is aborted.
-pub async fn drive(memory: Arc<Mutex<Memory>>, generators: Shared) {
+/// Runs the generators of every device until the task is aborted.
+pub async fn drive(devices: Devices) {
     let started = Instant::now();
     let mut before = 0;
     let mut rng = Rng::seeded();
@@ -358,9 +358,13 @@ pub async fn drive(memory: Arc<Mutex<Memory>>, generators: Shared) {
     loop {
         ticks.tick().await;
         let now = started.elapsed().as_millis() as u64;
-        let list = generators.lock().unwrap().clone();
-        if !list.is_empty() {
-            run(&mut memory.lock().unwrap(), &list, before, now, &mut rng);
+        let list = devices.lock().unwrap().clone();
+        for device in list {
+            let generators = device.generators.lock().unwrap().clone();
+            if !generators.is_empty() {
+                let mut memory = device.memory.lock().unwrap();
+                run(&mut memory, &generators, before, now, &mut rng);
+            }
         }
         before = now;
     }

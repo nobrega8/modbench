@@ -40,13 +40,10 @@ pub struct AppState {
     /// Read-only mode: shared with every session, which refuses writes while
     /// it is on.
     read_only: Arc<std::sync::atomic::AtomicBool>,
-    /// The simulated device: its memory lives on while it is stopped.
-    sim_memory: Arc<std::sync::Mutex<simulator::Memory>>,
+    /// The simulated devices: their memory and generators live on while
+    /// the simulator is stopped.
+    sim_devices: SimDevices,
     sim: std::sync::Mutex<Option<simulator::Running>>,
-    /// Values the simulator changes on its own; kept across stop and start.
-    sim_generators: generators::Shared,
-    /// The map file the simulator was shaped after, if any.
-    sim_source: std::sync::Mutex<Option<String>>,
 }
 
 /// Tells every window the simulator changed (started, stopped, loaded, new
@@ -773,46 +770,68 @@ pub async fn scan_addresses(
         .await
 }
 
-/// Starts the simulated device on a TCP port, on this computer only unless
-/// `public`. Each request it answers is sent to the UI as a `sim` event.
-/// Returns the port.
+/// The simulated devices: one that answers every unit ID to begin with.
+pub struct SimDevices(simulator::Devices);
+
+impl Default for SimDevices {
+    fn default() -> Self {
+        Self(Arc::new(std::sync::Mutex::new(vec![
+            simulator::Device::new(None, simulator::Memory::default()),
+        ])))
+    }
+}
+
+impl AppState {
+    /// One simulated device (its memory and generators are shared).
+    fn sim_device(&self, device: usize) -> Result<simulator::Device, ModbusError> {
+        self.sim_devices
+            .0
+            .lock()
+            .unwrap()
+            .get(device)
+            .cloned()
+            .ok_or_else(|| ModbusError::Invalid(format!("no simulated device {device}")))
+    }
+}
+
+/// Starts the simulator the way `listen` says: Modbus TCP or RTU over TCP on
+/// a port (host 127.0.0.1 for this computer only, 0.0.0.0 for every
+/// interface), or RTU or ASCII on a serial port. Each request it answers is
+/// sent to the UI as a `sim` event. Returns where it listens.
 #[tauri::command]
 pub async fn sim_start(
     app: AppHandle,
     state: State<'_, AppState>,
-    port: u16,
-    public: bool,
-    unit: Option<u8>,
-) -> Result<u16, ModbusError> {
+    listen: modbus::Transport,
+) -> Result<modbus::Transport, ModbusError> {
     if let Some(old) = state.sim.lock().unwrap().take() {
         old.stop();
     }
-    let ip = if public { [0, 0, 0, 0] } else { [127, 0, 0, 1] };
+    let port = match &listen {
+        modbus::Transport::Tcp { port, .. } | modbus::Transport::RtuOverTcp { port, .. } => *port,
+        _ => 0,
+    };
     let emitter = app.clone();
     let logger: simulator::SimLogger = Arc::new(move |event| {
         let _ = emitter.emit("sim", event);
     });
-    let running = simulator::start(
-        (ip, port).into(),
-        state.sim_memory.clone(),
-        unit,
-        Some(logger),
-        Some(state.sim_generators.clone()),
-    )
-    .await
-    .map_err(|e| match e.kind() {
-        std::io::ErrorKind::AddrInUse => {
-            ModbusError::Invalid(format!("port {port} is already in use; choose another"))
-        }
-        std::io::ErrorKind::PermissionDenied => ModbusError::Invalid(format!(
-            "this system does not allow port {port}; use one above 1023"
-        )),
-        _ => ModbusError::Io(e),
-    })?;
-    let port = running.addr.port();
+    let running = simulator::start(listen, state.sim_devices.0.clone(), Some(logger))
+        .await
+        .map_err(|e| match e {
+            ModbusError::Io(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
+                ModbusError::Invalid(format!("port {port} is already in use; choose another"))
+            }
+            ModbusError::Io(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                ModbusError::Invalid(format!(
+                    "this system does not allow port {port}; use one above 1023"
+                ))
+            }
+            e => e,
+        })?;
+    let listen = running.listen.clone();
     *state.sim.lock().unwrap() = Some(running);
     sim_changed(&app);
-    Ok(port)
+    Ok(listen)
 }
 
 #[tauri::command]
@@ -823,67 +842,138 @@ pub fn sim_stop(app: AppHandle, state: State<'_, AppState>) {
     sim_changed(&app);
 }
 
-/// The port the simulator listens on, or None when it is stopped.
+/// Adds a device that answers `unit` (None: every unit ID no other device
+/// has), with empty memory. Returns its index.
 #[tauri::command]
-pub fn sim_status(state: State<'_, AppState>) -> Option<u16> {
-    state.sim.lock().unwrap().as_ref().map(|r| r.addr.port())
+pub fn sim_add_device(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    unit: Option<u8>,
+) -> Result<usize, ModbusError> {
+    let mut list = state.sim_devices.0.lock().unwrap();
+    let units = list.iter().map(|d| d.unit).chain([unit]);
+    if let Some(problem) = simulator::unit_problem(units) {
+        return Err(ModbusError::Invalid(problem));
+    }
+    list.push(simulator::Device::new(unit, simulator::Memory::default()));
+    let index = list.len() - 1;
+    drop(list);
+    sim_changed(&app);
+    Ok(index)
 }
 
-/// Clears the simulator's memory, or shapes it after a map (see
+/// Removes a device; the last one stays.
+#[tauri::command]
+pub fn sim_remove_device(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    device: usize,
+) -> Result<(), ModbusError> {
+    let mut list = state.sim_devices.0.lock().unwrap();
+    if list.len() < 2 || device >= list.len() {
+        return Err(ModbusError::Invalid(
+            "the simulator keeps at least one device".into(),
+        ));
+    }
+    list.remove(device);
+    drop(list);
+    sim_changed(&app);
+    Ok(())
+}
+
+/// Changes the unit ID a device answers (None: every one no other has).
+#[tauri::command]
+pub fn sim_set_unit(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    device: usize,
+    unit: Option<u8>,
+) -> Result<(), ModbusError> {
+    let mut list = state.sim_devices.0.lock().unwrap();
+    let units = list
+        .iter()
+        .enumerate()
+        .map(|(i, d)| if i == device { unit } else { d.unit });
+    if let Some(problem) = simulator::unit_problem(units) {
+        return Err(ModbusError::Invalid(problem));
+    }
+    list.get_mut(device)
+        .ok_or_else(|| ModbusError::Invalid(format!("no simulated device {device}")))?
+        .unit = unit;
+    drop(list);
+    sim_changed(&app);
+    Ok(())
+}
+
+/// Clears a device's memory, or shapes it after a map (see
 /// `Memory::from_map`).
 #[tauri::command]
 pub fn sim_load(
     app: AppHandle,
     state: State<'_, AppState>,
+    device: usize,
     map: Option<DeviceMap>,
     strict: bool,
     source: Option<String>,
-) {
+) -> Result<(), ModbusError> {
     let loaded = map.is_some();
-    *state.sim_memory.lock().unwrap() = match map {
+    let memory = state.sim_device(device)?.memory;
+    *memory.lock().unwrap() = match map {
         Some(map) => simulator::Memory::from_map(&map, strict),
         None => simulator::Memory::default(),
     };
-    *state.sim_source.lock().unwrap() = source.filter(|_| loaded);
+    if let Some(d) = state.sim_devices.0.lock().unwrap().get_mut(device) {
+        d.source = source.filter(|_| loaded);
+    }
     sim_changed(&app);
+    Ok(())
 }
 
-/// Everything about the simulator a window needs to show it: whether and
-/// where it runs, what it was shaped after, its generators, and whether it
-/// has a window of its own.
+/// One simulated device as a window shows it.
 #[derive(serde::Serialize)]
-pub struct SimInfo {
-    port: Option<u16>,
-    public: bool,
+pub struct SimDeviceInfo {
     unit: Option<u8>,
     map: Option<DeviceMap>,
     source: Option<String>,
     strict: bool,
     generators: Vec<Generator>,
     problems: Vec<Option<String>>,
+}
+
+/// Everything about the simulator a window needs to show it: whether and
+/// where it listens, its devices, and whether it has a window of its own.
+#[derive(serde::Serialize)]
+pub struct SimInfo {
+    listen: Option<modbus::Transport>,
+    devices: Vec<SimDeviceInfo>,
     window_open: bool,
 }
 
 #[tauri::command]
 pub fn sim_info(app: AppHandle, state: State<'_, AppState>) -> SimInfo {
-    let (port, public, unit) = match state.sim.lock().unwrap().as_ref() {
-        Some(r) => (Some(r.addr.port()), r.addr.ip().is_unspecified(), r.unit),
-        None => (None, false, None),
-    };
-    let memory = state.sim_memory.lock().unwrap();
-    let generators = state.sim_generators.lock().unwrap().clone();
+    let listen = state.sim.lock().unwrap().as_ref().map(|r| r.listen.clone());
+    let list = state.sim_devices.0.lock().unwrap().clone();
+    let devices = list
+        .iter()
+        .map(|d| {
+            let memory = d.memory.lock().unwrap();
+            let generators = d.generators.lock().unwrap().clone();
+            SimDeviceInfo {
+                unit: d.unit,
+                map: memory.map().cloned(),
+                source: d.source.clone(),
+                strict: memory.strict(),
+                problems: generators
+                    .iter()
+                    .map(|g| generators::problem(&memory, g))
+                    .collect(),
+                generators,
+            }
+        })
+        .collect();
     SimInfo {
-        port,
-        public,
-        unit,
-        map: memory.map().cloned(),
-        source: state.sim_source.lock().unwrap().clone(),
-        strict: memory.strict(),
-        problems: generators
-            .iter()
-            .map(|g| generators::problem(&memory, g))
-            .collect(),
-        generators,
+        listen,
+        devices,
         window_open: app.get_webview_window(SIM_WINDOW).is_some(),
     }
 }
@@ -927,49 +1017,57 @@ pub fn sim_close_window(app: AppHandle) {
     }
 }
 
-/// Replaces the simulator's generators. Returns, for each one, why it cannot
-/// run against the current memory (e.g. a register the map does not have),
-/// or None; those are kept and skipped until they can.
+/// Replaces a device's generators. Returns, for each one, why it cannot run
+/// against the device's memory (e.g. a register its map does not have), or
+/// None; those are kept and skipped until they can.
 #[tauri::command]
 pub fn sim_set_generators(
     app: AppHandle,
     state: State<'_, AppState>,
+    device: usize,
     list: Vec<Generator>,
-) -> Vec<Option<String>> {
+) -> Result<Vec<Option<String>>, ModbusError> {
+    let device = state.sim_device(device)?;
     let problems = {
-        let memory = state.sim_memory.lock().unwrap();
+        let memory = device.memory.lock().unwrap();
         list.iter()
             .map(|g| generators::problem(&memory, g))
             .collect()
     };
-    *state.sim_generators.lock().unwrap() = list;
+    *device.generators.lock().unwrap() = list;
     sim_changed(&app);
-    problems
+    Ok(problems)
 }
 
-/// The value of every register of the map the simulator was shaped after,
-/// in engineering units and map order; empty without a map.
+/// The value of every register of the map a device was shaped after, in
+/// engineering units and map order; empty without a map.
 #[tauri::command]
-pub fn sim_values(state: State<'_, AppState>) -> Vec<Option<crate::codec::Value>> {
-    generators::values(&state.sim_memory.lock().unwrap())
+pub fn sim_values(
+    state: State<'_, AppState>,
+    device: usize,
+) -> Result<Vec<Option<crate::codec::Value>>, ModbusError> {
+    let memory = state.sim_device(device)?.memory;
+    let values = generators::values(&memory.lock().unwrap());
+    Ok(values)
 }
 
-/// Sets a register of the loaded map, in engineering units.
+/// Sets a register of a device's map, in engineering units.
 #[tauri::command]
 pub fn sim_set_value(
     app: AppHandle,
     state: State<'_, AppState>,
+    device: usize,
     register: String,
     value: f64,
 ) -> Result<(), ModbusError> {
+    let memory = state.sim_device(device)?.memory;
     let target = generators::Target::Register { register };
-    generators::write(&mut state.sim_memory.lock().unwrap(), &target, value)
-        .map_err(ModbusError::Invalid)?;
+    generators::write(&mut memory.lock().unwrap(), &target, value).map_err(ModbusError::Invalid)?;
     sim_changed(&app);
     Ok(())
 }
 
-/// Values held by the simulator, and which of those addresses exist.
+/// Values held by a simulated device, and which of those addresses exist.
 #[derive(serde::Serialize)]
 pub struct SimView {
     data: RawData,
@@ -977,32 +1075,40 @@ pub struct SimView {
 }
 
 #[tauri::command]
-pub fn sim_read(state: State<'_, AppState>, area: Area, address: u16, count: u16) -> SimView {
-    let memory = state.sim_memory.lock().unwrap();
+pub fn sim_read(
+    state: State<'_, AppState>,
+    device: usize,
+    area: Area,
+    address: u16,
+    count: u16,
+) -> Result<SimView, ModbusError> {
+    let memory = state.sim_device(device)?.memory;
+    let memory = memory.lock().unwrap();
     let data = memory.read(area, address, count);
     let n = match &data {
         RawData::Bits(b) => b.len(),
         RawData::Registers(w) => w.len(),
     };
-    SimView {
+    Ok(SimView {
         defined: (0..n)
             .map(|i| memory.defined(area, address + i as u16))
             .collect(),
         data,
-    }
+    })
 }
 
-/// Changes values in the simulator, in any area.
+/// Changes values in a simulated device, in any area.
 #[tauri::command]
 pub fn sim_write(
     app: AppHandle,
     state: State<'_, AppState>,
+    device: usize,
     area: Area,
     address: u16,
     data: RawData,
 ) -> Result<(), ModbusError> {
-    state
-        .sim_memory
+    let memory = state.sim_device(device)?.memory;
+    memory
         .lock()
         .unwrap()
         .set(area, address, &data)

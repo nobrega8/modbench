@@ -149,7 +149,7 @@ async fn with_timeout<T>(
         .map_err(|_| ModbusError::Timeout(ms))???)
 }
 
-fn open_serial(
+pub(crate) fn open_serial(
     port: &str,
     baudrate: u32,
     parity: Parity,

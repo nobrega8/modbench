@@ -12,6 +12,7 @@ pub mod modbus;
 pub mod online;
 pub mod planner;
 pub mod poller;
+pub mod serve;
 pub mod simulator;
 pub mod tap;
 
@@ -74,7 +75,9 @@ pub fn run() {
             commands::scan_addresses,
             commands::sim_start,
             commands::sim_stop,
-            commands::sim_status,
+            commands::sim_add_device,
+            commands::sim_remove_device,
+            commands::sim_set_unit,
             commands::sim_set_generators,
             commands::sim_info,
             commands::sim_open_window,

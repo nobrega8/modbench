@@ -1,12 +1,14 @@
-//! A simulated Modbus TCP device. It keeps the four data areas in memory and
-//! answers any client, so maps, tools and other programs can be tried
-//! without hardware. Values can be seeded from a device map, and changed on
-//! their own by generators (see [`crate::generators`]).
+//! Simulated Modbus devices. Each keeps the four data areas in memory and
+//! answers its unit ID, so maps, tools and other programs can be tried
+//! without hardware: over Modbus TCP, RTU over TCP, or a serial port (RTU or
+//! ASCII). Values can be seeded from a device map, and changed on their own
+//! by generators (see [`crate::generators`]).
 
+use std::collections::HashSet;
 use std::future::{Ready, ready};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 use tokio::net::TcpListener;
@@ -19,8 +21,9 @@ use tokio_modbus::{ExceptionCode, Request, Response, SlaveRequest};
 use crate::codec::{self, DataType, Value};
 use crate::generators;
 use crate::mbmap::{self, DeviceMap, Register};
-use crate::modbus::RawData;
+use crate::modbus::{self, ModbusError, RawData, Transport};
 use crate::planner::Area;
+use crate::serve::{self, Framing};
 
 const SIZE: usize = 0x1_0000;
 
@@ -368,103 +371,262 @@ fn is_write(request: &Request<'_>) -> bool {
     )
 }
 
-struct Service {
-    memory: Arc<Mutex<Memory>>,
-    /// Answer only this unit ID; None answers all of them.
-    unit: Option<u8>,
-    peer: SocketAddr,
-    logger: Option<SimLogger>,
+/// One simulated device: the unit ID it answers, its memory, and the values
+/// that change on their own.
+#[derive(Clone)]
+pub struct Device {
+    /// None answers every unit ID that no other device has.
+    pub unit: Option<u8>,
+    pub memory: Arc<Mutex<Memory>>,
+    pub generators: generators::Shared,
+    /// The map file the memory was shaped after, if any.
+    pub source: Option<String>,
 }
 
-impl tokio_modbus::server::Service for Service {
+impl Device {
+    pub fn new(unit: Option<u8>, memory: Memory) -> Self {
+        Self {
+            unit,
+            memory: Arc::new(Mutex::new(memory)),
+            generators: Default::default(),
+            source: None,
+        }
+    }
+}
+
+/// The simulated devices, shared with a running simulator: they can be
+/// added, changed and removed while it runs.
+pub type Devices = Arc<Mutex<Vec<Device>>>;
+
+/// Why devices with these unit IDs cannot answer side by side, or None.
+pub fn unit_problem(units: impl IntoIterator<Item = Option<u8>>) -> Option<String> {
+    let mut seen = HashSet::new();
+    let mut every = false;
+    for unit in units {
+        match unit {
+            None if every => return Some("only one device can answer every unit ID".into()),
+            None => every = true,
+            Some(u) if !seen.insert(u) => return Some(format!("two devices have unit ID {u}")),
+            Some(_) => {}
+        }
+    }
+    None
+}
+
+/// The memory that answers a unit ID: the device with that ID, else the one
+/// that answers every ID. None when no device is there.
+fn memory_for(devices: &Devices, unit: u8) -> Option<Arc<Mutex<Memory>>> {
+    let list = devices.lock().unwrap();
+    list.iter()
+        .find(|d| d.unit == Some(unit))
+        .or_else(|| list.iter().find(|d| d.unit.is_none()))
+        .map(|d| d.memory.clone())
+}
+
+/// Answers the requests of one client (or serial line) and logs them.
+#[derive(Clone)]
+struct Responder {
+    devices: Devices,
+    peer: String,
+    logger: Option<SimLogger>,
+    /// Unit ID 0 is a broadcast, as on a serial line: every device takes a
+    /// write and none answers.
+    broadcast: bool,
+}
+
+impl Responder {
+    fn log(&self, unit: u8, request: &Request<'_>, error: Option<String>, wrote: bool) {
+        let Some(logger) = &self.logger else {
+            return;
+        };
+        let (address, count) = where_of(request);
+        logger(SimEvent {
+            time_ms: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis() as u64),
+            peer: self.peer.clone(),
+            unit,
+            function: request.function_code().value(),
+            address,
+            count,
+            error,
+            wrote,
+        });
+    }
+}
+
+impl serve::Handler for Responder {
+    fn handle(
+        &self,
+        unit: u8,
+        request: Request<'static>,
+    ) -> Option<Result<Response, ExceptionCode>> {
+        let write = is_write(&request);
+        if self.broadcast && unit == 0 {
+            // Only writes can be broadcast; nobody answers either way.
+            if write {
+                let memories: Vec<_> = {
+                    let list = self.devices.lock().unwrap();
+                    list.iter().map(|d| d.memory.clone()).collect()
+                };
+                let results: Vec<_> = memories
+                    .iter()
+                    .map(|m| m.lock().unwrap().answer(request.clone()))
+                    .collect();
+                let wrote = results.iter().any(Result::is_ok);
+                let error = match results.iter().find_map(|r| r.as_ref().err()) {
+                    Some(e) if !wrote => Some(e.to_string()),
+                    _ => None,
+                };
+                self.log(unit, &request, error, wrote);
+            }
+            return None;
+        }
+        // No device with this unit ID: stay silent, like a missing device.
+        let memory = memory_for(&self.devices, unit)?;
+        let answer = memory.lock().unwrap().answer(request.clone());
+        self.log(
+            unit,
+            &request,
+            answer.as_ref().err().map(|e| e.to_string()),
+            write && answer.is_ok(),
+        );
+        Some(answer)
+    }
+}
+
+/// tokio-modbus's TCP server, answering through a [`Responder`].
+struct TcpService(Responder);
+
+impl tokio_modbus::server::Service for TcpService {
     type Request = SlaveRequest<'static>;
     type Response = Option<Response>;
     type Exception = ExceptionCode;
     type Future = Ready<Result<Self::Response, Self::Exception>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        // Another unit ID behind the same address: stay silent, like a
-        // gateway with nothing there.
-        if self.unit.is_some_and(|u| u != req.slave) {
-            return ready(Ok(None));
-        }
-        let function = req.request.function_code().value();
-        let (address, count) = where_of(&req.request);
-        let wrote = is_write(&req.request);
-        let answer = self.memory.lock().unwrap().answer(req.request);
-        if let Some(logger) = &self.logger {
-            logger(SimEvent {
-                time_ms: SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map_or(0, |d| d.as_millis() as u64),
-                peer: self.peer.to_string(),
-                unit: req.slave,
-                function,
-                address,
-                count,
-                error: answer.as_ref().err().map(|e| e.to_string()),
-                wrote: wrote && answer.is_ok(),
-            });
-        }
-        ready(answer.map(Some))
+        use serve::Handler;
+        ready(match self.0.handle(req.slave, req.request) {
+            None => Ok(None),
+            Some(answer) => answer.map(Some),
+        })
     }
 }
 
 /// A running simulator: stop it by dropping or aborting the tasks.
 pub struct Running {
-    pub addr: SocketAddr,
-    /// The only unit ID it answers, or None for all of them.
-    pub unit: Option<u8>,
+    /// Where it listens, with the port it picked when asked for port 0.
+    pub listen: Transport,
     task: tokio::task::JoinHandle<()>,
-    generators: Option<tokio::task::JoinHandle<()>>,
+    generators: tokio::task::JoinHandle<()>,
 }
 
 impl Running {
     pub fn stop(self) {
         drop(self);
     }
+
+    /// The TCP port it listens on; None on a serial port.
+    pub fn port(&self) -> Option<u16> {
+        match &self.listen {
+            Transport::Tcp { port, .. } | Transport::RtuOverTcp { port, .. } => Some(*port),
+            _ => None,
+        }
+    }
 }
 
 impl Drop for Running {
     fn drop(&mut self) {
         self.task.abort();
-        if let Some(g) = &self.generators {
-            g.abort();
-        }
+        self.generators.abort();
     }
 }
 
-/// Starts answering Modbus TCP clients on `addr` (port 0 picks a free
-/// one), and runs the generators while it does. Returns where it listens.
+/// Starts answering clients the way `listen` says: Modbus TCP or RTU over
+/// TCP on a host and port (port 0 picks a free one), or RTU or ASCII on a
+/// serial port. Runs the devices' generators while it does.
 pub async fn start(
-    addr: SocketAddr,
-    memory: Arc<Mutex<Memory>>,
-    unit: Option<u8>,
+    listen: Transport,
+    devices: Devices,
     logger: Option<SimLogger>,
-    generators: Option<generators::Shared>,
-) -> std::io::Result<Running> {
-    let listener = TcpListener::bind(addr).await?;
-    let addr = listener.local_addr()?;
-    let server = Server::new(listener);
-    let generators = generators.map(|g| tokio::spawn(generators::drive(memory.clone(), g)));
-    let task = tokio::spawn(async move {
-        let on_connected = |stream, peer| {
-            let accepted = accept_tcp_connection(stream, peer, |peer| {
-                Ok(Some(Service {
-                    memory: memory.clone(),
-                    unit,
-                    peer,
-                    logger: logger.clone(),
-                }))
+) -> Result<Running, ModbusError> {
+    let responder = {
+        let (devices, logger) = (devices.clone(), logger.clone());
+        move |peer: String, broadcast: bool| Responder {
+            devices: devices.clone(),
+            peer,
+            logger: logger.clone(),
+            broadcast,
+        }
+    };
+    let (listen, task) = match listen {
+        Transport::Tcp { host, port } => {
+            let listener = TcpListener::bind((host.as_str(), port)).await?;
+            let port = listener.local_addr()?.port();
+            let server = Server::new(listener);
+            let task = tokio::spawn(async move {
+                let on_connected = |stream, peer: SocketAddr| {
+                    let accepted = accept_tcp_connection(stream, peer, |peer| {
+                        Ok(Some(TcpService(responder(peer.to_string(), false))))
+                    });
+                    async move { accepted }
+                };
+                // A client that sends garbage only loses its own connection.
+                let _ = server.serve(&on_connected, |_| {}).await;
             });
-            async move { accepted }
-        };
-        // A client that sends garbage only loses its own connection.
-        let _ = server.serve(&on_connected, |_| {}).await;
-    });
+            (Transport::Tcp { host, port }, task)
+        }
+        Transport::RtuOverTcp { host, port } => {
+            let listener = TcpListener::bind((host.as_str(), port)).await?;
+            let port = listener.local_addr()?.port();
+            let task = tokio::spawn(async move {
+                // Dropped with the task, which ends every connection.
+                let mut clients = tokio::task::JoinSet::new();
+                loop {
+                    tokio::select! {
+                        accepted = listener.accept() => match accepted {
+                            Ok((stream, peer)) => {
+                                // A gateway passes broadcasts on to its line.
+                                let r = responder(peer.to_string(), true);
+                                clients.spawn(serve::serve(stream, Framing::Rtu, r));
+                            }
+                            Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
+                        },
+                        Some(_) = clients.join_next() => {}
+                    }
+                }
+            });
+            (Transport::RtuOverTcp { host, port }, task)
+        }
+        Transport::Rtu {
+            ref port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        }
+        | Transport::Ascii {
+            ref port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => {
+            let stream = modbus::open_serial(port, baudrate, parity, data_bits, stop_bits)?;
+            let framing = match listen {
+                Transport::Ascii { .. } => Framing::Ascii,
+                _ => Framing::Rtu,
+            };
+            let r = responder(port.clone(), true);
+            let task = tokio::spawn(async move {
+                let _ = serve::serve(stream, framing, r).await;
+            });
+            (listen, task)
+        }
+    };
+    let generators = tokio::spawn(generators::drive(devices));
     Ok(Running {
-        addr,
-        unit,
+        listen,
         task,
         generators,
     })
@@ -473,7 +635,7 @@ pub async fn start(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modbus::{AddressScan, ConnectionConfig, ModbusError, Session, Transport};
+    use crate::modbus::{AddressScan, ConnectionConfig, Session};
     use std::sync::atomic::AtomicBool;
 
     fn map() -> DeviceMap {
@@ -486,11 +648,11 @@ mod tests {
         mbmap::parse(text.as_bytes()).map.unwrap()
     }
 
-    async fn session(addr: SocketAddr, unit: u8) -> Session {
+    async fn session(port: u16, unit: u8) -> Session {
         let config = ConnectionConfig {
             transport: Transport::Tcp {
-                host: addr.ip().to_string(),
-                port: addr.port(),
+                host: "127.0.0.1".into(),
+                port,
             },
             unit_id: unit,
             timeout_ms: 300,
@@ -538,22 +700,36 @@ mod tests {
         );
     }
 
+    fn tcp() -> Transport {
+        Transport::Tcp {
+            host: "127.0.0.1".into(),
+            port: 0,
+        }
+    }
+
+    fn devices(list: Vec<Device>) -> Devices {
+        Arc::new(Mutex::new(list))
+    }
+
+    #[test]
+    fn unit_ids_must_not_clash() {
+        assert_eq!(unit_problem([Some(1), Some(2), None]), None);
+        assert!(unit_problem([Some(1), Some(1)]).is_some());
+        assert!(unit_problem([None, None]).is_some());
+    }
+
     #[tokio::test]
     async fn clients_read_write_and_identify_over_tcp() {
-        let memory = Arc::new(Mutex::new(Memory::from_map(&map(), true)));
+        let device = Device::new(Some(1), Memory::from_map(&map(), true));
+        let memory = device.memory.clone();
         let events = Arc::new(Mutex::new(Vec::new()));
         let seen = events.clone();
         let logger: SimLogger = Arc::new(move |e| seen.lock().unwrap().push(e));
-        let sim = start(
-            "127.0.0.1:0".parse().unwrap(),
-            memory.clone(),
-            Some(1),
-            Some(logger),
-            None,
-        )
-        .await
-        .unwrap();
-        let mut s = session(sim.addr, 1).await;
+        let sim = start(tcp(), devices(vec![device]), Some(logger))
+            .await
+            .unwrap();
+        let port = sim.port().unwrap();
+        let mut s = session(port, 1).await;
         assert_eq!(
             s.read(Area::Holding, 0, 1).await.unwrap(),
             RawData::Registers(vec![0x016A])
@@ -577,7 +753,7 @@ mod tests {
         }
 
         // Another unit ID gets no answer.
-        let mut other = session(sim.addr, 2).await;
+        let mut other = session(port, 2).await;
         assert!(matches!(
             other.read(Area::Holding, 0, 1).await,
             Err(ModbusError::Timeout(_))
@@ -586,12 +762,115 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn an_address_scan_finds_the_registers_of_a_sparse_map() {
-        let memory = Arc::new(Mutex::new(Memory::from_map(&map(), true)));
-        let sim = start("127.0.0.1:0".parse().unwrap(), memory, None, None, None)
-            .await
+    async fn devices_answer_their_own_unit_ids() {
+        let mut empty = Memory::default();
+        empty
+            .set(Area::Holding, 0, &RawData::Registers(vec![7]))
             .unwrap();
-        let mut s = session(sim.addr, 1).await;
+        let list = devices(vec![
+            Device::new(Some(1), Memory::from_map(&map(), true)),
+            Device::new(Some(5), empty),
+        ]);
+        let sim = start(tcp(), list.clone(), None).await.unwrap();
+        let port = sim.port().unwrap();
+        let mut one = session(port, 1).await;
+        let mut five = session(port, 5).await;
+        assert_eq!(
+            one.read(Area::Holding, 0, 1).await.unwrap(),
+            RawData::Registers(vec![0x016A])
+        );
+        assert_eq!(
+            five.read(Area::Holding, 0, 1).await.unwrap(),
+            RawData::Registers(vec![7])
+        );
+        // Unit 5 has no map: every address exists.
+        assert!(five.read(Area::Holding, 5, 1).await.is_ok());
+
+        // The unit ID scan finds exactly the simulated devices.
+        let cancel = AtomicBool::new(false);
+        let hits = one
+            .scan_units(1, 8, Duration::from_millis(100), &cancel, |_| {})
+            .await;
+        let units: Vec<_> = hits.iter().map(|h| h.unit).collect();
+        assert_eq!(units, [1, 5]);
+
+        // A device added while running answers at once.
+        list.lock()
+            .unwrap()
+            .push(Device::new(Some(8), Memory::default()));
+        let mut eight = session(port, 8).await;
+        assert!(eight.read(Area::Holding, 0, 1).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn rtu_over_tcp_answers_like_a_gateway() {
+        let list = devices(vec![
+            Device::new(Some(1), Memory::from_map(&map(), true)),
+            Device::new(Some(2), Memory::default()),
+        ]);
+        let listen = Transport::RtuOverTcp {
+            host: "127.0.0.1".into(),
+            port: 0,
+        };
+        let sim = start(listen, list.clone(), None).await.unwrap();
+        let config = |unit| ConnectionConfig {
+            transport: Transport::RtuOverTcp {
+                host: "127.0.0.1".into(),
+                port: sim.port().unwrap(),
+            },
+            unit_id: unit,
+            timeout_ms: 300,
+        };
+        let mut s = Session::connect(&config(1), None).await.unwrap();
+        assert_eq!(
+            s.read(Area::Holding, 0, 1).await.unwrap(),
+            RawData::Registers(vec![0x016A])
+        );
+        s.write_coils(3, &[false]).await.unwrap();
+        assert_eq!(
+            s.read(Area::Coil, 3, 1).await.unwrap(),
+            RawData::Bits(vec![false])
+        );
+        assert!(matches!(
+            s.read(Area::Holding, 5, 1).await,
+            Err(ModbusError::Exception { code: 2, .. })
+        ));
+        let id = s.read_device_id(1).await.unwrap();
+        assert_eq!(id.objects[0].value, "ACME");
+
+        // A broadcast write reaches every device and gets no answer.
+        let mut all = Session::connect(&config(0), None).await.unwrap();
+        assert!(all.write_registers(12, &[4]).await.is_err());
+        for device in list.lock().unwrap().iter() {
+            let memory = device.memory.lock().unwrap();
+            assert_eq!(
+                memory.read(Area::Holding, 12, 1),
+                RawData::Registers(vec![4])
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn ascii_frames_are_served_over_a_stream() {
+        use tokio_modbus::prelude::Reader;
+        let (client, server) = tokio::io::duplex(1024);
+        let r = Responder {
+            devices: devices(vec![Device::new(Some(3), Memory::from_map(&map(), true))]),
+            peer: "test".into(),
+            logger: None,
+            broadcast: true,
+        };
+        tokio::spawn(serve::serve(server, Framing::Ascii, r));
+        let mut ctx = crate::ascii::attach_slave(client, tokio_modbus::Slave(3));
+        let words = ctx.read_holding_registers(12, 1).await.unwrap().unwrap();
+        assert_eq!(words, [(-5i16) as u16]);
+    }
+
+    #[tokio::test]
+    async fn an_address_scan_finds_the_registers_of_a_sparse_map() {
+        let list = devices(vec![Device::new(None, Memory::from_map(&map(), true))]);
+        let sim = start(tcp(), list, None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
         let scan = AddressScan {
             area: Area::Holding,
             from: 0,
