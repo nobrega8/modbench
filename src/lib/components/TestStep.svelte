@@ -2,7 +2,8 @@
   import { slidePill, viewIn } from "#lib/motion.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import { bench, type Tab } from "#lib/state.svelte.ts";
-  import ChartView from "./ChartView.svelte";
+  import ManualChart from "./ManualChart.svelte";
+  import MapChart from "./MapChart.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
   import Counter from "./Counter.svelte";
   import LogView from "./LogView.svelte";
@@ -33,7 +34,13 @@
           },
         ]
       : // A map reads its own registers: the raw grid is for manual reads.
-        [{ id: "registers", label: "Read registers" }]),
+        [
+          { id: "registers", label: "Read registers" },
+          {
+            id: "chart",
+            label: `Chart${bench.manualSeries.length ? ` (${bench.manualSeries.length})` : ""}`,
+          },
+        ]),
     { id: "write", label: "Write values" },
     { id: "raw", label: "Raw data" },
     {
@@ -183,8 +190,10 @@
             </p>
           {/if}
         {:else if bench.tab === "chart"}
-          {#if bench.map}
-            {#key bench.map.path}<ChartView open={bench.map} />{/key}
+          {#if bench.source === "manual"}
+            <ManualChart />
+          {:else if bench.map}
+            {#key bench.map.path}<MapChart open={bench.map} />{/key}
           {:else}
             <p class="empty">
               Open a device map in step 2 to chart its values.

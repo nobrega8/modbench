@@ -6,7 +6,8 @@
   export interface Line {
     index: number;
     slot: number;
-    reg: Register;
+    /** What the line shows: a map register, or a name for an address. */
+    reg: Pick<Register, "name" | "description" | "unit">;
     samples: Sample[];
   }
 

@@ -1,10 +1,39 @@
+<!--
+  The Chart tab: a menu to add a line, the time span, and one chart per
+  unit. MapChart and ManualChart fill it with map registers or with
+  addresses of a manual read.
+-->
 <script lang="ts">
-  import { bench, type OpenMap } from "#lib/state.svelte.ts";
+  import { bench } from "#lib/state.svelte.ts";
   import Select from "./Select.svelte";
-  import { MAX_SERIES, chartable, groupByUnit } from "#lib/trend.ts";
+  import { MAX_SERIES } from "#lib/trend.ts";
   import TrendChart, { type Line } from "./TrendChart.svelte";
 
-  let { open }: { open: OpenMap } = $props();
+  let {
+    groups,
+    options,
+    addLabel,
+    count,
+    empty,
+    note,
+    onadd,
+    onremove,
+    onclear,
+  }: {
+    /** Lines by unit: one chart each. */
+    groups: { unit: string; lines: Line[] }[];
+    /** What the add menu offers. */
+    options: { value: number; label: string }[];
+    addLabel: string;
+    /** Lines on the chart now. */
+    count: number;
+    /** Shown while there is nothing on the chart. */
+    empty: string;
+    note?: string;
+    onadd: (value: number) => void;
+    onremove: (index: number) => void;
+    onclear: () => void;
+  } = $props();
 
   const windows = [
     { ms: 60_000, label: "Last minute" },
@@ -14,47 +43,29 @@
     { ms: 0, label: "Everything" },
   ];
   let windowMs = $state(5 * 60_000);
-  /** The "add a register" menu; it goes back to its prompt after a pick. */
+  /** The add menu; it goes back to its prompt after a pick. */
   let pick = $state(-1);
 
-  const registers = $derived(open.map.registers);
-  const full = $derived(bench.chartSeries.length >= MAX_SERIES);
-  const options = $derived(
-    registers
-      .map((reg, index) => ({ reg, index }))
-      .filter(
-        ({ reg, index }) =>
-          chartable(reg) && !bench.chartSeries.some((s) => s.index === index),
-      ),
-  );
+  const full = $derived(count >= MAX_SERIES);
 
   /** The time span every chart shows, ending at the newest sample. */
   const span = $derived.by(() => {
     let first = Infinity;
     let last = -Infinity;
-    for (const s of bench.history.values()) {
-      if (!s.length) continue;
-      first = Math.min(first, s[0].t);
-      last = Math.max(last, s[s.length - 1].t);
+    for (const g of groups) {
+      for (const { samples: s } of g.lines) {
+        if (!s.length) continue;
+        first = Math.min(first, s[0].t);
+        last = Math.max(last, s[s.length - 1].t);
+      }
     }
     if (!Number.isFinite(last)) return null;
     const from = windowMs ? last - windowMs : first;
     return { from, to: Math.max(last, from + 1000) };
   });
 
-  const groups = $derived(
-    groupByUnit(bench.chartSeries, registers).map((g) => ({
-      unit: g.unit,
-      lines: g.series.map((s): Line => ({
-        ...s,
-        reg: registers[s.index],
-        samples: bench.history.get(s.index) ?? [],
-      })),
-    })),
-  );
-
-  function add(index: number) {
-    bench.addToChart(index);
+  function add(value: number) {
+    onadd(value);
     pick = -1;
   }
 </script>
@@ -63,15 +74,10 @@
   <Select
     bind:value={pick}
     width="280px"
-    label="Add a register to the chart"
-    placeholder={full
-      ? `Up to ${MAX_SERIES} registers`
-      : "Add a register to the chart…"}
+    label={addLabel}
+    placeholder={full ? `Up to ${MAX_SERIES} lines` : `${addLabel}…`}
     disabled={full || !options.length}
-    options={options.map(({ reg, index }) => ({
-      value: index,
-      label: `${reg.name}${reg.unit ? ` (${reg.unit})` : ""}${reg.group ? ` · ${reg.group}` : ""}`,
-    }))}
+    {options}
     onchange={add}
   />
   <Select
@@ -80,19 +86,12 @@
     options={windows.map((w) => ({ value: w.ms, label: w.label }))}
   />
   <span class="spacer"></span>
-  <span class="dim">One chart per unit</span>
-  <button
-    class="btn"
-    disabled={!bench.history.size}
-    onclick={() => bench.clearChart()}>Clear</button
-  >
+  {#if note}<span class="dim">{note}</span>{/if}
+  <button class="btn" disabled={!span} onclick={onclear}>Clear</button>
 </div>
 
-{#if !bench.chartSeries.length}
-  <p class="empty">
-    Add up to {MAX_SERIES} registers to plot their values over time. Values are recorded
-    from then on, while the test runs.
-  </p>
+{#if !count}
+  <p class="empty">{empty}</p>
 {:else if !span}
   <p class="empty">
     {bench.running
@@ -107,7 +106,7 @@
         lines={g.lines}
         from={span.from}
         to={span.to}
-        onremove={(i) => bench.removeFromChart(i)}
+        {onremove}
       />
     {/each}
   </div>

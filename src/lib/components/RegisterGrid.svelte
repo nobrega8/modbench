@@ -10,17 +10,13 @@
     type MenuEntry,
   } from "#lib/contextmenu.svelte.ts";
   import type { ByteOrder } from "#lib/types.ts";
+  import {
+    chartType,
+    decodePair,
+    type GridFormat as Format,
+  } from "#lib/manual-chart.ts";
+  import { MAX_SERIES } from "#lib/trend.ts";
 
-  type Format =
-    | "unsigned"
-    | "signed"
-    | "hex"
-    | "binary"
-    | "ascii"
-    | "int32"
-    | "uint32"
-    | "float32"
-    | "bits";
   const formats: { id: Format; label: string }[] = [
     { id: "unsigned", label: "Unsigned" },
     { id: "signed", label: "Signed" },
@@ -35,8 +31,9 @@
   const orders: ByteOrder[] = ["ABCD", "CDAB", "BADC", "DCBA"];
   const PER_ROW = 10;
 
-  let format = $state<Format>("unsigned");
-  let order = $state<ByteOrder>("ABCD");
+  // Kept on the bench: the Chart tab reads addresses the same way.
+  const format = $derived(bench.gridFormat);
+  const order = $derived(bench.gridOrder);
 
   const wide = $derived(
     format === "int32" || format === "uint32" || format === "float32",
@@ -87,16 +84,8 @@
   }
 
   function pair(a: number, b: number): string {
-    let regs = [a, b];
-    if (order === "CDAB" || order === "DCBA") regs = regs.reverse();
-    const swap = order === "BADC" || order === "DCBA";
-    const view = new DataView(new ArrayBuffer(4));
-    regs.forEach((w, k) =>
-      view.setUint16(k * 2, swap ? ((w & 0xff) << 8) | (w >> 8) : w),
-    );
-    if (format === "int32") return String(view.getInt32(0));
-    if (format === "uint32") return String(view.getUint32(0));
-    return String(Number(view.getFloat32(0).toPrecision(7)));
+    const type = format === "int32" || format === "uint32" ? format : "float32";
+    return String(decodePair(a, b, type, order));
   }
 
   interface Cell {
@@ -165,7 +154,29 @@
         ? [r.data.values[c.offset] ? 1 : 0]
         : r.data.values.slice(c.offset, c.offset + c.span);
     const writable = r.area === "holding" || r.area === "coil";
+    const type = chartType(format, r.area);
+    const series = type && {
+      area: r.area,
+      address: at,
+      type,
+      order,
+    };
+    const charted = series ? bench.manualSeriesOf(series) : null;
+    const full = bench.manualSeries.length >= MAX_SERIES;
     return [
+      series &&
+        (charted
+          ? {
+              label: "Remove from chart",
+              action: () => bench.removeManualFromChart(charted.slot),
+            }
+          : {
+              label: "Add to chart",
+              disabled: full,
+              hint: full ? `${MAX_SERIES} at most` : undefined,
+              action: () => bench.addManualToChart(series),
+            }),
+      null,
       { label: "Copy value", action: () => copy(c.text) },
       { label: "Copy address", action: () => copy(addr(at)) },
       {
@@ -204,7 +215,7 @@
     <label class="inline">
       <span>Show as</span>
       <Select
-        bind:value={format}
+        bind:value={bench.gridFormat}
         label="Show as"
         options={formats.map((f) => ({ value: f.id, label: f.label }))}
       />
@@ -213,7 +224,7 @@
       <label class="inline">
         <span>Byte order</span>
         <Select
-          bind:value={order}
+          bind:value={bench.gridOrder}
           label="Byte order"
           options={orders.map((o) => ({ value: o, label: o }))}
         />

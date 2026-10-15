@@ -32,7 +32,9 @@ export function plotValue(value: Value | null): number | null {
 }
 
 /** The first color slot no series uses. */
-export function freeSlot(series: Series[]): number | null {
+export function freeSlot<T extends { slot: number }>(
+  series: T[],
+): number | null {
   for (let s = 1; s <= MAX_SERIES; s++) {
     if (!series.some((x) => x.slot === s)) return s;
   }

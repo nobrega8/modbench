@@ -23,6 +23,13 @@ import { loadAlarms, saveAlarms, type Alarm } from "./alarms";
 import { isCustom, loadCustom, saveCustom } from "./custom-registers";
 import { recordHeader, recordRow } from "./csv";
 import {
+  addRead,
+  sameSeries,
+  type GridFormat,
+  type ManualRead,
+  type ManualSeries,
+} from "./manual-chart";
+import {
   MAX_SERIES,
   addCycle,
   freeSlot,
@@ -232,6 +239,14 @@ class Bench {
   chartSeries = $state.raw<Series[]>([]);
   /** Values over time of the charted registers, by map index. */
   history = $state.raw<Map<number, Sample[]>>(new Map());
+  /** How the Read registers grid shows values, which is also how an
+   * address is charted from it. */
+  gridFormat = $state<GridFormat>("unsigned");
+  gridOrder = $state<ByteOrder>("ABCD");
+  /** Addresses of manual reads on the Chart tab. */
+  manualSeries = $state.raw<ManualSeries[]>([]);
+  /** Values over time of those addresses, by color slot. */
+  manualHistory = $state.raw<Map<number, Sample[]>>(new Map());
   /** CSV file that gets one row per map cycle, and its columns. */
   recording = $state.raw<{
     path: string;
@@ -586,7 +601,9 @@ This writes to the device.`,
 
   private async runManual() {
     this.tab = this.isRead
-      ? "registers"
+      ? this.tab === "chart"
+        ? "chart"
+        : "registers"
       : this.tab === "registers"
         ? "write"
         : this.tab;
@@ -623,6 +640,7 @@ This writes to the device.`,
             : this.withoutGrid(),
         );
         this.read = { address: this.address, area, data };
+        this.chartRead(this.read);
       } else if (this.fc === 5) {
         await api.writeCoils(this.address, [this.writeValues[0] !== 0]);
       } else if (this.fc === 15) {
@@ -641,7 +659,22 @@ This writes to the device.`,
       if (this.status && !this.status.ok) this.status = null;
     } catch (e) {
       this.status = { ok: false, text: errorText(e) };
+      // A failed read leaves a gap in the charted lines.
+      if (this.isRead) this.chartRead(null);
     }
+  }
+
+  /** Adds a manual read (null: one that failed) to the Chart tab. */
+  private chartRead(read: ManualRead | null) {
+    if (!this.manualSeries.length) return;
+    const next = addRead(
+      this.manualSeries,
+      this.manualHistory,
+      read,
+      Date.now(),
+    );
+    this.manualSeries = next.series;
+    this.manualHistory = next.history;
   }
 
   /** Whether the link is lost and should be opened again. */
@@ -1241,6 +1274,30 @@ This writes to the device.`,
 
   clearChart() {
     this.history = new Map();
+  }
+
+  /** The manual series reading this address the same way, if charted. */
+  manualSeriesOf(s: Omit<ManualSeries, "slot">): ManualSeries | null {
+    return this.manualSeries.find((x) => sameSeries(x, s)) ?? null;
+  }
+
+  /** Puts an address of the manual read on the Chart tab. */
+  addManualToChart(s: Omit<ManualSeries, "slot">) {
+    if (this.manualSeriesOf(s)) return;
+    const slot = freeSlot(this.manualSeries);
+    if (slot === null) return;
+    this.manualSeries = [...this.manualSeries, { ...s, slot }];
+  }
+
+  removeManualFromChart(slot: number) {
+    this.manualSeries = this.manualSeries.filter((s) => s.slot !== slot);
+    const next = new Map(this.manualHistory);
+    next.delete(slot);
+    this.manualHistory = next;
+  }
+
+  clearManualChart() {
+    this.manualHistory = new Map();
   }
 
   resetTimes() {
