@@ -4,6 +4,8 @@
   // Kept while other tools are shown.
   let area = $state<Area>("holding");
   let start = $state(0);
+  /** With a map loaded: its registers as a list, or the raw grid. */
+  let mode = $state<"registers" | "grid">("registers");
 </script>
 
 <script lang="ts">
@@ -18,7 +20,28 @@
   import type { SimView } from "$lib/types";
   import AddressFormat from "../AddressFormat.svelte";
   import IntInput from "../IntInput.svelte";
+  import Select from "../Select.svelte";
   import SimGenerators from "./SimGenerators.svelte";
+  import SimRegisters from "./SimRegisters.svelte";
+
+  let generators: SimGenerators | undefined = $state();
+
+  /** Maps to shape the device after: those open on Main, then the library. */
+  const sources = $derived([
+    { value: "", label: "Empty device" },
+    ...bench.maps.map((m) => ({
+      value: m.path,
+      label: `${m.map.meta.vendor} ${m.map.meta.model} · open`,
+    })),
+    ...bench.library
+      .filter((e) => !e.error && !bench.maps.some((m) => m.path === e.path))
+      .map((e) => ({ value: e.path, label: `${e.vendor} ${e.model}` })),
+  ]);
+
+  function choose(path: string) {
+    const open = bench.maps.find((m) => m.path === path);
+    sim.pick(path || null, open && $state.snapshot(open.map));
+  }
 
   const PER_ROW = 10;
   const SHOWN = 100;
@@ -200,118 +223,139 @@
 </div>
 
 <div class="row source">
-  <span
-    >Values: <strong
-      >{sim.loaded ? `shaped after ${sim.loaded}` : "an empty device"}</strong
-    ></span
-  >
-  <button
-    class="btn"
-    disabled={!bench.map}
-    title={bench.map ? undefined : "Open a map on the Main page first"}
-    onclick={() =>
-      bench.map &&
-      sim.load(
-        $state.snapshot(bench.map.map),
-        bench.map.path.split(/[\\/]/).pop() ?? "the map",
-      )}
-    >{bench.map
-      ? `Load ${bench.map.map.meta.vendor} ${bench.map.map.meta.model}`
-      : "Load the open map"}</button
-  >
+  <label class="field">
+    <span>Device</span>
+    <Select
+      value={sim.source ?? ""}
+      options={sources}
+      label="Map the device is shaped after"
+      width="300px"
+      onchange={choose}
+    />
+  </label>
   <label
     class="check"
     title="Only the map's addresses exist; the others answer exception 2"
   >
-    <input type="checkbox" bind:checked={sim.strict} />
+    <input
+      type="checkbox"
+      bind:checked={sim.strict}
+      disabled={!sim.map}
+      onchange={() => sim.reload()}
+    />
     Only the map's addresses
   </label>
-  <button class="btn ghost" onclick={() => sim.clear()}>Clear</button>
+  <span class="spacer"></span>
+  {#if sim.map}
+    <button
+      class="btn ghost"
+      title="Back to the map's reference values"
+      onclick={() => sim.reload()}>Reset values</button
+    >
+    <div class="segmented" role="tablist" aria-label="View" use:slidePill>
+      <button
+        role="tab"
+        aria-selected={mode === "registers"}
+        class:on={mode === "registers"}
+        onclick={() => (mode = "registers")}>Registers</button
+      >
+      <button
+        role="tab"
+        aria-selected={mode === "grid"}
+        class:on={mode === "grid"}
+        onclick={() => (mode = "grid")}>Grid</button
+      >
+    </div>
+  {/if}
 </div>
 
 {#if sim.error}<p class="bad" role="alert">{sim.error}</p>{/if}
 
-<div class="row">
-  <div class="segmented" role="tablist" aria-label="Area" use:slidePill>
-    {#each areas as a (a.id)}
-      <button
-        role="tab"
-        aria-selected={area === a.id}
-        class:on={area === a.id}
-        onclick={() => {
-          area = a.id;
-          editing = null;
-        }}>{a.label}</button
-      >
-    {/each}
-  </div>
-  <label class="inline">
-    <span class="dim">From</span>
-    <IntInput
-      value={first}
-      min={0}
-      max={0x10000 - SHOWN}
-      width="80px"
-      label="First address shown"
-      onchange={(n) => {
-        start = n;
-        editing = null;
-      }}
-    />
-  </label>
-  <span class="spacer"></span>
-  <AddressFormat />
-</div>
-<p class="dim hint">
-  {bits
-    ? "Click a bit to switch it."
-    : "Click a value to change it. Clients see the change at once."}
-</p>
-{#if problem}<p class="bad">{problem}</p>{/if}
-
-{#if view}
-  <div class="grid" style:--cols={PER_ROW}>
-    <span></span>
-    {#each Array(PER_ROW) as _, i (i)}<span class="colhead">+{i}</span>{/each}
-    {#each Array(SHOWN / PER_ROW) as _, row (row)}
-      <span class="rowhead mono">{addr(first + row * PER_ROW)}</span>
-      {#each Array(PER_ROW) as _, col (col)}
-        {@const i = row * PER_ROW + col}
-        {@const v = view.data.values[i]}
-        {@const defined = view.defined[i]}
-        {#if editing === i}
-          <input
-            class="cell input num"
-            bind:value={draft}
-            use:focus
-            onkeydown={(e) => {
-              if (e.key === "Enter") commit();
-              if (e.key === "Escape") editing = null;
-            }}
-            onblur={commit}
-            aria-label="Value at {addr(first + i)}"
-          />
-        {:else}
-          <button
-            class="cell mono"
-            class:off={!defined}
-            class:on={v === true}
-            class:gen={driven.has(first + i)}
-            title="{addr(first + i)}{defined
-              ? ''
-              : ' · not in the map'}{typeof v === 'number'
-              ? ` · 0x${hex(v)}`
-              : ''}{driven.has(first + i) ? ' · set by a generator' : ''}"
-            onclick={() => edit(i)}
-            >{typeof v === "boolean" ? (v ? "1" : "0") : v}</button
-          >
-        {/if}
+{#if sim.map && mode === "registers"}
+  <SimRegisters ongenerate={(r, i) => generators?.generateFor(r, i)} />
+{:else}
+  <div class="row">
+    <div class="segmented" role="tablist" aria-label="Area" use:slidePill>
+      {#each areas as a (a.id)}
+        <button
+          role="tab"
+          aria-selected={area === a.id}
+          class:on={area === a.id}
+          onclick={() => {
+            area = a.id;
+            editing = null;
+          }}>{a.label}</button
+        >
       {/each}
-    {/each}
+    </div>
+    <label class="inline">
+      <span class="dim">From</span>
+      <IntInput
+        value={first}
+        min={0}
+        max={0x10000 - SHOWN}
+        width="80px"
+        label="First address shown"
+        onchange={(n) => {
+          start = n;
+          editing = null;
+        }}
+      />
+    </label>
+    <span class="spacer"></span>
+    <AddressFormat />
   </div>
+  <p class="dim hint">
+    {bits
+      ? "Click a bit to switch it."
+      : "Click a value to change it. Clients see the change at once."}
+  </p>
+  {#if problem}<p class="bad">{problem}</p>{/if}
+
+  {#if view}
+    <div class="grid" style:--cols={PER_ROW}>
+      <span></span>
+      {#each Array(PER_ROW) as _, i (i)}<span class="colhead">+{i}</span>{/each}
+      {#each Array(SHOWN / PER_ROW) as _, row (row)}
+        <span class="rowhead mono">{addr(first + row * PER_ROW)}</span>
+        {#each Array(PER_ROW) as _, col (col)}
+          {@const i = row * PER_ROW + col}
+          {@const v = view.data.values[i]}
+          {@const defined = view.defined[i]}
+          {#if editing === i}
+            <input
+              class="cell input num"
+              bind:value={draft}
+              use:focus
+              onkeydown={(e) => {
+                if (e.key === "Enter") commit();
+                if (e.key === "Escape") editing = null;
+              }}
+              onblur={commit}
+              aria-label="Value at {addr(first + i)}"
+            />
+          {:else}
+            <button
+              class="cell mono"
+              class:off={!defined}
+              class:on={v === true}
+              class:gen={driven.has(first + i)}
+              title="{addr(first + i)}{defined
+                ? ''
+                : ' · not in the map'}{typeof v === 'number'
+                ? ` · 0x${hex(v)}`
+                : ''}{driven.has(first + i) ? ' · set by a generator' : ''}"
+              onclick={() => edit(i)}
+              >{typeof v === "boolean" ? (v ? "1" : "0") : v}</button
+            >
+          {/if}
+        {/each}
+      {/each}
+    </div>
+  {/if}
 {/if}
 
-<SimGenerators />
+<SimGenerators bind:this={generators} />
 
 <section class="activity">
   <div class="row">

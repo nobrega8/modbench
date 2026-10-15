@@ -155,26 +155,41 @@ pub fn read(memory: &Memory, target: &Target) -> Result<f64, String> {
     Ok(match resolve(memory, target)? {
         Slot::Bit(area, address) => f64::from(u8::from(first_bit(memory, area, address))),
         Slot::Word(area, address) => f64::from(words(memory, area, address, 1)[0]),
-        Slot::Register(r, order) => {
-            if r.area.is_bit() {
-                return Ok(f64::from(u8::from(first_bit(memory, r.area, r.address))));
-            }
-            let regs = words(memory, r.area, r.address, r.count());
-            let word = regs.first().copied().unwrap_or(0);
-            match (r.ty, r.bit, r.bits) {
-                (DataType::Bool, Some(bit), _) => f64::from(word >> bit & 1),
-                (_, Some(bit), Some(width)) => {
-                    let raw = Value::Uint(codec::extract_field(word, bit, width).into());
-                    number(codec::to_engineering(raw, r.scale, r.offset))
-                }
-                _ => {
-                    let raw =
-                        codec::decode(&regs, r.ty, order, r.bit).map_err(|e| e.to_string())?;
-                    number(codec::to_engineering(raw, r.scale, r.offset))
-                }
-            }
+        Slot::Register(r, order) => number(register_value(memory, r, order)?),
+    })
+}
+
+/// A map register's value in engineering units, as the map reads it.
+fn register_value(memory: &Memory, r: &Register, order: codec::ByteOrder) -> Result<Value, String> {
+    if r.area.is_bit() {
+        return Ok(Value::Bool(first_bit(memory, r.area, r.address)));
+    }
+    let regs = words(memory, r.area, r.address, r.count());
+    let word = regs.first().copied().unwrap_or(0);
+    Ok(match (r.ty, r.bit, r.bits) {
+        (DataType::Bool, Some(bit), _) => Value::Bool(word >> bit & 1 == 1),
+        (_, Some(bit), Some(width)) => codec::to_engineering(
+            Value::Uint(codec::extract_field(word, bit, width).into()),
+            r.scale,
+            r.offset,
+        ),
+        _ => {
+            let raw = codec::decode(&regs, r.ty, order, r.bit).map_err(|e| e.to_string())?;
+            codec::to_engineering(raw, r.scale, r.offset)
         }
     })
+}
+
+/// The value of every register of the loaded map, in map order (None where
+/// one cannot be decoded). Empty without a map.
+pub fn values(memory: &Memory) -> Vec<Option<Value>> {
+    let Some(map) = memory.map() else {
+        return Vec::new();
+    };
+    map.registers
+        .iter()
+        .map(|r| register_value(memory, r, r.byte_order(&map.meta)).ok())
+        .collect()
 }
 
 /// Integer range of a type, to clamp a generated value into.
@@ -413,6 +428,17 @@ mod tests {
             m.read(Area::Input, 2, 1),
             RawData::Registers(vec![i16::MAX as u16])
         );
+    }
+
+    #[test]
+    fn every_register_reads_in_its_own_units() {
+        let mut m = memory();
+        write(&mut m, &reg("Temp"), 25.0).unwrap();
+        let v = values(&m);
+        assert_eq!(v.len(), 5);
+        assert_eq!(v[2], Some(Value::Float(25.0)));
+        assert_eq!(v[3], Some(Value::Text(String::new())));
+        assert!(values(&Memory::default()).is_empty());
     }
 
     #[test]

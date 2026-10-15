@@ -76,6 +76,8 @@ pub fn run() {
             commands::sim_stop,
             commands::sim_status,
             commands::sim_set_generators,
+            commands::sim_values,
+            commands::sim_set_value,
             commands::sim_load,
             commands::sim_read,
             commands::sim_write,
