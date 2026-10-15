@@ -40,7 +40,9 @@ jobs:
         run: |
           mkdir -p repo/pool/main
           for tag in $(gh release list -R "$GITHUB_REPOSITORY" --limit 5 --exclude-drafts --exclude-pre-releases --json tagName -q '.[].tagName'); do
-            gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.deb' -D repo/pool/main
+            # A release whose Linux build failed has no .deb: skip it
+            gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.deb' -D repo/pool/main ||
+              echo "No .deb in $tag"
           done
           ls -l repo/pool/main
 

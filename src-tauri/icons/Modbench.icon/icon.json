@@ -1,39 +1,42 @@
 {
-  "fill": {
-    "linear-gradient": [
-      "srgb:0.08627,0.10588,0.13333,1.00000",
-      "srgb:0.04314,0.05882,0.07843,1.00000"
-    ],
-    "orientation": {
-      "start": { "x": 0.5, "y": 0 },
-      "stop": { "x": 0.5, "y": 1 }
-    }
-  },
-  "groups": [
+  "fill" : "automatic",
+  "groups" : [
     {
-      "layers": [
+      "layers" : [
         {
-          "glass": true,
-          "image-name": "device.svg",
-          "name": "device"
+          "glass" : true,
+          "image-name" : "device.svg",
+          "name" : "device"
         }
       ],
-      "shadow": { "kind": "neutral", "opacity": 0.5 },
-      "translucency": { "enabled": true, "value": 0.4 }
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.4
+      }
     },
     {
-      "layers": [
+      "layers" : [
         {
-          "glass": true,
-          "image-name": "arrows.svg",
-          "name": "arrows"
+          "glass" : true,
+          "image-name" : "arrows.svg",
+          "name" : "arrows"
         }
       ],
-      "shadow": { "kind": "layer-color", "opacity": 0.5 },
-      "translucency": { "enabled": true, "value": 0.5 }
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
     }
   ],
-  "supported-platforms": {
-    "squares": ["macOS"]
+  "supported-platforms" : {
+    "squares" : "shared"
   }
 }
