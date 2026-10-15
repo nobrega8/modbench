@@ -63,9 +63,9 @@ jobs:
           sign --armor --detach-sign -o dists/stable/Release.gpg dists/stable/Release
           gpg --armor --export > key.asc
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: repo
 
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
