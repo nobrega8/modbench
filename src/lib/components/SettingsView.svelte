@@ -86,7 +86,7 @@
             · {updates.message}
           {/if}
         </p>
-        <p class="tagline">Modbus TCP/RTU client · MIT licence</p>
+        <p class="tagline">Modbus TCP/RTU client · GPL-3.0 licence</p>
       </div>
       <button
         class="btn"
