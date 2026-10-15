@@ -18,7 +18,8 @@
   import { IN_SIM_WINDOW, sim } from "$lib/simulator.svelte";
   import Icon from "../Icon.svelte";
   import { bench } from "$lib/state.svelte";
-  import type { SimEvent, SimView } from "$lib/types";
+  import { MAP_EXTENSIONS, type SimEvent, type SimView } from "$lib/types";
+  import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import AddressFormat from "../AddressFormat.svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";
@@ -28,21 +29,49 @@
   let generators: SimGenerators | undefined = $state();
 
   /** Maps to shape the device after: those open on Main, then the library. */
-  const sources = $derived([
-    { value: "", label: "Empty device" },
-    ...bench.maps.map((m) => ({
-      value: m.path,
-      label: `${m.map.meta.vendor} ${m.map.meta.model} · open`,
-    })),
-    ...bench.library
-      .filter((e) => !e.error && !bench.maps.some((m) => m.path === e.path))
-      .map((e) => ({ value: e.path, label: `${e.vendor} ${e.model}` })),
-  ]);
+  let picks = $state(0);
+  /** Picked in the Device list to open a map file instead. */
+  const OPEN_FILE = "__open_file__";
 
-  function choose(path: string) {
+  /** Maps to shape the device after: those open on Main, then the library,
+   * then any file. The one loaded now is always listed. */
+  const sources = $derived.by(() => {
+    const list = [
+      { value: "", label: "Empty device" },
+      ...bench.maps.map((m) => ({
+        value: m.path,
+        label: `${m.map.meta.vendor} ${m.map.meta.model} · open`,
+      })),
+      ...bench.library
+        .filter((e) => !e.error && !bench.maps.some((m) => m.path === e.path))
+        .map((e) => ({ value: e.path, label: `${e.vendor} ${e.model}` })),
+    ];
+    if (sim.source && !list.some((o) => o.value === sim.source))
+      list.push({ value: sim.source, label: sim.loaded ?? sim.source });
+    list.push({ value: OPEN_FILE, label: "Open a map file…" });
+    return list;
+  });
+
+  async function choose(path: string) {
+    if (path === OPEN_FILE) {
+      // Show the loaded map again, also when the dialog is cancelled.
+      picks++;
+      const picked = await openDialog({
+        multiple: false,
+        filters: [{ name: "Device map", extensions: MAP_EXTENSIONS }],
+      });
+      if (typeof picked === "string") await sim.pick(picked);
+      return;
+    }
     const open = bench.maps.find((m) => m.path === path);
     sim.pick(path || null, open && $state.snapshot(open.map));
   }
+
+  // The library lists maps to load; in the simulator's own window nothing
+  // else has read it yet.
+  $effect(() => {
+    if (!bench.library.length) bench.refreshLibrary().catch(() => {});
+  });
 
   const PER_ROW = 10;
   const SHOWN = 100;
@@ -263,13 +292,15 @@
   <div class="row source">
     <label class="field">
       <span>Device</span>
-      <Select
-        value={sim.source ?? ""}
-        options={sources}
-        label="Map the device is shaped after"
-        width="300px"
-        onchange={choose}
-      />
+      {#key picks}
+        <Select
+          value={sim.source ?? ""}
+          options={sources}
+          label="Map the device is shaped after"
+          width="300px"
+          onchange={choose}
+        />
+      {/key}
     </label>
     <label
       class="check"
