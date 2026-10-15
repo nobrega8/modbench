@@ -24,6 +24,20 @@ jobs:
         with:
           submodules: true
 
+      - name: Diagnose the macOS icon (temporary)
+        if: runner.os == 'macOS'
+        run: |
+          set +e
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$xcode" ]; then sudo xcode-select -s "$xcode"; fi
+          t=$(mktemp -d); cp -R src-tauri/icons/Modbench.icon "$t/Icon.icon"
+          for env in "" "MACOSX_DEPLOYMENT_TARGET=10.15"; do
+            echo "=== env: ${env:-none}"
+            rm -rf "$t/out"; mkdir "$t/out"
+            env $env actool "$t/Icon.icon" --compile "$t/out" --output-format human-readable-text --notices --warnings --output-partial-info-plist "$t/out/assetcatalog_generated_info.plist" --app-icon Icon --include-all-app-icons --accent-color AccentColor --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx
+            echo "actool exit $?"
+          done
+
       - name: Linux system deps
         if: runner.os == 'Linux'
         run: |
@@ -44,6 +58,12 @@ jobs:
           workspaces: src-tauri
 
       - run: npm ci
+
+      - name: Bundle with verbose output (temporary)
+        if: runner.os == 'macOS'
+        run: |
+          set +e
+          npm run tauri build -- --target aarch64-apple-darwin --bundles app --verbose 2>&1 | grep -iE -A3 "actool|Assets.car|error" | head -80
       - run: npm run format:check
       - run: npm run check
       - run: npm test
