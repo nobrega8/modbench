@@ -250,8 +250,12 @@
     </span>
     {#if it.status === "unverified"}<span
         class="tag soft"
-        title="Converted from another catalogue; not checked against the manual yet"
+        title="Written from the manufacturer's documentation; not tested on a device yet"
         >Unverified</span
+      >{:else if it.status === "unofficial"}<span
+        class="tag soft"
+        title="Converted from another catalogue; not checked against the manual yet"
+        >Unofficial</span
       >{/if}
     {#if it.current}<span class="tag">Current</span>{/if}
     {#if it.last && !it.current}<span class="tag soft">Last used</span>{/if}
