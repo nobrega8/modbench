@@ -4,6 +4,7 @@
   import { errorText } from "#lib/api.ts";
   import { bench } from "#lib/state.svelte.ts";
   import { MAP_EXTENSIONS } from "#lib/types.ts";
+  import MapStatus from "./MapStatus.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
   interface Props {
@@ -232,7 +233,12 @@
   >
     <VendorIcon vendor={it.vendor} website={it.website} size={22} />
     <span class="txt">
-      <span class="model">{it.model}</span>
+      <span class="model-row"
+        ><span class="model">{it.model}</span><MapStatus
+          status={it.status}
+          size={14}
+        /></span
+      >
       <span class="sub">
         {#if it.error}
           <span class="bad">Has errors: {it.error}</span>
@@ -248,11 +254,6 @@
         {/if}
       </span>
     </span>
-    {#if it.status === "unverified"}<span
-        class="tag soft"
-        title="Converted from another catalogue; not checked against the manual yet"
-        >Unverified</span
-      >{/if}
     {#if it.current}<span class="tag">Current</span>{/if}
     {#if it.last && !it.current}<span class="tag soft">Last used</span>{/if}
     {#if !it.error}<span class="count"
@@ -278,7 +279,12 @@
         size={24}
       />
       <span class="txt">
-        <span class="model">{current.map.meta.model}</span>
+        <span class="model-row"
+          ><span class="model">{current.map.meta.model}</span><MapStatus
+            status={current.map.meta.extra.find(([k]) => k === "x_status")?.[1]}
+            size={14}
+          /></span
+        >
         <span class="sub"
           >{current.map.meta.vendor} · {current.map.registers.length} registers{#if current.warnings.length}
             · {current.warnings.length} warning{current.warnings.length === 1
@@ -411,6 +417,15 @@
     min-width: 0;
     flex: 1;
     line-height: 1.25;
+  }
+
+  /* The model name, then its status icon (verified, unverified,
+     unofficial), as in the Library */
+  .model-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
   }
 
   .model {

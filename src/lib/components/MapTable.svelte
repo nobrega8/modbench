@@ -61,6 +61,10 @@
   }
 
   const meta = $derived(open.map.meta);
+  /** The library's x_status of the map: how far it can be trusted. */
+  const mapStatus = $derived(
+    meta.extra.find(([k]) => k === "x_status")?.[1] ?? null,
+  );
   const alarms = $derived(byIndex(bench.alarms, open.map.registers));
   /** Registers whose value is outside their alarm limits right now. */
   const inAlarm = $derived.by(() => {
@@ -327,11 +331,17 @@
         >{meta.description}</span
       >{/if}
   </div>
-  {#if meta.extra.some(([k, v]) => k === "x_status" && v === "unverified")}
+  {#if mapStatus === "unverified"}
+    <span
+      class="refs"
+      title="Written from the manufacturer's documentation, but not tested on a device yet. Check a value on the device before relying on the rest."
+      >Unverified</span
+    >
+  {:else if mapStatus === "unofficial"}
     <span
       class="refs bad"
-      title="This map was converted from another catalogue and has not been checked against the manufacturer's documentation. Check a value on the device before relying on the rest."
-      >Unverified</span
+      title="Converted from another catalogue and not checked against the manufacturer's documentation. Check a value on the device before relying on the rest."
+      >Unofficial</span
     >
   {/if}
   {#if recognised && identity}
