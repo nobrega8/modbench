@@ -134,7 +134,7 @@
     <div class="panel" in:viewIn>
       {#if section === "about"}
         <section class="about">
-          <img src="/favicon.png" alt="" width="88" height="88" />
+          <img src="/app-icon.png" alt="" width="88" height="88" />
           <h1>Modbench</h1>
           <p class="version">
             Version <span class="mono">{version}</span>
