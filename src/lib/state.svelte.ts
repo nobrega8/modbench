@@ -85,6 +85,7 @@ export type ToolId =
   | "simulator"
   | "identify"
   | "addresses"
+  | "network"
   | "decoder"
   | "frames"
   | "stats"

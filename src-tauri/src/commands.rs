@@ -672,6 +672,33 @@ pub async fn scan_serial(
     .await
 }
 
+/// Looks for Modbus TCP devices on a range of addresses. Each address that
+/// accepts the connection is sent as a `net-scan-hit` event when found, and
+/// progress as `net-scan-progress`; `cancel_scan` stops it. It needs no
+/// connection and leaves the open one alone.
+#[tauri::command]
+pub async fn scan_network(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    scan: crate::netscan::NetScan,
+) -> Result<Vec<crate::netscan::NetHit>, ModbusError> {
+    state
+        .scan_cancel
+        .store(false, std::sync::atomic::Ordering::Relaxed);
+    let hit_app = app.clone();
+    crate::netscan::scan(
+        &scan,
+        &state.scan_cancel,
+        |hit| {
+            let _ = hit_app.emit("net-scan-hit", hit);
+        },
+        |p| {
+            let _ = app.emit("net-scan-progress", p);
+        },
+    )
+    .await
+}
+
 /// Stops a running scan after the unit ID being asked.
 #[tauri::command]
 pub fn cancel_scan(state: State<'_, AppState>) {

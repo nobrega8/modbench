@@ -1,6 +1,7 @@
 <script lang="ts">
   import { viewIn } from "#lib/motion.ts";
   import Icon from "./Icon.svelte";
+  import { netScanner } from "#lib/netscan.svelte.ts";
   import { sim } from "#lib/simulator.svelte.ts";
   import { bench, type ToolId } from "#lib/state.svelte.ts";
   import AddressScanTool from "./tools/AddressScanTool.svelte";
@@ -8,6 +9,7 @@
   import DataDecoderTool from "./tools/DataDecoderTool.svelte";
   import DeviceIdTool from "./tools/DeviceIdTool.svelte";
   import FrameDecoderTool from "./tools/FrameDecoderTool.svelte";
+  import NetworkScanTool from "./tools/NetworkScanTool.svelte";
   import SimulatorTool from "./tools/SimulatorTool.svelte";
   import StatsTool from "./tools/StatsTool.svelte";
   import TrendPlayerTool from "./tools/TrendPlayerTool.svelte";
@@ -32,6 +34,11 @@
           id: "addresses",
           name: "Find addresses",
           hint: "Which registers answer",
+        },
+        {
+          id: "network",
+          name: "Network scan",
+          hint: "Modbus TCP devices on a subnet",
         },
         {
           id: "simulator",
@@ -83,6 +90,7 @@
     if (id === "addresses")
       return bench.scanning && bench.addressProgress !== null;
     if (id === "alarms") return bench.alarms.length > 0;
+    if (id === "network") return netScanner.running;
     return false;
   }
 </script>
@@ -118,6 +126,8 @@
         <DeviceIdTool />
       {:else if tool === "addresses"}
         <AddressScanTool />
+      {:else if tool === "network"}
+        <NetworkScanTool />
       {:else if tool === "decoder"}
         <DataDecoderTool />
       {:else if tool === "frames"}

@@ -66,6 +66,32 @@ a manual request for it on the Main page.
   {Find addresses after a scan of holding registers 0--2000: the ranges that
    answer, with their counts.}
 
+\section{Network scan}
+\label{sec:network-scan}
+
+Finds Modbus TCP devices on a subnet. It needs no connection on the Main page
+and leaves an open one alone. Each address gets a TCP connection to the port;
+when it opens, the scan asks for one holding register. Any answer, an exception
+included, shows a Modbus device. Nothing is written.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Addresses] A subnet (\val{192.168.1.0/24}), a range
+    (\val{192.168.1.10-50} or \val{192.168.1.10-192.168.2.20}), or addresses
+    separated by commas. Up to 65536 addresses (a /16).
+  \item[Port, Unit ID] Where to ask, and which unit ID the request carries.
+  \item[Wait (ms)] How long to wait for the connection, and then for the
+    answer.
+  \item[Identify (FC43)] Also reads the vendor, product code and revision of
+    the devices found.
+\end{description}
+
+Results appear as they are found. \ui{Modbus} marks a device that answered;
+\ui{Port open} an address that accepted the connection but sent no Modbus
+answer in time. \ui{Open} sets up the connection of step 1 for a device.
+\ui{Stop} ends the scan and keeps what it found. An address that does not
+answer within the wait is left out; that does not prove there is no device
+there, so try a longer wait on a slow network.
+
 \section{Data decoder}
 \label{sec:data-decoder}
 

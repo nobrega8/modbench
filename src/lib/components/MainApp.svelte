@@ -14,12 +14,15 @@
   import { slidePill, viewIn } from "#lib/motion.ts";
   import { bench, type Page } from "#lib/state.svelte.ts";
   import { settings } from "#lib/settings.svelte.ts";
+  import { netScanner } from "#lib/netscan.svelte.ts";
   import { sim } from "#lib/simulator.svelte.ts";
   import { SETUP_EXTENSION } from "#lib/sim-setup.ts";
   import {
     diagnosticWhere,
     type AddressProgress,
     type LinkEvent,
+    type NetHit,
+    type NetProgress,
     type PollCycle,
     type SerialProgress,
     type TrafficEntry,
@@ -46,6 +49,10 @@
       ),
       listen<AddressProgress>("address-scan-progress", (e) =>
         bench.onAddressProgress(e.payload),
+      ),
+      listen<NetHit>("net-scan-hit", (e) => netScanner.onHit(e.payload)),
+      listen<NetProgress>("net-scan-progress", (e) =>
+        netScanner.onProgress(e.payload),
       ),
       listen<string>("open-file", (e) => openFile(e.payload)),
     ];
