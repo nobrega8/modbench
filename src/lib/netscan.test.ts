@@ -32,7 +32,12 @@ describe("network scan", () => {
     netScanner.targets = "10.0.0.0/24";
     const done = netScanner.start();
     expect(netScanner.running).toBe(true);
-    expect(asked[0]).toMatchObject({ targets: "10.0.0.0/24", port: 502 });
+    expect(asked[0]).toMatchObject({
+      targets: "10.0.0.0/24",
+      port: 502,
+      timeout_ms: 150,
+      retries: 0,
+    });
     netScanner.onHit(hit("10.0.0.20"));
     netScanner.onHit(hit("10.0.0.3"));
     expect(netScanner.hits?.map((h) => h.ip)).toEqual([
@@ -47,5 +52,17 @@ describe("network scan", () => {
     // Late events of a scan that ended change nothing
     netScanner.onHit(hit("10.0.0.99"));
     expect(netScanner.hits).toHaveLength(2);
+  });
+});
+
+describe("scan modes", () => {
+  it("keep a wait each, and only the thorough mode retries", () => {
+    netScanner.mode = "thorough";
+    expect([netScanner.timeoutMs, netScanner.retries]).toEqual([1000, 1]);
+    netScanner.timeoutMs = 2000;
+    netScanner.mode = "fast";
+    expect([netScanner.timeoutMs, netScanner.retries]).toEqual([150, 0]);
+    netScanner.mode = "thorough";
+    expect(netScanner.timeoutMs).toBe(2000);
   });
 });

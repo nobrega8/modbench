@@ -34,6 +34,10 @@ pub struct NetScan {
     /// Also read the device identification (FC43) of Modbus devices.
     #[serde(default)]
     pub identify: bool,
+    /// Attempts after the first, for the connection and for the request,
+    /// when they time out. 0 is the fast mode.
+    #[serde(default)]
+    pub retries: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -193,10 +197,31 @@ async fn probe(host: Ipv4Addr, scan: Arc<NetScan>) -> Option<NetHit> {
         unit_id: scan.unit,
         timeout_ms: scan.timeout_ms.max(1),
     };
-    let mut session = Session::connect(&config, None).await.ok()?;
-    let asked = Instant::now();
-    let answer = session.read(Area::Holding, 0, 1).await;
-    let response_ms = asked.elapsed().as_secs_f64() * 1000.0;
+    let mut session = None;
+    for _ in 0..=scan.retries {
+        match Session::connect(&config, None).await {
+            Ok(s) => {
+                session = Some(s);
+                break;
+            }
+            // Refused: the host is there but the port is closed
+            Err(ModbusError::Io(e)) if e.kind() == std::io::ErrorKind::ConnectionRefused => {
+                return None;
+            }
+            Err(_) => {}
+        }
+    }
+    let mut session = session?;
+    let mut answer = Err(ModbusError::NotConnected);
+    let mut response_ms = 0.0;
+    for _ in 0..=scan.retries {
+        let asked = Instant::now();
+        answer = session.read(Area::Holding, 0, 1).await;
+        response_ms = asked.elapsed().as_secs_f64() * 1000.0;
+        if !matches!(answer, Err(ModbusError::Timeout(_))) {
+            break;
+        }
+    }
     let (status, response) = match answer {
         Ok(_) => (HostStatus::Modbus, "responds".to_string()),
         Err(ModbusError::Exception { code, name, .. }) => (

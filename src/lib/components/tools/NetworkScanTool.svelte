@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { slidePill } from "#lib/motion.ts";
   import { netScanner as scan } from "#lib/netscan.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
   import type { NetHit } from "#lib/types.ts";
@@ -66,6 +67,27 @@
       onchange={(n) => (scan.unit = n)}
     />
   </label>
+  <div class="field">
+    <span>Mode</span>
+    <div class="segmented" role="tablist" aria-label="Scan mode" use:slidePill>
+      <button
+        role="tab"
+        aria-selected={scan.mode === "fast"}
+        class:on={scan.mode === "fast"}
+        disabled={scan.running}
+        title="A short wait and no retries: a quick first pass"
+        onclick={() => (scan.mode = "fast")}>Fast</button
+      >
+      <button
+        role="tab"
+        aria-selected={scan.mode === "thorough"}
+        class:on={scan.mode === "thorough"}
+        disabled={scan.running}
+        title="A longer wait and a retry: for slow devices or networks"
+        onclick={() => (scan.mode = "thorough")}>Thorough</button
+      >
+    </div>
+  </div>
   <label
     class="field"
     title="How long to wait for the connection, and then for the answer"
@@ -99,6 +121,13 @@
     >
   {/if}
 </div>
+
+<p class="dim policy">
+  {scan.mode === "fast" ? "Fast" : "Thorough"}: waits {scan.timeoutMs} ms for each
+  address, {scan.retries === 0
+    ? "no retries"
+    : `${scan.retries} ${scan.retries === 1 ? "retry" : "retries"} on a timeout`}.
+</p>
 
 {#if scan.running}
   <div
@@ -154,7 +183,11 @@
                 >{:else}<span class="dim">Port open</span>{/if}</td
             >
             <td class="num mono">{h.response_ms.toFixed(0)} ms</td>
-            <td class="answer" title={h.response}>{h.response}</td>
+            <td class="answer" title={h.response}
+              >{h.status === "tcp_only" && h.response.startsWith("timed out")
+                ? `no answer within ${scan.last?.timeout_ms ?? scan.timeoutMs} ms`
+                : h.response}</td
+            >
             <td>{h.identity ?? ""}</td>
             <td class="act">
               {#if h.status === "modbus"}
@@ -175,7 +208,9 @@
   {:else if !scan.running}
     <p class="empty">
       No address opened port {scan.last?.port ?? scan.port}. No answer within
-      the wait time does not prove there is no device: try a longer wait.
+      the wait time does not prove there is no device{scan.last?.retries === 0
+        ? ": try the thorough mode"
+        : ": try a longer wait"}.
     </p>
   {/if}
 {/if}
@@ -183,6 +218,11 @@
 <style>
   p {
     margin: 0;
+  }
+
+  .policy {
+    margin-top: -6px;
+    font-size: 12px;
   }
 
   .targets input {
