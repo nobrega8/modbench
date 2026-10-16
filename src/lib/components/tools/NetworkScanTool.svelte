@@ -3,6 +3,9 @@
   import { netScanner as scan } from "#lib/netscan.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
   import type { NetHit } from "#lib/types.ts";
+  import { networkScanCsv } from "#lib/scan-export.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import ExportCsv from "../ExportCsv.svelte";
   import IntInput from "../IntInput.svelte";
 
   const progress = $derived(
@@ -119,6 +122,19 @@
       disabled={!scan.targets.trim()}
       onclick={() => scan.start()}>Scan</button
     >
+  {/if}
+  {#if scan.hits?.length && scan.last}
+    {@const last = scan.last}
+    <ExportCsv
+      name="modbench-network-scan.csv"
+      make={() =>
+        networkScanCsv(
+          scan.hits ?? [],
+          last,
+          scan.progress,
+          settings.csvSeparator,
+        )}
+    />
   {/if}
 </div>
 

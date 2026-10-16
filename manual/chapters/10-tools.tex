@@ -97,6 +97,18 @@ answer in time. \ui{Open} sets up the connection of step 1 for a device.
 answer within the wait is left out; that does not prove there is no device
 there, so try a longer wait on a slow network.
 
+\section{Exporting scan results}
+
+The unit ID and serial settings scans (\ui{Find…} in step 2),
+\ui{Find addresses} and \ui{Network scan} have \ui{Export CSV…} once there
+are results. The file starts with a few lines that say which scan ran, when,
+and with which settings and connection; a blank line; then one row per
+result. A stopped scan says where it stopped. The unit ID scan lists every unit
+ID, with \val{answered}, \val{no answer} or \val{not asked}; the other scans
+list what answered and count the rest. The network scan can be exported while
+it runs, without stopping it. Files are UTF-8, with the CSV separator of the
+settings.
+
 \section{Data decoder}
 \label{sec:data-decoder}
 

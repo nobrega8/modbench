@@ -1,6 +1,9 @@
 <script lang="ts">
   import { slidePill } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { unitScanCsv } from "#lib/scan-export.ts";
+  import ExportCsv from "./ExportCsv.svelte";
   import IntInput from "./IntInput.svelte";
   import SerialScan from "./SerialScan.svelte";
 
@@ -127,6 +130,21 @@
     {#if bench.scanError}
       <p class="bad">{bench.scanError}</p>
     {:else if done}
+      {#if bench.lastUnitScan}
+        {@const last = bench.lastUnitScan}
+        <div class="export">
+          <ExportCsv
+            name="modbench-unit-scan.csv"
+            make={() =>
+              unitScanCsv(
+                bench.scanHits ?? [],
+                last,
+                last,
+                settings.csvSeparator,
+              )}
+          />
+        </div>
+      {/if}
       {#if bench.scanHits?.length}
         <ul class="hits">
           {#each bench.scanHits as hit (hit.unit)}
@@ -153,6 +171,12 @@
 </div>
 
 <style>
+  .export {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   .panel {
     margin-top: 12px;
     padding: 12px;
