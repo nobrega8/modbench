@@ -534,20 +534,27 @@ async fn poller_applies_scale_factors_read_in_the_same_cycle() {
 }
 
 /// A server that accepts one connection, then stops listening, and says
-/// when that connection is closed by the client.
-async fn one_connection() -> (SocketAddr, tokio::sync::oneshot::Receiver<()>) {
+/// when it stopped listening and when that connection is closed by the
+/// client.
+async fn one_connection() -> (
+    SocketAddr,
+    tokio::sync::oneshot::Receiver<()>,
+    tokio::sync::oneshot::Receiver<()>,
+) {
     use tokio::io::AsyncReadExt;
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
+    let (deaf, on_deaf) = tokio::sync::oneshot::channel();
     let (closed, on_closed) = tokio::sync::oneshot::channel();
     tokio::spawn(async move {
         let (mut stream, _) = listener.accept().await.unwrap();
         drop(listener);
+        let _ = deaf.send(());
         let mut buf = [0u8; 64];
         while stream.read(&mut buf).await.is_ok_and(|n| n > 0) {}
         let _ = closed.send(());
     });
-    (addr, on_closed)
+    (addr, on_deaf, on_closed)
 }
 
 async fn closed_soon(on_closed: tokio::sync::oneshot::Receiver<()>) -> bool {
@@ -558,7 +565,7 @@ async fn closed_soon(on_closed: tokio::sync::oneshot::Receiver<()>) -> bool {
 
 #[tokio::test]
 async fn disconnect_releases_the_link() {
-    let (addr, on_closed) = one_connection().await;
+    let (addr, _, on_closed) = one_connection().await;
     let s = Session::connect(&config(addr), None).await.unwrap();
     s.disconnect().await;
     assert!(closed_soon(on_closed).await);
@@ -566,8 +573,9 @@ async fn disconnect_releases_the_link() {
 
 #[tokio::test]
 async fn a_failed_reconnect_leaves_the_old_link_closed() {
-    let (addr, on_closed) = one_connection().await;
+    let (addr, on_deaf, on_closed) = one_connection().await;
     let mut s = Session::connect(&config(addr), None).await.unwrap();
+    on_deaf.await.unwrap();
     // Nobody listens any more: opening again fails...
     let err = s.reconnect().await.unwrap_err();
     // ...and the old link was closed before the attempt, so a serial port
