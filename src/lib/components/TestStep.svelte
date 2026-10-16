@@ -59,11 +59,7 @@
         : null,
   );
 
-  const where = $derived(
-    bench.transport === "rtu"
-      ? `${bench.serialPort} · ${bench.framing === "ascii" ? "ASCII " : ""}${bench.baudrate} ${bench.dataBits}${bench.parity}${bench.stopBits}`
-      : `${bench.host}:${bench.tcpPort}`,
-  );
+  const where = $derived(bench.connectionText);
 </script>
 
 <StepCard step={3} title="Test" grow>

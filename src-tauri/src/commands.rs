@@ -699,6 +699,12 @@ pub async fn scan_network(
     .await
 }
 
+/// This computer's network interfaces, to choose one to send from.
+#[tauri::command]
+pub fn local_interfaces() -> Result<Vec<modbus::LocalInterface>, ModbusError> {
+    modbus::local_interfaces()
+}
+
 /// Stops a running scan after the unit ID being asked.
 #[tauri::command]
 pub fn cancel_scan(state: State<'_, AppState>) {

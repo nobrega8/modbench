@@ -42,6 +42,14 @@ on the line must use the same.
 \field{IP address} and \field{Port}. The port is 502 unless the device or the
 converter uses another.
 
+\field{Send from} picks the network interface on a computer with several
+(Ethernet, Wi-Fi, a VPN): the connection, and the network scan, then send from
+that interface's address. \ui{Automatic}, the default, leaves the choice to the
+system's routing. It is saved with the connection. If the address is no longer
+on the computer, or the interface has no route to the device, the error says
+so; the step 3 line shows the address used (\val{192.168.1.10:502 from
+192.168.1.5}).
+
 \subsection{Device}
 
 \field{Device (unit ID)} is the device's address: \val{1}--\val{247} on a serial

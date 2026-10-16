@@ -9,6 +9,7 @@ the app. It never writes to a device.
 \begin{lstlisting}[language=bash]
 modbench-cli read --tcp 192.168.1.10 holding 0x0405 1
 modbench-cli read --udp 192.168.1.10 holding 0 10
+modbench-cli read --tcp 192.168.1.10 --source 192.168.1.5 holding 0 2
 modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
 modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
 modbench-cli id --tcp 192.168.1.10

@@ -1,6 +1,6 @@
 //! Modbus master session over TCP or RTU.
 
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -70,6 +70,10 @@ pub struct ConnectionConfig {
     pub transport: Transport,
     pub unit_id: u8,
     pub timeout_ms: u64,
+    /// Local address to send from over TCP and UDP, to pick the network
+    /// interface. None leaves it to the system's routing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_address: Option<String>,
 }
 
 /// Data returned by a read, matching the area that was read.
@@ -260,30 +264,121 @@ fn closed_context() -> Context {
     rtu::attach(end)
 }
 
+/// The local address to send from, when one is chosen and the transport
+/// is a network one.
+fn local_ip(config: &ConnectionConfig) -> Result<Option<IpAddr>, ModbusError> {
+    let network = !matches!(
+        config.transport,
+        Transport::Rtu { .. } | Transport::Ascii { .. }
+    );
+    match config.local_address.as_deref().map(str::trim) {
+        Some(text) if network && !text.is_empty() => text.parse().map(Some).map_err(|_| {
+            ModbusError::Invalid(format!("'{text}' is not an IP address of this computer"))
+        }),
+        _ => Ok(None),
+    }
+}
+
+/// The address to bind a socket to before reaching `peer`: the chosen
+/// local address (port 0), or any address of the peer's family.
+fn local_for(peer: SocketAddr, local: Option<IpAddr>) -> Result<SocketAddr, ModbusError> {
+    match local {
+        Some(ip) if ip.is_ipv4() != peer.is_ipv4() => Err(ModbusError::Invalid(format!(
+            "cannot reach {} from {ip}: one is IPv4 and the other IPv6",
+            peer.ip()
+        ))),
+        Some(ip) => Ok(SocketAddr::new(ip, 0)),
+        None if peer.is_ipv4() => Ok(SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0)),
+        None => Ok(SocketAddr::new(std::net::Ipv6Addr::UNSPECIFIED.into(), 0)),
+    }
+}
+
+/// Explains an error that comes from the chosen local address: one that
+/// is not on this computer, or that has no route to the peer.
+fn bind_error(e: std::io::Error, local: Option<IpAddr>, peer: SocketAddr) -> ModbusError {
+    use std::io::ErrorKind::*;
+    match (local, e.kind()) {
+        (Some(ip), AddrNotAvailable) => ModbusError::Invalid(format!(
+            "cannot send from {ip}: it is not an address of this computer (was the interface turned off?)"
+        )),
+        (Some(ip), NetworkUnreachable | HostUnreachable) => ModbusError::Invalid(format!(
+            "no route from {ip} to {peer}: the chosen interface cannot reach it ({e})"
+        )),
+        _ => ModbusError::Io(e),
+    }
+}
+
+/// Opens a TCP connection within the timeout, from the chosen local
+/// address when there is one.
+async fn connect_tcp(
+    peer: SocketAddr,
+    local: Option<IpAddr>,
+    timeout_ms: u64,
+) -> Result<tokio::net::TcpStream, ModbusError> {
+    let socket = match peer {
+        SocketAddr::V4(_) => tokio::net::TcpSocket::new_v4()?,
+        SocketAddr::V6(_) => tokio::net::TcpSocket::new_v6()?,
+    };
+    if local.is_some() {
+        socket
+            .bind(local_for(peer, local)?)
+            .map_err(|e| bind_error(e, local, peer))?;
+    }
+    let wait = Duration::from_millis(timeout_ms.max(1));
+    timeout(wait, socket.connect(peer))
+        .await
+        .map_err(|_| ModbusError::Timeout(timeout_ms))?
+        .map_err(|e| bind_error(e, local, peer))
+}
+
+/// A network interface and one of its addresses, to send from.
+#[derive(Debug, Clone, Serialize)]
+pub struct LocalInterface {
+    pub name: String,
+    pub address: String,
+    pub loopback: bool,
+}
+
+/// The addresses of this computer's network interfaces, IPv4 first.
+pub fn local_interfaces() -> Result<Vec<LocalInterface>, ModbusError> {
+    let mut list: Vec<LocalInterface> = if_addrs::get_if_addrs()?
+        .into_iter()
+        .filter(|i| !matches!(i.ip(), IpAddr::V6(v6) if v6.segments()[0] & 0xffc0 == 0xfe80))
+        .map(|i| LocalInterface {
+            loopback: i.is_loopback(),
+            address: i.ip().to_string(),
+            name: i.name,
+        })
+        .collect();
+    list.sort_by_key(|i| (i.loopback, i.address.contains(':'), i.name.clone()));
+    Ok(list)
+}
+
 async fn open(config: &ConnectionConfig, raw: Option<RawSink>) -> Result<Context, ModbusError> {
     let wait = Duration::from_millis(config.timeout_ms.max(1));
     let slave = Slave(config.unit_id);
+    let local = local_ip(config)?;
     let ctx = match &config.transport {
         Transport::Tcp { host, port } => {
-            let addr = resolve(host, *port)?;
-            let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
-                .await
-                .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
+            let stream = connect_tcp(resolve(host, *port)?, local, config.timeout_ms).await?;
             tcp::attach_slave(Tap::new(stream, raw), slave)
         }
         Transport::RtuOverTcp { host, port } => {
-            let addr = resolve(host, *port)?;
-            let stream = timeout(wait, tokio::net::TcpStream::connect(addr))
-                .await
-                .map_err(|_| ModbusError::Timeout(config.timeout_ms))??;
+            let stream = connect_tcp(resolve(host, *port)?, local, config.timeout_ms).await?;
             rtu::attach_slave(Tap::new(stream, raw), slave)
         }
         Transport::Udp { host, port } => {
-            let stream = UdpStream::connect(resolve(host, *port)?, wait).await?;
+            let addr = resolve(host, *port)?;
+            let stream = UdpStream::connect(addr, local_for(addr, local)?, wait)
+                .await
+                .map_err(|e| bind_error(e, local, addr))?;
             tcp::attach_slave(Tap::new(stream, raw), slave)
         }
         Transport::RtuOverUdp { host, port } => {
-            let stream = UdpStream::connect(resolve(host, *port)?, wait).await?;
+            let addr = resolve(host, *port)?;
+            let stream = UdpStream::connect(addr, local_for(addr, local)?, wait)
+                .await
+                .map_err(|e| bind_error(e, local, addr))?;
             rtu::attach_slave(Tap::new(stream, raw), slave)
         }
         Transport::Rtu {
@@ -423,6 +518,7 @@ pub async fn scan_serial(
             },
             unit_id: scan.from,
             timeout_ms: scan.timeout_ms,
+            local_address: None,
         };
         let mut session = Session::connect(&config, None).await?;
         let mut found = false;

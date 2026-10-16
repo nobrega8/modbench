@@ -110,6 +110,7 @@ pub fn run() {
             commands::scan_serial,
             commands::cancel_scan,
             commands::scan_network,
+            commands::local_interfaces,
             commands::startup_file,
             commands::library_folder,
             commands::library_list,

@@ -229,3 +229,25 @@ describe("read-only mode", () => {
     settings.readOnly = false;
   });
 });
+
+describe("network interface", () => {
+  it("is sent for network transports only, and shown with the endpoint", () => {
+    bench.transport = "tcp";
+    bench.host = "192.168.1.10";
+    bench.tcpPort = 502;
+    bench.localAddress = "";
+    expect(bench.config().local_address).toBeUndefined();
+    expect(bench.connectionText).toBe("192.168.1.10:502");
+
+    bench.localAddress = " 192.168.1.5 ";
+    expect(bench.config().local_address).toBe("192.168.1.5");
+    expect(bench.connectionText).toBe("192.168.1.10:502 from 192.168.1.5");
+    bench.transport = "udp";
+    expect(bench.config().local_address).toBe("192.168.1.5");
+
+    bench.transport = "rtu";
+    expect(bench.config().local_address).toBeUndefined();
+    bench.transport = "tcp";
+    bench.localAddress = "";
+  });
+});

@@ -14,6 +14,7 @@ import type {
   Generator,
   ImportResult,
   LibraryEntry,
+  LocalInterface,
   NetHit,
   NetScan,
   OnlineEntry,
@@ -105,6 +106,7 @@ export const api = {
     invoke<SerialHit[]>("scan_serial", { scan }),
   cancelScan: () => invoke<void>("cancel_scan"),
   scanNetwork: (scan: NetScan) => invoke<NetHit[]>("scan_network", { scan }),
+  localInterfaces: () => invoke<LocalInterface[]>("local_interfaces"),
   readText: (path: string) => invoke<string>("read_text", { path }),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),
