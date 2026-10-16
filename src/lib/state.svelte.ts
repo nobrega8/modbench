@@ -205,6 +205,7 @@ class Bench {
   link = $state<{
     attempt: number;
     retry_ms: number;
+    cause: string | null;
     error: string | null;
   } | null>(null);
   page = $state<Page>("main");
@@ -691,10 +692,11 @@ This writes to the device.`,
 
   /** Opens a lost link again, waiting longer between attempts. */
   private async reopen() {
+    const cause = this.status?.ok === false ? this.status.text : null;
     let error: string | null = null;
     for (let attempt = 1; this.running; attempt++) {
       const retry_ms = BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length) - 1];
-      this.link = { attempt, retry_ms, error };
+      this.link = { attempt, retry_ms, cause, error };
       await sleep(retry_ms);
       if (!this.running) break;
       try {
@@ -1178,8 +1180,8 @@ The values do not change, but a device can still act on a write. Only do this on
       this.link = null;
       if (this.status && !this.status.ok) this.status = null;
     } else if (this.running) {
-      const { attempt, retry_ms, error } = event;
-      this.link = { attempt, retry_ms, error };
+      const { attempt, retry_ms, cause, error } = event;
+      this.link = { attempt, retry_ms, cause, error };
     }
   }
 
