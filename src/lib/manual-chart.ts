@@ -132,7 +132,7 @@ export function addRead(
   const next = new Map<number, Sample[]>();
   for (const s of kept) {
     const list = history.get(s.slot) ?? [];
-    list.push({ t, v: read ? valueIn(read, s) : NaN });
+    list.push(read ? { t, v: valueIn(read, s) } : { t, v: NaN, q: "failed" });
     if (list.length > MAX_POINTS) list.splice(0, list.length - MAX_POINTS);
     next.set(s.slot, list);
   }

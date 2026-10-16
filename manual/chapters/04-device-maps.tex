@@ -124,8 +124,12 @@ Use it to check a map whose values look wrong; it is remembered per device.
   \item[\ui{Export…}] Saves the values shown, in the order shown, to a CSV
     file.
   \item[\ui{Record…}] Appends every cycle of the test to a CSV file until
-    recording stops: one row per cycle, one column per register. The Trend
-    player plays such a file back (Section~\ref{sec:trend-player}).
+    recording stops: one row per cycle, one column per register. A read
+    that failed is written \val{\#failed}, and a reserved value its label
+    (\val{Unimplemented}), so neither is mistaken for a value. The Trend
+    player plays such a file back (Section~\ref{sec:trend-player}) with the
+    same marks as the Chart tab; older recordings, which left failed reads
+    blank, still open.
 \end{description}
 
 The CSV separator is set in \nav{Settings} (comma or semicolon, for

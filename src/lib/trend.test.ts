@@ -93,3 +93,35 @@ describe("trend", () => {
     expect(nearest([], 5)).toBeNull();
   });
 });
+
+describe("sample quality", () => {
+  const result = (over: Partial<PointResult>): PointResult => ({
+    index: 0,
+    reference: null,
+    value: 0,
+    raw: null,
+    error: null,
+    sentinel: null,
+    ...over,
+  });
+
+  it("keeps a real zero apart from a failed read and a missing value", async () => {
+    const { sampleOf, lastGood } = await import("./trend");
+    expect(sampleOf(result({ value: 0 }), 5)).toEqual({ t: 5, v: 0 });
+    expect(sampleOf(result({ error: "timed out", value: null }), 6)).toEqual({
+      t: 6,
+      v: NaN,
+      q: "failed",
+    });
+    expect(sampleOf(result({ sentinel: "Unimplemented" }), 7).q).toBe(
+      "unavailable",
+    );
+    const samples = [
+      { t: 1, v: 3 },
+      { t: 2, v: NaN, q: "failed" as const },
+      { t: 3, v: NaN, q: "failed" as const },
+    ];
+    expect(lastGood(samples, 2)).toEqual({ t: 1, v: 3 });
+    expect(lastGood([{ t: 1, v: NaN }], 0)).toBeNull();
+  });
+});

@@ -22,6 +22,7 @@ import {
 import { loadAlarms, saveAlarms, type Alarm } from "./alarms";
 import { isCustom, loadCustom, saveCustom } from "./custom-registers";
 import { recordHeader, recordRow } from "./csv";
+import { qualityNotes } from "./quality";
 import {
   addRead,
   sameSeries,
@@ -1170,6 +1171,11 @@ The values do not change, but a device can still act on a write. Only do this on
   // ---- events from the backend
 
   onPoll(cycle: PollCycle) {
+    const regs = this.map?.map.registers;
+    if (regs) {
+      const notes = qualityNotes(regs, this.mapResults, cycle.results);
+      if (notes.length) this.addNotes(notes);
+    }
     this.markChanges(
       markPoll(this.changes, this.mapResults, cycle.results, Date.now()),
     );
@@ -1257,6 +1263,21 @@ The values do not change, but a device can still act on a write. Only do this on
     this.status = { ok: false, text: `Reading stopped: ${reason}` };
     this.running = false;
     this.connected = false;
+  }
+
+  /** Adds the app's own lines to the log (not requests: no statistics). */
+  private addNotes(notes: string[]) {
+    const time_ms = Date.now();
+    const lines: TrafficEntry[] = notes.map((note) => ({
+      time_ms,
+      function: 0,
+      address: 0,
+      count: 0,
+      duration_ms: 0,
+      error: null,
+      note,
+    }));
+    this.log = [...this.log, ...lines].slice(-settings.logLimit);
   }
 
   onTraffic(entry: TrafficEntry) {

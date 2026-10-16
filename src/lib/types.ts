@@ -222,6 +222,9 @@ export interface TrafficEntry {
   count: number;
   duration_ms: number;
   error: string | null;
+  /** Set on the app's own lines (e.g. a register that starts failing),
+   * which are not requests: function, address and count are 0. */
+  note?: string;
 }
 
 export interface TypedAddress {
