@@ -39,7 +39,11 @@ modbench-cli convert old-device.mbmap
 \end{tabularx}
 \end{center}
 
-\val{modbench-cli --help} lists every command and option.
+\val{modbench-cli --help} lists every command and option, and
+\val{modbench-cli --version} prints the version; \val{-h} and \val{-V} are
+short for them. \val{modbench --help} and \val{modbench --version} answer the
+same way for the app, without opening its window. A wrong argument prints an
+error and exits with code 2.
 
 \section{Generators file}
 
