@@ -1,6 +1,7 @@
 <script lang="ts">
   import Select from "./Select.svelte";
-  import { formatAddress, hex } from "#lib/format.ts";
+  import { areaAccess, formatAddress, hex } from "#lib/format.ts";
+  import { slidePill } from "#lib/motion.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import AddressFormat from "./AddressFormat.svelte";
   import { bench } from "#lib/state.svelte.ts";
@@ -46,6 +47,66 @@
   const writable = $derived(read?.area === "holding" && !settings.readOnly);
   let bitError = $state<string | null>(null);
   let writing = $state<string | null>(null);
+
+  const access = $derived(
+    read ? areaAccess(read.area, settings.readOnly) : null,
+  );
+  const list = $derived(settings.registerLayout === "list");
+  /** The value clicked last (its offset from the first address). */
+  let selected = $state<number | null>(null);
+  // A new range of addresses has nothing selected
+  const range = $derived(read ? `${read.area}:${read.address}` : "");
+  $effect(() => {
+    void range;
+    selected = null;
+  });
+
+  /** Selects a value and gives it the focus, for the arrow keys. */
+  function select(offset: number, e: MouseEvent) {
+    selected = offset;
+    (e.currentTarget as HTMLElement).focus();
+  }
+
+  function setLayout(layout: "list" | "grid") {
+    settings.registerLayout = layout;
+    settings.save();
+  }
+
+  /** The raw words behind a value, in hex. */
+  function rawHex(c: Cell): string {
+    if (!read || read.data.kind === "bits") return "";
+    return read.data.values
+      .slice(c.offset, c.offset + c.span)
+      .map((w) => w.toString(16).toUpperCase().padStart(4, "0"))
+      .join(" ");
+  }
+
+  /** Arrow keys move the selection. */
+  function onKey(e: KeyboardEvent) {
+    if (selected === null) return;
+    const i = cells.findIndex((c) => c.offset === selected);
+    const step =
+      e.key === "ArrowDown"
+        ? list
+          ? 1
+          : PER_ROW / (wide ? 2 : 1)
+        : e.key === "ArrowUp"
+          ? list
+            ? -1
+            : -PER_ROW / (wide ? 2 : 1)
+          : e.key === "ArrowRight" && !list
+            ? 1
+            : e.key === "ArrowLeft" && !list
+              ? -1
+              : 0;
+    const next = cells[i + step];
+    if (!step || !next) return;
+    e.preventDefault();
+    selected = next.offset;
+    document
+      .querySelector<HTMLElement>(`[data-offset="${next.offset}"]`)
+      ?.focus();
+  }
 
   async function flip(address: number, bit: number, on: boolean) {
     bitError = null;
@@ -203,6 +264,12 @@
     ];
   }
 
+  const selectedCell = $derived(
+    selected === null
+      ? null
+      : (cells.find((c) => c.offset === selected) ?? null),
+  );
+
   const rows = $derived.by(() => {
     const out: Cell[][] = [];
     for (const c of cells) (out[Math.floor(c.offset / PER_ROW)] ??= []).push(c);
@@ -232,11 +299,47 @@
     {/if}
   {/if}
   <AddressFormat />
+  {#if !bitView}
+    <div class="segmented" role="tablist" aria-label="Layout" use:slidePill>
+      <button
+        role="tab"
+        aria-selected={list}
+        class:on={list}
+        title="One row per value, with its address"
+        onclick={() => setLayout("list")}>List</button
+      >
+      <button
+        role="tab"
+        aria-selected={!list}
+        class:on={!list}
+        title="Ten values per row: the row's first address plus the column"
+        onclick={() => setLayout("grid")}>Grid</button
+      >
+    </div>
+  {/if}
   <span class="spacer"></span>
   <button class="btn" disabled={!read} onclick={() => bench.copyReadToWrite()}
     >Copy data to write values</button
   >
 </div>
+
+{#if read && access}
+  <div class="status">
+    <span class="access" class:writable={access.writable}
+      ><span class="glyph" aria-hidden="true"
+        >{access.writable ? "✎" : "🔒︎"}</span
+      >{access.text}</span
+    >
+    {#if selectedCell}
+      <span class="picked" aria-live="polite"
+        >Selected: <strong class="mono"
+          >{addr(read.address + selectedCell.offset)}</strong
+        >
+        = <strong class="mono">{selectedCell.text}</strong></span
+      >
+    {/if}
+  </div>
+{/if}
 
 {#if bitView && read?.data.kind === "registers"}
   {@const r = read}
@@ -297,11 +400,55 @@
     Values read from the device appear here. Choose a read command in step 2 and
     press Start.
   </p>
+{:else if list}
+  {@const r = read}
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div class="grid-wrap" role="presentation" onkeydown={onKey}>
+    <table class="regs" class:writable={access?.writable}>
+      <thead>
+        <tr>
+          <th class="addr">Address</th>
+          <th class="val">Value</th>
+          {#if r.data.kind === "registers"}<th class="hex">Raw</th>{/if}
+        </tr>
+      </thead>
+      <tbody>
+        {#each cells as c (c.offset)}
+          <tr
+            class:selected={selected === c.offset}
+            aria-selected={selected === c.offset}
+            data-offset={c.offset}
+            tabindex="-1"
+            onclick={(e) => select(c.offset, e)}
+            oncontextmenu={(e) => {
+              selected = c.offset;
+              contextMenu.show(e, cellMenu(c));
+            }}
+          >
+            <td class="addr mono"
+              ><span class="mark" aria-hidden="true"
+                >{selected === c.offset ? "▸" : ""}</span
+              >{addr(r.address + c.offset)}{#if c.span > 1}<span class="dim"
+                  >–{addr(r.address + c.offset + c.span - 1)}</span
+                >{/if}</td
+            >
+            <td class="val"
+              ><span class="cell" class:changed={c.changed}>{c.text}</span></td
+            >
+            {#if r.data.kind === "registers"}<td class="hex mono"
+                >{rawHex(c)}</td
+              >{/if}
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
 {:else}
   {@const r = read}
-  <div class="grid-wrap">
-    <div class="grid">
-      <span></span>
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div class="grid-wrap" role="presentation" onkeydown={onKey}>
+    <div class="grid" class:writable={access?.writable}>
+      <span class="corner"></span>
       {#each Array(PER_ROW) as _, i (i)}<span class="colhead">+{i}</span>{/each}
       {#each rows as row, ri (ri)}
         <span class="rowhead">{addr(r.address + ri * PER_ROW)}</span>
@@ -309,10 +456,20 @@
           <span
             class="cell"
             class:changed={c.changed}
+            class:selected={selected === c.offset}
             style:grid-column="span {c.span}"
             role="gridcell"
             tabindex="-1"
-            oncontextmenu={(e) => contextMenu.show(e, cellMenu(c))}
+            data-offset={c.offset}
+            aria-selected={selected === c.offset}
+            onclick={(e) => select(c.offset, e)}
+            onkeydown={(e) => {
+              if (e.key === "Enter" || e.key === " ") selected = c.offset;
+            }}
+            oncontextmenu={(e) => {
+              selected = c.offset;
+              contextMenu.show(e, cellMenu(c));
+            }}
             title="Address {addr(r.address + c.offset)}">{c.text}</span
           >
         {/each}
@@ -356,26 +513,148 @@
     flex: 1;
   }
 
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
+  .access {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .access .glyph {
+    font-size: 11px;
+  }
+
+  .picked strong {
+    color: var(--text);
+  }
+
   .grid {
     display: grid;
     grid-template-columns: 58px repeat(10, minmax(64px, 1fr));
     gap: 3px;
   }
 
-  .colhead {
+  /* Headers stay in view while the values scroll */
+  .colhead,
+  .corner {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 2px 0;
+    background: var(--card);
     font-size: 11px;
     color: var(--text-3);
     text-align: center;
   }
 
+  .corner {
+    left: 0;
+    z-index: 2;
+  }
+
   .rowhead {
+    position: sticky;
+    left: 0;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     padding-right: 6px;
+    background: var(--card);
     font-family: var(--mono);
     font-size: 12px;
     color: var(--text-2);
+  }
+
+  /* Writable values look like fields (an outline); read-only ones do not */
+  .writable .cell {
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+  }
+
+  .cell {
+    cursor: default;
+  }
+
+  .grid .cell.selected,
+  .regs tr.selected .cell {
+    outline: 2px solid var(--text);
+    outline-offset: 1px;
+  }
+
+  .cell:focus-visible {
+    outline: 2px solid var(--text);
+  }
+
+  table.regs {
+    border-collapse: separate;
+    border-spacing: 0 2px;
+    min-width: 280px;
+  }
+
+  .regs th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 2px 10px;
+    background: var(--card);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-3);
+    text-align: left;
+  }
+
+  .regs td {
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+
+  .regs tr {
+    cursor: default;
+  }
+
+  .regs tr:focus,
+  .grid .cell:focus {
+    outline: none;
+  }
+
+  .regs tr:focus-visible .cell {
+    outline: 2px solid var(--text);
+  }
+
+  .regs td.addr {
+    font-size: 12px;
+    color: var(--text-2);
+    text-align: right;
+  }
+
+  .regs tr.selected td.addr {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .mark {
+    display: inline-block;
+    width: 12px;
+    text-align: left;
+  }
+
+  .regs td.val .cell {
+    display: inline-block;
+    min-width: 120px;
+    padding-block: 2px;
+  }
+
+  .regs td.hex {
+    font-size: 12px;
+    color: var(--text-3);
   }
 
   .cell {

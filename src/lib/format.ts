@@ -256,3 +256,16 @@ export function duration(ms: number): string {
   const m = Math.floor((s % 3600) / 60);
   return h ? `${h} h ${m} min` : m ? `${m} min ${s % 60} s` : `${s} s`;
 }
+
+/** Whether values of an area can be written now, and how to say so. */
+export function areaAccess(
+  area: Area,
+  readOnlyMode: boolean,
+): { writable: boolean; text: string } {
+  const name = `${AREA_NAME[area]}s`;
+  if (area === "input" || area === "discrete")
+    return { writable: false, text: `${name} · read only` };
+  if (readOnlyMode)
+    return { writable: false, text: `${name} · read-only mode is on` };
+  return { writable: true, text: `${name} · writable` };
+}

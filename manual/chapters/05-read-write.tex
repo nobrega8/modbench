@@ -3,8 +3,18 @@
 
 \section{The Read registers tab}
 
-With a manual request, the values come back as a grid: one cell per coil or
-register, with its address.
+With a manual request, the values come back one per row, each with its address
+(\ui{List}), or ten per row (\ui{Grid}), where a value's address is the row's
+first address plus the column. The choice is kept. Headers stay in view while
+the values scroll.
+
+A line above the values says whether they can be written: holding registers
+and coils are \val{writable}, and their values are outlined like fields; input
+registers and discrete inputs are \val{read only}, and so is everything while
+read-only mode is on. Click a value to select it: it gets a frame, a \ui{▸}
+next to its address in the list, and the line shows its address and value, so
+the address is never in doubt in the grid either. The arrow keys move the
+selection.
 
 \screenshot[6cm]{read-registers}{Holding registers read as 32-bit values.}
   {The Read registers tab after reading 20 holding registers, shown as 32-bit
@@ -21,6 +31,7 @@ register, with its address.
     bit changed.
   \item[Addresses] The address menu chooses the notation
     (Section~\ref{sec:notation}).
+  \item[List, Grid] The layout of the values.
   \item[Right-click] Copy a value, an address or all values, add the address
     to the chart, or \nav{Write here…} and \nav{Write all…}.
 \end{description}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  areaAccess,
   areaOfFunction,
   formatAddress,
   formatValue,
@@ -114,5 +115,20 @@ describe("valueTitle", () => {
   it("is the plain text when no label applies", () => {
     expect(valueTitle(reg([[1, "On"]]), 2)).toBe("2");
     expect(valueTitle(reg([]), false)).toBe("OFF");
+  });
+});
+
+describe("area access", () => {
+  it("tells writable areas from read-only ones and read-only mode", () => {
+    expect(areaAccess("holding", false)).toEqual({
+      writable: true,
+      text: "Holding registers · writable",
+    });
+    expect(areaAccess("coil", true)).toEqual({
+      writable: false,
+      text: "Coils · read-only mode is on",
+    });
+    expect(areaAccess("input", false).text).toBe("Input registers · read only");
+    expect(areaAccess("discrete", false).writable).toBe(false);
   });
 });
