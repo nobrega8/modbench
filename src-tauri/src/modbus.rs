@@ -463,6 +463,91 @@ pub struct DeviceIdentity {
     pub objects: Vec<DeviceIdItem>,
 }
 
+/// How a device answered a request with one function code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Support {
+    /// It answered normally.
+    Supported,
+    /// It answered "illegal function" (exception 1).
+    NotSupported,
+    /// It knows the function but refused this request (another exception,
+    /// e.g. an address it does not have).
+    Refused,
+    /// No answer, or one that could not be read.
+    NoAnswer,
+}
+
+/// The answer to one function code, from `Session::check_functions`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct FunctionCheck {
+    pub function: u8,
+    pub name: &'static str,
+    pub support: Support,
+    /// The exception or error, when there was one.
+    pub detail: Option<String>,
+}
+
+/// The function codes `check_functions` tries: all of them only read.
+pub const READ_FUNCTIONS: [(u8, &str); 11] = [
+    (1, "Read coils"),
+    (2, "Read discrete inputs"),
+    (3, "Read holding registers"),
+    (4, "Read input registers"),
+    (7, "Read exception status"),
+    (8, "Diagnostics (return query data)"),
+    (11, "Get comm event counter"),
+    (17, "Report server ID"),
+    (20, "Read file record"),
+    (24, "Read FIFO queue"),
+    (43, "Read device identification"),
+];
+
+/// A request with this function code that changes nothing on the device:
+/// one item at address 0, the diagnostics echo, record 0 of file 1.
+fn probe_request(function: u8) -> Request<'static> {
+    match function {
+        1 => Request::ReadCoils(0, 1),
+        2 => Request::ReadDiscreteInputs(0, 1),
+        3 => Request::ReadHoldingRegisters(0, 1),
+        4 => Request::ReadInputRegisters(0, 1),
+        // Sub-function 0 echoes the data back
+        8 => Request::Custom(8, vec![0x00, 0x00, 0xA5, 0x37].into()),
+        17 => Request::ReportServerId,
+        // One sub-request: reference type 6, file 1, record 0, 1 register
+        20 => Request::Custom(20, vec![7, 6, 0, 1, 0, 0, 0, 1].into()),
+        24 => Request::Custom(24, vec![0x00, 0x00].into()),
+        43 => Request::ReadDeviceIdentification(ReadCode::Basic, 0),
+        other => Request::Custom(other, Vec::new().into()),
+    }
+}
+
+/// tokio-modbus sends a custom request as `FunctionCode::Custom(7)` but
+/// decodes the exception to it as `FunctionCode::ReadExceptionStatus`, and
+/// then reports the two as different functions. The same number is the same
+/// function: keep the device's exception.
+async fn same_function(
+    call: impl std::future::Future<Output = tokio_modbus::Result<Response>>,
+) -> tokio_modbus::Result<Response> {
+    match call.await {
+        Err(tokio_modbus::Error::Protocol(tokio_modbus::ProtocolError::FunctionCodeMismatch {
+            request,
+            result: Err(answer),
+        })) if request.value() == answer.function.value() => Ok(Err(answer.exception)),
+        other => other,
+    }
+}
+
+/// What a probe's result says about the function.
+fn support_of<T>(result: &Result<T, ModbusError>) -> (Support, Option<String>) {
+    match result {
+        Ok(_) => (Support::Supported, None),
+        Err(ModbusError::Exception { code: 1, .. }) => (Support::NotSupported, None),
+        Err(e @ ModbusError::Exception { .. }) => (Support::Refused, Some(e.to_string())),
+        Err(e) => (Support::NoAnswer, Some(e.to_string())),
+    }
+}
+
 /// Name of a standard identification object.
 fn object_name(id: u8) -> &'static str {
     match id {
@@ -820,6 +905,30 @@ impl Session {
             next = part.next_object_id;
         }
         Ok(identity)
+    }
+
+    /// Sends one harmless request per function code of `READ_FUNCTIONS` and
+    /// says how the device answered each. Nothing is written.
+    pub async fn check_functions(&mut self) -> Vec<FunctionCheck> {
+        let mut checks = Vec::with_capacity(READ_FUNCTIONS.len());
+        for (function, name) in READ_FUNCTIONS {
+            let started = (SystemTime::now(), Instant::now());
+            let result = with_timeout(
+                self.timeout,
+                same_function(self.ctx.call(probe_request(function))),
+            )
+            .await;
+            self.log(function, 0, 1, started, &result);
+            self.track(&result);
+            let (support, detail) = support_of(&result);
+            checks.push(FunctionCheck {
+                function,
+                name,
+                support,
+                detail,
+            });
+        }
+        checks
     }
 
     /// Finds which addresses of an area answer between `from` and `to`. Each

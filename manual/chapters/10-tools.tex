@@ -24,6 +24,14 @@ returns is listed with its value.
 
 Not every device supports FC43: many answer exception 1 (illegal function).
 
+\ui{Check function codes} sends one harmless request for each read function
+(FC 1--4, 7, 8, 11, 17, 20, 24 and 43) and shows how the device answered:
+\emph{Supported}; \emph{Not supported} when it answered ``illegal function'';
+\emph{Supported, refused this request} when it answered another exception,
+which means it has the function but not, for example, address 0; or
+\emph{No answer}. Nothing is written. FC 7, 8, 11 and 17 exist on serial lines
+only, so over TCP they often answer ``illegal function''.
+
 \section{Find addresses}
 
 Finds which addresses answer on a device without a manual. It reads blocks of

@@ -233,6 +233,18 @@ export interface DeviceIdentity {
   objects: DeviceIdItem[];
 }
 
+/** How a device answered one function code. */
+export type Support = "supported" | "not_supported" | "refused" | "no_answer";
+
+/** The answer to one function code, from checkFunctions. */
+export interface FunctionCheck {
+  function: number;
+  name: string;
+  support: Support;
+  /** The exception or error, when there was one. */
+  detail: string | null;
+}
+
 /** What an address scan looks at. */
 export interface AddressScan {
   area: Area;

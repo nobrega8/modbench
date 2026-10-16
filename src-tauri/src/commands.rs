@@ -765,6 +765,16 @@ pub async fn read_device_id(
     session.read_device_id(level).await
 }
 
+/// Tries each read function code once and says how the device answered.
+#[tauri::command]
+pub async fn check_functions(
+    state: State<'_, AppState>,
+) -> Result<Vec<modbus::FunctionCheck>, ModbusError> {
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    Ok(session.check_functions().await)
+}
+
 /// Finds which addresses of an area answer. Progress is sent to the UI as
 /// `address-scan-progress` events; `cancel_scan` stops it.
 #[tauri::command]

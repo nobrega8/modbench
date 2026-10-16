@@ -61,6 +61,7 @@ import type {
   ByteOrder,
   ConnectionConfig,
   DeviceIdentity,
+  FunctionCheck,
   DeviceMap,
   Diagnostic,
   LibraryEntry,
@@ -946,6 +947,12 @@ This writes to the device.`,
   async readDeviceId(level: number): Promise<DeviceIdentity> {
     if (this.scanning) throw new Error("A scan is running.");
     return this.withLink(() => api.readDeviceId(level));
+  }
+
+  /** Tries each read function code once, over the connection of step 1. */
+  async checkFunctions(): Promise<FunctionCheck[]> {
+    if (this.scanning) throw new Error("A scan is running.");
+    return this.withLink(() => api.checkFunctions());
   }
 
   /** Finds which addresses of an area answer, over the connection of step 1. */

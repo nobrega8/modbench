@@ -737,6 +737,67 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn function_checks_tell_supported_refused_and_missing() {
+        use crate::modbus::Support::*;
+        for listen in [
+            tcp(),
+            Transport::RtuOverTcp {
+                host: "127.0.0.1".into(),
+                port: 0,
+            },
+        ] {
+            let rtu = matches!(listen, Transport::RtuOverTcp { .. });
+            let device = Device::new(Some(1), Memory::from_map(&map(), true));
+            let sim = start(listen, devices(vec![device]), None).await.unwrap();
+            let transport = if rtu {
+                Transport::RtuOverTcp {
+                    host: "127.0.0.1".into(),
+                    port: sim.port().unwrap(),
+                }
+            } else {
+                Transport::Tcp {
+                    host: "127.0.0.1".into(),
+                    port: sim.port().unwrap(),
+                }
+            };
+            let config = ConnectionConfig {
+                transport,
+                unit_id: 1,
+                timeout_ms: 300,
+            };
+            let mut s = Session::connect(&config, None).await.unwrap();
+            let checks = s.check_functions().await;
+            let got: Vec<_> = checks.iter().map(|c| (c.function, c.support)).collect();
+            // Address 0 is mapped only in the holding registers
+            assert_eq!(
+                got,
+                [
+                    (1, Refused),
+                    (2, Refused),
+                    (3, Supported),
+                    (4, Refused),
+                    (7, NotSupported),
+                    (8, NotSupported),
+                    (11, NotSupported),
+                    (17, NotSupported),
+                    (20, NotSupported),
+                    (24, NotSupported),
+                    (43, Supported),
+                ],
+                "over {}",
+                if rtu { "RTU over TCP" } else { "TCP" }
+            );
+            assert!(
+                checks[0]
+                    .detail
+                    .as_deref()
+                    .unwrap()
+                    .contains("illegal data address")
+            );
+        }
+    }
+
     fn tcp() -> Transport {
         Transport::Tcp {
             host: "127.0.0.1".into(),
