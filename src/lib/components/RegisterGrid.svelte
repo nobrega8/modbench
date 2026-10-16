@@ -509,7 +509,8 @@
 
   .grid-wrap {
     overflow: auto;
-    min-height: 0;
+    /* Some values stay visible in a short window; the page scrolls */
+    min-height: 168px;
     flex: 1;
   }
 
