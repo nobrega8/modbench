@@ -15,7 +15,8 @@ fn help_lists_the_commands() {
         let out = cli(&[flag]);
         assert!(out.status.success());
         let text = String::from_utf8_lossy(&out.stdout);
-        assert!(text.contains("Usage: modbench-cli <COMMAND>"), "{text}");
+        // "modbench-cli.exe" on Windows
+        assert!(text.contains("Usage: modbench-cli"), "{text}");
         for command in ["ports", "read", "map", "scan", "validate"] {
             assert!(text.contains(command), "{command} missing from {text}");
         }
