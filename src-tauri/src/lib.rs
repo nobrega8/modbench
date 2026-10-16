@@ -76,6 +76,7 @@ pub fn run() {
             commands::vendor_icon,
             commands::read_device_id,
             commands::check_functions,
+            commands::largest_read,
             commands::scan_addresses,
             commands::sim_start,
             commands::sim_stop,

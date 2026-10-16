@@ -62,6 +62,7 @@ import type {
   ConnectionConfig,
   DeviceIdentity,
   FunctionCheck,
+  ReadLimit,
   DeviceMap,
   Diagnostic,
   LibraryEntry,
@@ -949,10 +950,39 @@ This writes to the device.`,
     return this.withLink(() => api.readDeviceId(level));
   }
 
-  /** Tries each read function code once, over the connection of step 1. */
-  async checkFunctions(): Promise<FunctionCheck[]> {
+  /**
+   * Tries each read function code once at `address`, over the connection of
+   * step 1. With `writes`, also the write function codes, which write back
+   * what was just read there: always asked first. Null when not confirmed.
+   */
+  async checkFunctions(
+    address: number,
+    writes: boolean,
+  ): Promise<FunctionCheck[] | null> {
     if (this.scanning) throw new Error("A scan is running.");
-    return this.withLink(() => api.checkFunctions());
+    if (writes) {
+      if (settings.readOnly)
+        throw new Error("Read-only mode is on: write functions are not tried.");
+      const ok = await ask(
+        `To try the write functions, Modbench reads coil and holding register ${address} and writes the same values back (FC 5, 6, 15, 16 and 23), and sends a mask write that keeps every bit (FC 22).
+
+The values do not change, but a device can still act on a write. Only do this on a device you may change.`,
+        {
+          title: "Try write functions",
+          kind: "warning",
+          okLabel: "Write",
+          cancelLabel: "Cancel",
+        },
+      );
+      if (!ok) return null;
+    }
+    return this.withLink(() => api.checkFunctions(address, writes));
+  }
+
+  /** The largest block of an area the device returns in one read. */
+  async largestRead(area: Area, address: number): Promise<ReadLimit> {
+    if (this.scanning) throw new Error("A scan is running.");
+    return this.withLink(() => api.largestRead(area, address));
   }
 
   /** Finds which addresses of an area answer, over the connection of step 1. */

@@ -9,6 +9,7 @@ import type {
   ConnectionConfig,
   DeviceIdentity,
   FunctionCheck,
+  ReadLimit,
   DeviceMap,
   Generator,
   ImportResult,
@@ -108,7 +109,10 @@ export const api = {
     invoke<void>("append_text", { path, text }),
   readDeviceId: (level: number) =>
     invoke<DeviceIdentity>("read_device_id", { level }),
-  checkFunctions: () => invoke<FunctionCheck[]>("check_functions"),
+  checkFunctions: (address: number, writes: boolean) =>
+    invoke<FunctionCheck[]>("check_functions", { address, writes }),
+  largestRead: (area: Area, address: number) =>
+    invoke<ReadLimit>("largest_read", { area, address }),
   scanAddresses: (scan: AddressScan) =>
     invoke<AddressRange[]>("scan_addresses", { scan }),
   /** Starts the simulator; returns where it listens (with the port it

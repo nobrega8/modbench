@@ -765,14 +765,30 @@ pub async fn read_device_id(
     session.read_device_id(level).await
 }
 
-/// Tries each read function code once and says how the device answered.
+/// Tries each read function code once at `address`, and with `writes` the
+/// write function codes too (writing back what was read), and says how the
+/// device answered.
 #[tauri::command]
 pub async fn check_functions(
     state: State<'_, AppState>,
+    address: u16,
+    writes: bool,
 ) -> Result<Vec<modbus::FunctionCheck>, ModbusError> {
     let mut slot = state.session.lock().await;
     let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
-    Ok(session.check_functions().await)
+    session.check_functions(address, writes).await
+}
+
+/// The largest block of an area the device returns in one read.
+#[tauri::command]
+pub async fn largest_read(
+    state: State<'_, AppState>,
+    area: Area,
+    address: u16,
+) -> Result<modbus::ReadLimit, ModbusError> {
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    session.largest_read(area, address).await
 }
 
 /// Finds which addresses of an area answer. Progress is sent to the UI as

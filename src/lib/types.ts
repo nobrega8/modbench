@@ -234,7 +234,8 @@ export interface DeviceIdentity {
 }
 
 /** How a device answered one function code. */
-export type Support = "supported" | "not_supported" | "refused" | "no_answer";
+export type Support =
+  "supported" | "not_supported" | "refused" | "no_answer" | "skipped";
 
 /** The answer to one function code, from checkFunctions. */
 export interface FunctionCheck {
@@ -243,6 +244,13 @@ export interface FunctionCheck {
   support: Support;
   /** The exception or error, when there was one. */
   detail: string | null;
+}
+
+/** The largest read a device accepted. */
+export interface ReadLimit {
+  largest: number;
+  /** Why one more failed; null when the protocol's maximum was read. */
+  limit: string | null;
 }
 
 /** What an address scan looks at. */
