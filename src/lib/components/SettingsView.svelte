@@ -424,6 +424,23 @@
           </label>
           <label class="setting">
             <div class="text">
+              <span class="name">Write single registers with FC16</span>
+              <span class="hint"
+                >One holding register is written with FC06 (Write Single
+                Register). Turn this on for devices that only accept FC16 (Write
+                Multiple Registers).</span
+              >
+            </div>
+            <input
+              type="checkbox"
+              class="switch"
+              role="switch"
+              bind:checked={settings.singleWriteFc16}
+              onchange={changed}
+            />
+          </label>
+          <label class="setting">
+            <div class="text">
               <span class="name">CSV separator</span>
               <span class="hint"
                 >For saved logs, exported values and recordings. Use a semicolon

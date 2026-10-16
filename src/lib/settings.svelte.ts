@@ -12,6 +12,7 @@ interface Stored {
   rememberDevices: boolean;
   confirmWrites: boolean;
   readOnly: boolean;
+  singleWriteFc16: boolean;
   autoReconnect: boolean;
   logLimit: number;
   csvSeparator: CsvSeparator;
@@ -28,6 +29,7 @@ const DEFAULTS: Stored = {
   rememberDevices: true,
   confirmWrites: false,
   readOnly: false,
+  singleWriteFc16: false,
   autoReconnect: true,
   logLimit: 1000,
   csvSeparator: ",",
@@ -60,6 +62,8 @@ class Settings {
   confirmWrites = $state(false);
   /** Blocks every write; the backend refuses them while this is on. */
   readOnly = $state(false);
+  /** Writes a single holding register with FC16 instead of FC06. */
+  singleWriteFc16 = $state(false);
   /** Opens a lost connection again while a test runs. */
   autoReconnect = $state(true);
   logLimit = $state(1000);
@@ -84,6 +88,7 @@ class Settings {
       rememberDevices: this.rememberDevices,
       confirmWrites: this.confirmWrites,
       readOnly: this.readOnly,
+      singleWriteFc16: this.singleWriteFc16,
       autoReconnect: this.autoReconnect,
       logLimit: this.logLimit,
       csvSeparator: this.csvSeparator,

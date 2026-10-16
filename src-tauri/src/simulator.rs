@@ -673,7 +673,7 @@ pub async fn start(
 mod tests {
     use super::*;
     use crate::modbus::{AddressScan, ConnectionConfig, Session};
-    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::{AtomicBool, Ordering};
 
     fn map() -> DeviceMap {
         let text = "@mbmap=1\n@vendor=ACME\n@model=PM-1\n\
@@ -842,6 +842,40 @@ mod tests {
             Err(ModbusError::ReadOnly)
         ));
         assert!(s.check_functions(12, false).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn single_writes_use_fc06_unless_fc16_is_asked_for() {
+        let device = Device::new(Some(1), Memory::default());
+        let memory = device.memory.clone();
+        let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
+        let sent = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let log = sent.clone();
+        s.set_logger(Arc::new(move |e| log.lock().unwrap().push(e.function)));
+
+        s.write_registers(4, &[7]).await.unwrap();
+        s.write_registers(4, &[8, 9]).await.unwrap();
+        let fc16 = Arc::new(AtomicBool::new(true));
+        s.set_single_as_multiple(fc16.clone());
+        s.write_registers(4, &[10]).await.unwrap();
+        fc16.store(false, Ordering::Relaxed);
+        s.write_registers(5, &[11]).await.unwrap();
+        assert_eq!(*sent.lock().unwrap(), [6, 16, 16, 6]);
+        assert_eq!(
+            memory.lock().unwrap().read(Area::Holding, 4, 2),
+            RawData::Registers(vec![10, 11])
+        );
+
+        // Read-only mode blocks both functions before anything is sent
+        s.set_read_only(Arc::new(AtomicBool::new(true)));
+        for words in [&[1][..], &[1, 2]] {
+            assert!(matches!(
+                s.write_registers(4, words).await,
+                Err(ModbusError::ReadOnly)
+            ));
+        }
+        assert_eq!(sent.lock().unwrap().len(), 4);
     }
 
     #[tokio::test]

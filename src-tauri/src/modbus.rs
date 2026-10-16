@@ -626,6 +626,9 @@ pub struct Session {
     logger: Option<TrafficLogger>,
     /// When set and true, every write is refused before it reaches the wire.
     read_only: Option<Arc<AtomicBool>>,
+    /// When set and true, a single register is written with FC16 instead of
+    /// FC06, for devices that only accept FC16.
+    single_as_multiple: Option<Arc<AtomicBool>>,
 }
 
 impl Session {
@@ -646,6 +649,7 @@ impl Session {
             timeout: Duration::from_millis(config.timeout_ms.max(1)),
             logger: None,
             read_only: None,
+            single_as_multiple: None,
         })
     }
 
@@ -699,6 +703,11 @@ impl Session {
     /// fail with [`ModbusError::ReadOnly`] and nothing is sent.
     pub fn set_read_only(&mut self, switch: Arc<AtomicBool>) {
         self.read_only = Some(switch);
+    }
+
+    /// Shares the switch that makes single-register writes use FC16.
+    pub fn set_single_as_multiple(&mut self, switch: Arc<AtomicBool>) {
+        self.single_as_multiple = Some(switch);
     }
 
     fn check_writable(&self) -> Result<(), ModbusError> {
@@ -808,7 +817,8 @@ impl Session {
         Ok(data)
     }
 
-    /// Writes registers: FC06 for a single register, FC16 otherwise.
+    /// Writes registers: FC06 for a single register, FC16 otherwise (or
+    /// always FC16 when the session's switch says so).
     pub async fn write_registers(
         &mut self,
         address: u16,
@@ -816,10 +826,14 @@ impl Session {
     ) -> Result<(), ModbusError> {
         self.check_writable()?;
         let started = (SystemTime::now(), Instant::now());
+        let multiple = self
+            .single_as_multiple
+            .as_ref()
+            .is_some_and(|on| on.load(Ordering::Relaxed));
         let (ctx, wait) = (&mut self.ctx, self.timeout);
         let (function, result) = match words {
             [] => return Err(ModbusError::Invalid("nothing to write".into())),
-            [word] => (
+            [word] if !multiple => (
                 6,
                 with_timeout(wait, ctx.write_single_register(address, *word)).await,
             ),

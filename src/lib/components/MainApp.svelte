@@ -58,6 +58,9 @@
   $effect(() => {
     api.setReadOnly(settings.readOnly).catch(() => {});
   });
+  $effect(() => {
+    api.setSingleWriteFc16(settings.singleWriteFc16).catch(() => {});
+  });
 
   // Choices are kept per device: put back the ones of the device now shown
   // whenever the map, the endpoint or the unit ID change.
