@@ -50,7 +50,7 @@
   .step.grow {
     flex: 1;
     /* Room for the results in a short window: the page scrolls instead */
-    min-height: 560px;
+    min-height: 440px;
   }
 
   .rail {

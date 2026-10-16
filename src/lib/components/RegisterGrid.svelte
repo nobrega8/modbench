@@ -510,7 +510,7 @@
   .grid-wrap {
     overflow: auto;
     /* Some values stay visible in a short window; the page scrolls */
-    min-height: 168px;
+    min-height: 120px;
     flex: 1;
   }
 
