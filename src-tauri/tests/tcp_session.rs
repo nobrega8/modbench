@@ -274,7 +274,8 @@ async fn device_exceptions_are_reported() {
     );
     assert_eq!(
         err.to_string(),
-        "device exception 0x02 (illegal data address)"
+        "device exception 0x02 (illegal data address) to FC03 (read holding registers) \
+         for 2 from address 99, unit 1"
     );
     // The session is still usable after an exception.
     assert!(s.read(Area::Holding, 0, 1).await.is_ok());
