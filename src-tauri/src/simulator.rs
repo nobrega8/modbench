@@ -737,6 +737,148 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn function_checks_tell_supported_refused_and_missing() {
+        use crate::modbus::Support::*;
+        for listen in [
+            tcp(),
+            Transport::RtuOverTcp {
+                host: "127.0.0.1".into(),
+                port: 0,
+            },
+        ] {
+            let rtu = matches!(listen, Transport::RtuOverTcp { .. });
+            let device = Device::new(Some(1), Memory::from_map(&map(), true));
+            let sim = start(listen, devices(vec![device]), None).await.unwrap();
+            let transport = if rtu {
+                Transport::RtuOverTcp {
+                    host: "127.0.0.1".into(),
+                    port: sim.port().unwrap(),
+                }
+            } else {
+                Transport::Tcp {
+                    host: "127.0.0.1".into(),
+                    port: sim.port().unwrap(),
+                }
+            };
+            let config = ConnectionConfig {
+                transport,
+                unit_id: 1,
+                timeout_ms: 300,
+            };
+            let mut s = Session::connect(&config, None).await.unwrap();
+            let checks = s.check_functions(0, false).await.unwrap();
+            let got: Vec<_> = checks.iter().map(|c| (c.function, c.support)).collect();
+            // Address 0 is mapped only in the holding registers
+            assert_eq!(
+                got,
+                [
+                    (1, Refused),
+                    (2, Refused),
+                    (3, Supported),
+                    (4, Refused),
+                    (7, NotSupported),
+                    (8, NotSupported),
+                    (11, NotSupported),
+                    (17, NotSupported),
+                    (20, NotSupported),
+                    (24, NotSupported),
+                    (43, Supported),
+                ],
+                "over {}",
+                if rtu { "RTU over TCP" } else { "TCP" }
+            );
+            assert!(
+                checks[0]
+                    .detail
+                    .as_deref()
+                    .unwrap()
+                    .contains("illegal data address")
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn write_checks_write_back_and_respect_read_only() {
+        use crate::modbus::Support::*;
+        let device = Device::new(Some(1), Memory::from_map(&map(), false));
+        let memory = device.memory.clone();
+        memory
+            .lock()
+            .unwrap()
+            .answer(Request::WriteSingleCoil(12, true))
+            .unwrap();
+        let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
+        let before = memory.lock().unwrap().read(Area::Holding, 12, 1);
+
+        let checks = s.check_functions(12, true).await.unwrap();
+        let writes: Vec<_> = checks
+            .iter()
+            .skip(11)
+            .map(|c| (c.function, c.support))
+            .collect();
+        assert_eq!(
+            writes,
+            [
+                (5, Supported),
+                (6, Supported),
+                (15, Supported),
+                (16, Supported),
+                (22, Supported),
+                (23, NotSupported)
+            ]
+        );
+        // Every write put back what was there
+        assert_eq!(memory.lock().unwrap().read(Area::Holding, 12, 1), before);
+        assert_eq!(
+            memory.lock().unwrap().read(Area::Coil, 12, 1),
+            RawData::Bits(vec![true])
+        );
+
+        s.set_read_only(Arc::new(AtomicBool::new(true)));
+        assert!(matches!(
+            s.check_functions(12, true).await,
+            Err(ModbusError::ReadOnly)
+        ));
+        assert!(s.check_functions(12, false).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn write_checks_are_skipped_where_nothing_reads() {
+        use crate::modbus::Support::*;
+        let device = Device::new(Some(1), Memory::from_map(&map(), true));
+        let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
+        // Address 5 is not in the map: no coil or register to read back
+        let checks = s.check_functions(5, true).await.unwrap();
+        let skipped: Vec<_> = checks
+            .iter()
+            .filter(|c| c.support == Skipped)
+            .map(|c| c.function)
+            .collect();
+        assert_eq!(skipped, [5, 6, 15, 16, 23]);
+    }
+
+    #[tokio::test]
+    async fn largest_read_finds_the_device_limit() {
+        let strict = Device::new(Some(1), Memory::from_map(&map(), true));
+        let sim = start(tcp(), devices(vec![strict]), None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
+        // Only address 0 is mapped before 10
+        let limit = s.largest_read(Area::Holding, 0).await.unwrap();
+        assert_eq!(limit.largest, 1);
+        assert!(limit.limit.unwrap().contains("illegal data address"));
+        assert!(s.largest_read(Area::Holding, 5).await.is_err());
+
+        let open = Device::new(Some(1), Memory::from_map(&map(), false));
+        let sim = start(tcp(), devices(vec![open]), None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
+        let limit = s.largest_read(Area::Holding, 0).await.unwrap();
+        assert_eq!((limit.largest, limit.limit), (125, None));
+        assert_eq!(s.largest_read(Area::Coil, 0).await.unwrap().largest, 2000);
+    }
+
     fn tcp() -> Transport {
         Transport::Tcp {
             host: "127.0.0.1".into(),

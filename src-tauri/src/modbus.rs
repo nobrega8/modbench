@@ -463,6 +463,127 @@ pub struct DeviceIdentity {
     pub objects: Vec<DeviceIdItem>,
 }
 
+/// How a device answered a request with one function code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Support {
+    /// It answered normally.
+    Supported,
+    /// It answered "illegal function" (exception 1).
+    NotSupported,
+    /// It knows the function but refused this request (another exception,
+    /// e.g. an address it does not have).
+    Refused,
+    /// No answer, or one that could not be read.
+    NoAnswer,
+    /// Not tried: a write needs the value read first, and the read failed.
+    Skipped,
+}
+
+/// The answer to one function code, from `Session::check_functions`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct FunctionCheck {
+    pub function: u8,
+    pub name: &'static str,
+    pub support: Support,
+    /// The exception or error, when there was one.
+    pub detail: Option<String>,
+}
+
+/// The function codes `check_functions` tries: all of them only read.
+pub const READ_FUNCTIONS: [(u8, &str); 11] = [
+    (1, "Read coils"),
+    (2, "Read discrete inputs"),
+    (3, "Read holding registers"),
+    (4, "Read input registers"),
+    (7, "Read exception status"),
+    (8, "Diagnostics (return query data)"),
+    (11, "Get comm event counter"),
+    (17, "Report server ID"),
+    (20, "Read file record"),
+    (24, "Read FIFO queue"),
+    (43, "Read device identification"),
+];
+
+/// The write function codes `check_functions` tries when allowed: each
+/// writes back the value just read, or (FC22) a mask that keeps every bit.
+pub const WRITE_FUNCTIONS: [(u8, &str); 6] = [
+    (5, "Write single coil"),
+    (6, "Write single register"),
+    (15, "Write multiple coils"),
+    (16, "Write multiple registers"),
+    (22, "Mask write register"),
+    (23, "Read/write multiple registers"),
+];
+
+/// A request with this function code that changes nothing on the device:
+/// one item at `address`, the diagnostics echo, record 0 of file 1.
+fn probe_request(function: u8, address: u16) -> Request<'static> {
+    match function {
+        1 => Request::ReadCoils(address, 1),
+        2 => Request::ReadDiscreteInputs(address, 1),
+        3 => Request::ReadHoldingRegisters(address, 1),
+        4 => Request::ReadInputRegisters(address, 1),
+        // Sub-function 0 echoes the data back
+        8 => Request::Custom(8, vec![0x00, 0x00, 0xA5, 0x37].into()),
+        17 => Request::ReportServerId,
+        // One sub-request: reference type 6, file 1, record 0, 1 register
+        20 => Request::Custom(20, vec![7, 6, 0, 1, 0, 0, 0, 1].into()),
+        24 => Request::Custom(24, address.to_be_bytes().to_vec().into()),
+        43 => Request::ReadDeviceIdentification(ReadCode::Basic, 0),
+        other => Request::Custom(other, Vec::new().into()),
+    }
+}
+
+/// tokio-modbus sends a custom request as `FunctionCode::Custom(7)` but
+/// decodes the exception to it as `FunctionCode::ReadExceptionStatus`, and
+/// then reports the two as different functions. The same number is the same
+/// function: keep the device's exception.
+async fn same_function(
+    call: impl std::future::Future<Output = tokio_modbus::Result<Response>>,
+) -> tokio_modbus::Result<Response> {
+    match call.await {
+        Err(tokio_modbus::Error::Protocol(tokio_modbus::ProtocolError::FunctionCodeMismatch {
+            request,
+            result: Err(answer),
+        })) if request.value() == answer.function.value() => Ok(Err(answer.exception)),
+        other => other,
+    }
+}
+
+/// The largest read a device accepted, from `Session::largest_read`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ReadLimit {
+    pub largest: u16,
+    /// Why one more failed; None when the protocol's maximum was read.
+    pub limit: Option<String>,
+}
+
+/// The check for one function from its probe's result.
+fn check(
+    function: u8,
+    name: &'static str,
+    result: &Result<Response, ModbusError>,
+) -> FunctionCheck {
+    let (support, detail) = support_of(result);
+    FunctionCheck {
+        function,
+        name,
+        support,
+        detail,
+    }
+}
+
+/// What a probe's result says about the function.
+fn support_of<T>(result: &Result<T, ModbusError>) -> (Support, Option<String>) {
+    match result {
+        Ok(_) => (Support::Supported, None),
+        Err(ModbusError::Exception { code: 1, .. }) => (Support::NotSupported, None),
+        Err(e @ ModbusError::Exception { .. }) => (Support::Refused, Some(e.to_string())),
+        Err(e) => (Support::NoAnswer, Some(e.to_string())),
+    }
+}
+
 /// Name of a standard identification object.
 fn object_name(id: u8) -> &'static str {
     match id {
@@ -820,6 +941,134 @@ impl Session {
             next = part.next_object_id;
         }
         Ok(identity)
+    }
+
+    /// Sends one harmless request per function code of `READ_FUNCTIONS`, at
+    /// `address` where the function takes one, and says how the device
+    /// answered each. With `writes`, also tries `WRITE_FUNCTIONS` by writing
+    /// back what was just read there; refused in read-only mode.
+    pub async fn check_functions(
+        &mut self,
+        address: u16,
+        writes: bool,
+    ) -> Result<Vec<FunctionCheck>, ModbusError> {
+        if writes {
+            self.check_writable()?;
+        }
+        let mut checks = Vec::new();
+        for (function, name) in READ_FUNCTIONS {
+            let result = self
+                .send_probe(function, probe_request(function, address))
+                .await;
+            checks.push(check(function, name, &result));
+        }
+        if !writes {
+            return Ok(checks);
+        }
+
+        // The values to write back
+        let coil = match self.read(Area::Coil, address, 1).await {
+            Ok(RawData::Bits(b)) => b.first().copied(),
+            _ => None,
+        };
+        let register = match self.read(Area::Holding, address, 1).await {
+            Ok(RawData::Registers(r)) => r.first().copied(),
+            _ => None,
+        };
+        for (function, name) in WRITE_FUNCTIONS {
+            let request = match (function, coil, register) {
+                (5, Some(on), _) => Some(Request::WriteSingleCoil(address, on)),
+                (15, Some(on), _) => Some(Request::WriteMultipleCoils(address, vec![on].into())),
+                (6, _, Some(w)) => Some(Request::WriteSingleRegister(address, w)),
+                (16, _, Some(w)) => Some(Request::WriteMultipleRegisters(address, vec![w].into())),
+                // AND with all ones, OR with nothing: the register keeps its value
+                (22, _, _) => Some(Request::MaskWriteRegister(address, 0xFFFF, 0x0000)),
+                (23, _, Some(w)) => Some(Request::ReadWriteMultipleRegisters(
+                    address,
+                    1,
+                    address,
+                    vec![w].into(),
+                )),
+                _ => None,
+            };
+            let Some(request) = request else {
+                let area = if matches!(function, 5 | 15) {
+                    "coil"
+                } else {
+                    "holding register"
+                };
+                checks.push(FunctionCheck {
+                    function,
+                    name,
+                    support: Support::Skipped,
+                    detail: Some(format!(
+                        "{area} {address} could not be read, so nothing was written"
+                    )),
+                });
+                continue;
+            };
+            let result = self.send_probe(function, request).await;
+            checks.push(check(function, name, &result));
+        }
+        Ok(checks)
+    }
+
+    /// Sends one probe request, logged and tracked like any other.
+    async fn send_probe(
+        &mut self,
+        function: u8,
+        request: Request<'static>,
+    ) -> Result<Response, ModbusError> {
+        let started = (SystemTime::now(), Instant::now());
+        let result = with_timeout(self.timeout, same_function(self.ctx.call(request))).await;
+        self.log(function, 0, 1, started, &result);
+        self.track(&result);
+        result
+    }
+
+    /// The largest block of `area` the device returns in one read from
+    /// `address`, found by halving: at most 125 registers or 2000 bits.
+    /// Also says why the next size up failed. Fails when even one address
+    /// cannot be read.
+    pub async fn largest_read(
+        &mut self,
+        area: Area,
+        address: u16,
+    ) -> Result<ReadLimit, ModbusError> {
+        let protocol = if matches!(area, Area::Coil | Area::Discrete) {
+            2000
+        } else {
+            125
+        };
+        let max = protocol.min(65536 - u32::from(address)) as u16;
+        let reason = |e: ModbusError| e.to_string();
+        if self.read(area, address, max).await.is_ok() {
+            return Ok(ReadLimit {
+                largest: max,
+                limit: None,
+            });
+        }
+        self.read(area, address, 1).await?;
+        // `ok` is known to read, `fail` known not to
+        let (mut ok, mut fail) = (1u16, max);
+        let mut why = None;
+        while fail - ok > 1 {
+            let mid = ok + (fail - ok) / 2;
+            match self.read(area, address, mid).await {
+                Ok(_) => ok = mid,
+                Err(e) => {
+                    fail = mid;
+                    why = Some(reason(e));
+                }
+            }
+        }
+        if why.is_none() {
+            why = self.read(area, address, fail).await.err().map(reason);
+        }
+        Ok(ReadLimit {
+            largest: ok,
+            limit: why,
+        })
     }
 
     /// Finds which addresses of an area answer between `from` and `to`. Each

@@ -24,6 +24,28 @@ returns is listed with its value.
 
 Not every device supports FC43: many answer exception 1 (illegal function).
 
+\ui{Check function codes} sends one harmless request for each read function
+(FC 1--4, 7, 8, 11, 17, 20, 24 and 43) and shows how the device answered:
+\emph{Supported}; \emph{Not supported} when it answered ``illegal function'';
+\emph{Supported, refused this request} when it answered another exception,
+which means it has the function but not, for example, address 0; or
+\emph{No answer}. Nothing is written. FC 7, 8, 11 and 17 exist on serial lines
+only, so over TCP they often answer ``illegal function''.
+
+The functions are tried at the \field{Address} given (0 at first). With
+\ui{Also try write functions}, Modbench also tries FC 5, 6, 15, 16 and 23 by
+reading coil and holding register \field{Address} and writing the same values
+back, and FC 22 with a mask that keeps every bit. It always asks first, and the
+option is off in read-only mode. A write whose value could not be read is
+\emph{Not tried}. The values do not change, but a device can still act on a
+write: only do this on a device you may change.
+
+\ui{Find largest read} finds how many registers or bits the device returns in
+one read from \field{Address}, by halving, up to 125 registers or 2000 bits,
+and says why one more failed. ``Illegal data value'' means that is the
+device's limit: set it as \field{Max registers} on the Main page. ``Illegal data
+address'' means the area has a gap there.
+
 \section{Find addresses}
 
 Finds which addresses answer on a device without a manual. It reads blocks of
