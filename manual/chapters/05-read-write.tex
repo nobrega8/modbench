@@ -36,6 +36,31 @@ selection.
     to the chart, or \nav{Write here…} and \nav{Write all…}.
 \end{description}
 
+\section{Snapshots}
+\label{sec:snapshots}
+
+\ui{Snapshot…} on the Read registers and Device map tabs keeps the values shown
+now, to answer ``what changes when I press this button?'' or ``what is
+different between these two units?''.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Take snapshot] Keeps the values shown. A \ui{Snapshot} column then
+    shows them next to the live values, and every value that differs is marked
+    with \ui{≠} and a bar at the start of its row. The line next to the button
+    counts the differences.
+  \item[Only differences] Shows only the values that differ.
+  \item[Save snapshot…, Open snapshot…] Keep a snapshot in a file
+    (\file{.mbsnap.json}) and open it later, on this or another device.
+  \item[Compare with a saved snapshot…] Compares the snapshot with a second
+    one from a file instead of the live values; \ui{Compare with the live
+    values} goes back.
+\end{description}
+
+A map snapshot keeps each register by name and address, and a register that
+was not read on one side is not counted as a difference. A snapshot of a manual
+read keeps the words from its first address and is compared in the format
+shown.
+
 \section{Writing values}
 \label{sec:write}
 

@@ -28,6 +28,8 @@
   import AddressFormat from "./AddressFormat.svelte";
   import CustomRegisterForm from "./CustomRegisterForm.svelte";
   import Select from "./Select.svelte";
+  import SnapshotBar from "./SnapshotBar.svelte";
+  import { differs, shownText, snapText } from "#lib/snapshots.ts";
 
   let { open }: { open: OpenMap } = $props();
 
@@ -98,6 +100,9 @@
   const rows = $derived(
     open.map.registers
       .map((reg, index) => ({ reg, index }))
+      .filter(
+        ({ index }) => !snap || !bench.onlyDifferences || different.has(index),
+      )
       .filter(({ reg }) => {
         // Registers the device's firmware does not have are left out.
         if (!appliesTo(reg, fwVersion)) return false;
@@ -121,6 +126,24 @@
       ),
   );
   const readCount = $derived(open.map.registers.length - bench.skipped.size);
+
+  /** The map snapshot to compare with, when there is one. */
+  const snap = $derived(bench.snapshot?.map ? bench.snapshot : null);
+  /** A register's value on the other side of the comparison. */
+  function after(reg: Register, index: number): string | undefined {
+    if (bench.compareWith) return snapText(bench.compareWith, reg);
+    const r = bench.mapResults.get(index);
+    return r ? shownText(reg, r) : undefined;
+  }
+  /** Registers whose value differs from the snapshot. */
+  const different = $derived.by(() => {
+    const out = new Set<number>();
+    if (!snap) return out;
+    open.map.registers.forEach((reg, i) => {
+      if (differs(snapText(snap, reg), after(reg, i))) out.add(i);
+    });
+    return out;
+  });
 
   /** Outcome of the map's reference checks (spec 4.6), from the last cycle. */
   const refs = $derived.by(() => {
@@ -413,6 +436,11 @@
     onclick={toggleRecording}
     >{recording ? `Stop recording (${recording.rows})` : "Record…"}</button
   >
+  <SnapshotBar
+    kind="map"
+    canTake={bench.mapResults.size > 0}
+    differences={snap ? different.size : null}
+  />
   {#if exportNote}<span class:bad={!exportNote.ok} class="note"
       >{exportNote.text}</span
     >{/if}
@@ -496,6 +524,12 @@
         <th>Name</th>
         <th>Type</th>
         <th class="val">Value</th>
+        {#if snap}<th
+            class="val"
+            title="The value in the snapshot {snap.label}{bench.compareWith
+              ? `, compared with ${bench.compareWith.label}`
+              : ', compared with the live value'}">Snapshot</th
+          >{/if}
         <th>Unit</th>
         <th>Raw</th>
         <th class="act"></th>
@@ -514,6 +548,7 @@
         <tr
           class:err={!!r?.error}
           class:off
+          class:diff={different.has(index)}
           oncontextmenu={(e) => contextMenu.show(e, rowMenu(reg, index))}
         >
           <td class="read">
@@ -585,6 +620,18 @@
                 >{r.sentinel}</span
               >{:else}{shown}{/if}
           </td>
+          {#if snap}
+            {@const before = snapText(snap, reg)}
+            <td
+              class="val mono snapcell"
+              title={different.has(index)
+                ? `Snapshot: ${before}\n${bench.compareWith ? bench.compareWith.label : "Now"}: ${after(reg, index)}`
+                : undefined}
+              >{#if different.has(index)}<span class="ne" aria-label="differs"
+                  >≠</span
+                >{/if}{before ?? "—"}</td
+            >
+          {/if}
           <td class="unit">{r?.sentinel ? "" : reg.unit}</td>
           <td class="raw mono" title={r?.error ?? undefined}>
             {#if r?.error}<span class="bad">{r.error}</span>{:else}{formatRaw(
@@ -609,7 +656,7 @@
         {#if editing === index}
           <tr class="editor">
             <td colspan="2"></td>
-            <td colspan="6">
+            <td colspan={snap ? 7 : 6}>
               <form
                 onsubmit={(e) => {
                   e.preventDefault();
@@ -685,12 +732,13 @@
           </tr>
         {:else if note?.index === index && note.ok}
           <tr class="done"
-            ><td colspan="2"></td><td colspan="6">{note.text}</td></tr
+            ><td colspan="2"></td><td colspan={snap ? 7 : 6}>{note.text}</td
+            ></tr
           >
         {/if}
       {:else}
         <tr>
-          <td colspan="8" class="empty"
+          <td colspan={snap ? 9 : 8} class="empty"
             >{open.map.registers.length
               ? "No registers match this search."
               : "This map has no registers."}</td
@@ -698,7 +746,7 @@
         </tr>
       {/each}
       <tr class="add-row">
-        <td colspan="8">
+        <td colspan={snap ? 9 : 8}>
           {#if adding}
             <CustomRegisterForm {open} onclose={() => (adding = false)} />
           {:else}
@@ -713,6 +761,24 @@
 </div>
 
 <style>
+  tr.diff td {
+    background: rgb(var(--fg-rgb) / 0.05);
+  }
+
+  tr.diff td:first-child {
+    box-shadow: inset 3px 0 0 var(--text);
+  }
+
+  .snapcell {
+    color: var(--text-2);
+  }
+
+  .ne {
+    margin-right: 6px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
   .toolbar {
     display: flex;
     flex-wrap: wrap;

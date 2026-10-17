@@ -4,6 +4,8 @@
   import { slidePill } from "#lib/motion.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import AddressFormat from "./AddressFormat.svelte";
+  import SnapshotBar from "./SnapshotBar.svelte";
+  import { snapWord } from "#lib/snapshots.ts";
   import { bench } from "#lib/state.svelte.ts";
   import {
     contextMenu,
@@ -61,6 +63,38 @@
     selected = null;
   });
 
+  /** The read snapshot to compare with, when it covers this area. */
+  const snap = $derived(
+    bench.snapshot?.read && read && bench.snapshot.read.area === read.area
+      ? bench.snapshot
+      : null,
+  );
+  /** The words now: the live read, or the second snapshot. */
+  function nowWord(address: number): number | undefined {
+    if (bench.compareWith)
+      return snapWord(bench.compareWith, read!.area, address);
+    if (!read) return undefined;
+    const v = read.data.values[address - read.address];
+    return v === undefined ? undefined : Number(v);
+  }
+  /** The words of a cell in the snapshot, or undefined where it has none. */
+  function snapWords(c: Cell): number[] | undefined {
+    if (!snap || !read) return undefined;
+    const out: number[] = [];
+    for (let k = 0; k < c.span; k++) {
+      const w = snapWord(snap, read.area, read.address + c.offset + k);
+      if (w === undefined) return undefined;
+      out.push(w);
+    }
+    return out;
+  }
+  /** What a snapshot cell says, in the format shown. */
+  function snapCellText(c: Cell): string {
+    const w = snapWords(c);
+    if (!w) return "—";
+    if (read?.data.kind === "bits") return String(w[0]);
+    return c.span === 2 ? pair(w[0], w[1]) : word(w[0]);
+  }
   /** Selects a value and gives it the focus, for the arrow keys. */
   function select(offset: number, e: MouseEvent) {
     selected = offset;
@@ -270,6 +304,29 @@
       : (cells.find((c) => c.offset === selected) ?? null),
   );
 
+  /** Offsets of the cells whose words differ from the snapshot. */
+  const different = $derived.by(() => {
+    const out = new Set<number>();
+    if (!snap || !read) return out;
+    for (const c of cells) {
+      const before = snapWords(c);
+      if (!before) continue;
+      for (let k = 0; k < c.span; k++) {
+        const now = nowWord(read.address + c.offset + k);
+        if (now !== undefined && now !== before[k]) {
+          out.add(c.offset);
+          break;
+        }
+      }
+    }
+    return out;
+  });
+  const listCells = $derived(
+    snap && bench.onlyDifferences
+      ? cells.filter((c) => different.has(c.offset))
+      : cells,
+  );
+
   const rows = $derived.by(() => {
     const out: Cell[][] = [];
     for (const c of cells) (out[Math.floor(c.offset / PER_ROW)] ??= []).push(c);
@@ -318,6 +375,11 @@
     </div>
   {/if}
   <span class="spacer"></span>
+  <SnapshotBar
+    kind="read"
+    canTake={!!read}
+    differences={snap ? different.size : null}
+  />
   <button class="btn" disabled={!read} onclick={() => bench.copyReadToWrite()}
     >Copy data to write values</button
   >
@@ -410,11 +472,13 @@
           <th class="addr">Address</th>
           <th class="val">Value</th>
           {#if r.data.kind === "registers"}<th class="hex">Raw</th>{/if}
+          {#if snap}<th class="val">Snapshot</th>{/if}
         </tr>
       </thead>
       <tbody>
-        {#each cells as c (c.offset)}
+        {#each listCells as c (c.offset)}
           <tr
+            class:diff={different.has(c.offset)}
             class:selected={selected === c.offset}
             aria-selected={selected === c.offset}
             data-offset={c.offset}
@@ -438,6 +502,10 @@
             {#if r.data.kind === "registers"}<td class="hex mono"
                 >{rawHex(c)}</td
               >{/if}
+            {#if snap}<td class="snapcell mono"
+                >{#if different.has(c.offset)}<span class="ne">≠</span
+                  >{/if}{snapCellText(c)}</td
+              >{/if}
           </tr>
         {/each}
       </tbody>
@@ -457,6 +525,7 @@
             class="cell"
             class:changed={c.changed}
             class:selected={selected === c.offset}
+            class:diff={different.has(c.offset)}
             style:grid-column="span {c.span}"
             role="gridcell"
             tabindex="-1"
@@ -470,7 +539,9 @@
               selected = c.offset;
               contextMenu.show(e, cellMenu(c));
             }}
-            title="Address {addr(r.address + c.offset)}">{c.text}</span
+            title="Address {addr(r.address + c.offset)}{different.has(c.offset)
+              ? ` · snapshot: ${snapCellText(c)}`
+              : ''}">{c.text}</span
           >
         {/each}
         {#if row.length * row[0].span < PER_ROW}
@@ -512,6 +583,25 @@
     /* Some values stay visible in a short window; the page scrolls */
     min-height: 120px;
     flex: 1;
+  }
+
+  .grid .cell.diff {
+    box-shadow: inset 0 -3px 0 var(--text);
+  }
+
+  .regs tr.diff td.addr {
+    box-shadow: inset 3px 0 0 var(--text);
+  }
+
+  .snapcell {
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
+  .ne {
+    margin-right: 6px;
+    font-weight: 700;
+    color: var(--text);
   }
 
   .status {
