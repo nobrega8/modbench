@@ -26,12 +26,17 @@ first start. Right-click the app in \nav{Applications}, choose \nav{Open}, then
   \item \textbf{AppImage}: download it, make it executable
         (\val{chmod +x Modbench*.AppImage}) and run it.
   \item \textbf{Debian, Ubuntu and derivatives}: install the \file{.deb}, or
-        add the APT repository so that \val{apt upgrade} brings new versions:
+        add the APT repository so that \val{apt upgrade} brings new versions.
+        It has packages for \val{amd64} (PCs) and \val{arm64} (Raspberry Pi 3,
+        4 and 5 with a 64-bit system, and other 64-bit ARM boards), for
+        Debian 12 and 13, Ubuntu 22.04 and later and Raspberry Pi OS 64-bit;
+        APT picks the one for the machine. 32-bit ARM (\val{armhf}) is not
+        built.
 \end{itemize}
 
 \begin{lstlisting}[language=bash]
 curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
+echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
 sudo apt update && sudo apt install modbench
 \end{lstlisting}
 
