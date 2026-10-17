@@ -6,6 +6,7 @@ mod commands;
 pub mod firmware;
 pub mod generators;
 pub mod library;
+pub mod mapfind;
 pub mod mbmap;
 mod mbmap_v2;
 pub mod modbus;
@@ -112,6 +113,7 @@ pub fn run() {
             commands::scan_network,
             commands::local_interfaces,
             commands::demo_map,
+            commands::find_maps,
             commands::startup_file,
             commands::library_folder,
             commands::library_list,

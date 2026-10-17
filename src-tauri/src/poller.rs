@@ -85,7 +85,7 @@ pub struct PollCycle {
     pub results: Vec<PointResult>,
 }
 
-fn decode_point(
+pub(crate) fn decode_point(
     reg: &Register,
     order: ByteOrder,
     data: RawData,

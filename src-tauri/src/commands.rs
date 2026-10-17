@@ -442,6 +442,26 @@ pub async fn open_map(path: String) -> Result<Parsed, ModbusError> {
     Ok(mbmap::parse(&bytes))
 }
 
+/// Checks map files against the connected device by their identity
+/// registers, and lists the maps that fit, best first.
+#[tauri::command]
+pub async fn find_maps(
+    state: State<'_, AppState>,
+    paths: Vec<String>,
+) -> Result<crate::mapfind::MapSearch, ModbusError> {
+    let mut maps = Vec::new();
+    for path in paths {
+        if let Ok(bytes) = tokio::fs::read(&path).await
+            && let Some(map) = mbmap::parse(&bytes).map
+        {
+            maps.push((path, map));
+        }
+    }
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    Ok(crate::mapfind::find_maps(session, &maps).await)
+}
+
 /// The map of the demo's simulated meter, built into the app.
 #[tauri::command]
 pub fn demo_map() -> Parsed {

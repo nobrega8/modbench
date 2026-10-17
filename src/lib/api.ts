@@ -15,6 +15,7 @@ import type {
   ImportResult,
   LibraryEntry,
   LocalInterface,
+  MapSearch,
   NetHit,
   NetScan,
   OnlineEntry,
@@ -58,6 +59,7 @@ export const api = {
     invoke<void>("write_value", { target, value }),
   openMap: (path: string) => invoke<Parsed>("open_map", { path }),
   demoMap: () => invoke<Parsed>("demo_map"),
+  findMaps: (paths: string[]) => invoke<MapSearch>("find_maps", { paths }),
   saveMap: (path: string, map: DeviceMap) =>
     invoke<void>("save_map", { path, map }),
   /** Writes a version 2 copy of a version 1 map; returns its path. */

@@ -444,3 +444,21 @@ export interface NetProgress {
   total: number;
   found: number;
 }
+
+/** A map that fits the connected device (mapfind.rs). */
+export interface MapMatch {
+  path: string;
+  vendor: string;
+  model: string;
+  score: number;
+  matched: string[];
+  warnings: string[];
+}
+
+export interface MapSearch {
+  matches: MapMatch[];
+  /** Maps with identity registers that were checked. */
+  candidates: number;
+  /** Reads it took: one per distinct identity register. */
+  reads: number;
+}

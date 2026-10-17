@@ -64,3 +64,26 @@ A map that works with a real device helps the next person with the same
 device. The library's repository explains how to contribute one, and the
 format specification is linked from \nav{Settings\then Device library}.
 \end{tip}
+
+\section{Finding the map for a device}
+\label{sec:find-map}
+
+\ui{Find} under \ui{Find a map for this device} checks the maps of the library,
+and the maps open on the Main page, against the device of step 1 (it connects
+for the check if needed, and only reads). Many maps declare identity
+registers: the device's model, its firmware version, or registers with a known
+reference value. Each distinct identity register is read once, however many
+maps declare it, and each map is compared with what the device answered:
+
+\begin{itemize}
+  \item a model register must name one of the map's models;
+  \item every reference value must match;
+  \item a firmware outside the map's range is shown as a warning, not ruled out.
+\end{itemize}
+
+The maps that fit are listed best first, with what matched (\val{model EM540},
+\val{2 references}, \val{firmware 2.1}); \ui{Open} opens one. Maps without
+identity registers cannot be checked and are not listed.
+
+The simulator, shaped after a map, answers its model register with the map's
+first model, so a map can be tried out with this search too.

@@ -68,6 +68,7 @@ import type {
   DeviceMap,
   Diagnostic,
   LibraryEntry,
+  MapSearch,
   LinkEvent,
   Parity,
   PointResult,
@@ -1069,6 +1070,19 @@ This writes to the device.`,
     } finally {
       if (temporary) await this.close();
     }
+  }
+
+  /**
+   * Checks the library's maps (and the maps open now) against the device of
+   * step 1 by their identity registers, best fit first.
+   */
+  async findMaps(): Promise<MapSearch> {
+    if (this.scanning) throw new Error("A scan is running.");
+    const paths = [
+      ...this.library.filter((e) => !e.error).map((e) => e.path),
+      ...this.maps.map((m) => m.path).filter((p) => !p.startsWith("modbench:")),
+    ];
+    return this.withLink(() => api.findMaps([...new Set(paths)]));
   }
 
   /** Asks the device to identify itself (FC43): 1 basic, 2 regular, 3 extended. */
