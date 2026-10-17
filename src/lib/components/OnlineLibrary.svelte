@@ -27,7 +27,12 @@
   /** The map whose details are open, and the details loaded so far. */
   let infoPath = $state<string | null>(null);
   let infoPop: HTMLElement | undefined = $state();
-  let infoAt = $state({ top: 0, left: 0 });
+  let infoAt = $state<{
+    top: number | null;
+    bottom: number | null;
+    left: number;
+    maxHeight: number;
+  }>({ top: 0, bottom: null, left: 0, maxHeight: 420 });
   let closed: { path: string | null; at: number } = { path: null, at: 0 };
   const infoEntry = $derived(
     infoPath ? (entries ?? []).find((x) => x.path === infoPath) : undefined,
@@ -162,13 +167,29 @@
     }
     const r = button.getBoundingClientRect();
     const width = 420;
-    infoAt = {
-      top: Math.min(r.bottom + 6, window.innerHeight - 200),
-      left: Math.max(
-        12,
-        Math.min(r.right - width, window.innerWidth - width - 12),
-      ),
-    };
+    // Below the button when it fits, otherwise above it, never past the
+    // window edges.
+    const margin = 12;
+    const below = window.innerHeight - r.bottom - 6 - margin;
+    const above = r.top - 6 - margin;
+    const left = Math.max(
+      margin,
+      Math.min(r.right - width, window.innerWidth - width - margin),
+    );
+    infoAt =
+      below >= 320 || below >= above
+        ? {
+            top: r.bottom + 6,
+            bottom: null,
+            left,
+            maxHeight: Math.min(420, below),
+          }
+        : {
+            top: null,
+            bottom: window.innerHeight - r.top + 6,
+            left,
+            maxHeight: Math.min(420, above),
+          };
     infoPath = entry.path;
     infoPop?.showPopover();
     if (details[entry.path] && !("error" in details[entry.path])) return;
@@ -396,8 +417,10 @@
     class="info-pop"
     popover="auto"
     bind:this={infoPop}
-    style:top="{infoAt.top}px"
+    style:top={infoAt.top === null ? null : `${infoAt.top}px`}
+    style:bottom={infoAt.bottom === null ? null : `${infoAt.bottom}px`}
     style:left="{infoAt.left}px"
+    style:max-height="{infoAt.maxHeight}px"
     ontoggle={(ev) => {
       if ((ev as ToggleEvent).newState !== "closed") return;
       closed = { path: infoPath, at: performance.now() };
@@ -625,7 +648,6 @@
     inset: auto;
     margin: 0;
     width: 420px;
-    max-height: min(420px, calc(100vh - 40px));
     overflow: auto;
     padding: 14px 16px;
     border: 0;
