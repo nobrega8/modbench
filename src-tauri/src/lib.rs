@@ -122,6 +122,7 @@ pub fn run() {
             commands::library_import,
             commands::library_delete,
             commands::library_open_folder,
+            commands::library_edit,
             commands::open_link,
             commands::library_online_index,
             commands::library_online_import,

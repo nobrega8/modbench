@@ -584,6 +584,24 @@ pub fn library_open_folder(app: AppHandle) -> Result<(), ModbusError> {
     Ok(open_with_system(root.as_os_str())?)
 }
 
+/// Opens a map of the library in the system's text editor.
+#[tauri::command]
+pub fn library_edit(app: AppHandle, path: String) -> Result<(), ModbusError> {
+    let target = library::library_map(&library_root(&app)?, &path)?;
+    // On macOS `open -t` picks the default text editor; elsewhere the app
+    // that opens JSON files.
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("-t")
+            .arg(&target)
+            .spawn()?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    Ok(open_with_system(target.as_os_str())?)
+}
+
 /// Opens one of the project's web pages in the browser. Only these fixed
 /// pages can be opened, never a URL from the page.
 #[tauri::command]

@@ -156,9 +156,7 @@
     aria-label="Search registers"
     bind:value={search}
   />
-  <span class="dim hint"
-    >Click a value to change it. Right-click a register for its details and a
-    generator.</span
+  <span class="dim hint">Click a value to change it; right-click for more.</span
   >
 </div>
 {#if problem}<p class="bad">{problem}</p>{/if}

@@ -27,12 +27,7 @@
 
 <header class="tool-head">
   <h1>Network scan</h1>
-  <p>
-    Looks for Modbus TCP devices on a subnet or a range of addresses. Each
-    address that opens the port is asked for one holding register; any answer,
-    an exception included, shows a Modbus device. Reads only; nothing is
-    written.
-  </p>
+  <p>Modbus TCP devices on a subnet or address range. Read only.</p>
 </header>
 
 <div class="row">
@@ -225,10 +220,10 @@
     </table>
   {:else if !scan.running}
     <p class="empty">
-      No address opened port {scan.last?.port ?? scan.port}. No answer within
-      the wait time does not prove there is no device{scan.last?.retries === 0
-        ? ": try the thorough mode"
-        : ": try a longer wait"}.
+      No address opened port {scan.last?.port ?? scan.port}.{scan.last
+        ?.retries === 0
+        ? " Try the thorough mode."
+        : " Try a longer wait."}
     </p>
   {/if}
 {/if}

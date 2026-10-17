@@ -66,17 +66,11 @@
 
 <header class="tool-head">
   <h1>Alarms</h1>
-  <p>
-    Set limits on the registers of the open map. A value below Low or above
-    High, or a bit in its alarm state, turns red on the Device map tab. Limits
-    are kept per map on this computer, and nothing is sent to the device.
-  </p>
+  <p>Values out of limits turn red on the Device map tab.</p>
 </header>
 
 {#if !open}
-  <p class="empty">
-    Open a device map on the Main page (step 2) to set alarms on its registers.
-  </p>
+  <p class="empty">Open a device map in step 2 first.</p>
 {:else}
   <div class="row">
     <Select
@@ -162,7 +156,7 @@
       </tbody>
     </table>
   {:else}
-    <p class="empty">No alarms on this map yet.</p>
+    <p class="empty">No alarms yet.</p>
   {/if}
 {/if}
 

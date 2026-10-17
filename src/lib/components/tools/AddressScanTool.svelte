@@ -63,11 +63,7 @@
 
 <header class="tool-head">
   <h1>Find addresses</h1>
-  <p>
-    Reads blocks of addresses and splits the ones that fail until it knows which
-    addresses answer, so a device without a manual can still be mapped. Uses the
-    connection of step 1 on the Main page. Reads only.
-  </p>
+  <p>Which addresses answer, on the step 1 connection. Read only.</p>
 </header>
 
 <div class="row">
@@ -225,9 +221,7 @@
       </tbody>
     </table>
   {:else}
-    <p class="empty">
-      No address answered. Check the unit ID, or try another area or range.
-    </p>
+    <p class="empty">No address answered. Check the unit ID, area or range.</p>
   {/if}
 {/if}
 

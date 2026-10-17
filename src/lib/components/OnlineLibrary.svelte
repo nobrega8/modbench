@@ -191,10 +191,7 @@
             <p>Online library</p>
           {:else}
             <h2 id="online-title">Online library</h2>
-            <p>
-              Maps shared in the
-              <span class="mono">nobrega8/mbmap-library</span> repository on GitHub.
-            </p>
+            <p>Maps shared on GitHub.</p>
           {/if}
         </div>
       {/key}
@@ -301,8 +298,7 @@
 
   <footer>
     <span class="hint"
-      >Check a map against the manufacturer's documentation before you write to
-      a live device.</span
+      >Check maps against the vendor's manual before writing.</span
     >
     <button class="btn" onclick={() => (open = false)}>Done</button>
   </footer>

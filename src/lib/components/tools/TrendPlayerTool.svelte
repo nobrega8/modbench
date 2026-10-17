@@ -141,10 +141,7 @@
 
 <header class="tool-head">
   <h1>Trend player</h1>
-  <p>
-    Plays back a CSV file made with Record… on the Device map tab, so a test can
-    be looked at again later: play it faster, or drag the slider to any moment.
-  </p>
+  <p>Plays back a recording made on the Device map tab.</p>
 </header>
 
 <div class="row">
@@ -229,9 +226,7 @@
     <MarkerTable {markers} lines={groups.flatMap((g) => g.lines)} />
   {/if}
 {:else if !problem}
-  <p class="empty">
-    Columns with text, such as state labels, cannot be plotted and are left out.
-  </p>
+  <p class="empty">Text columns cannot be plotted.</p>
 {/if}
 
 <style>

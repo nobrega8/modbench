@@ -211,10 +211,7 @@
 <header class="tool-head">
   <h1>Send request</h1>
   <p>
-    Any function code, with fields for its parameters or its data in hex, or
-    bytes exactly as typed. Requests go to the device of step 1 ({bench.connectionText},
-    unit {bench.unitId}). Anything that may write follows read-only mode and
-    write confirmation; raw bytes always count as a write.
+    Any function code or raw bytes · {bench.connectionText}, unit {bench.unitId}.
   </p>
 </header>
 

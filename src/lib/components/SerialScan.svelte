@@ -224,9 +224,7 @@
   <p class="dim">
     {combos} setting{combos === 1 ? "" : "s"} × {units} unit ID{units === 1
       ? ""
-      : "s"}. At most {duration(worstSeconds)} if nothing answers. With Stop at the
-    first match, the scan ends after the first setting that gets an answer. Only frames
-    with a valid CRC count.
+      : "s"}. At most {duration(worstSeconds)}.
   </p>
 {/if}
 
@@ -267,8 +265,7 @@
     </ul>
   {:else}
     <p class="dim">
-      No setting got an answer. Check the wiring (swap A and B), the unit IDs,
-      and that the device has the register asked for, or raise the wait.
+      No answer. Check the wiring (swap A and B), the unit IDs or the wait.
     </p>
   {/if}
 {/if}

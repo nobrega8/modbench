@@ -359,15 +359,7 @@
         >
       {/if}
     </div>
-    <p>
-      Modbus devices that run inside Modbench, over TCP or UDP, RTU over TCP or
-      UDP, or a serial port. Shape each after a map to try the map, the alarms
-      or another program without hardware: it answers with the map's reference
-      values, and with exception 2 at addresses the map does not have. Several
-      devices answer their own unit IDs at the same address, like devices behind
-      a gateway or on one RS-485 line; other unit IDs get no answer. Generators
-      make values move on their own.
-    </p>
+    <p>Devices on this computer, shaped after a map. No hardware needed.</p>
   </header>
 
   <div class="row">
@@ -507,10 +499,8 @@
 
   {#if serial}
     <p class="dim hint">
-      Clients connect to the other end of the line. To try it on this computer,
-      use a virtual null-modem pair (such as com0com or socat) and open its
-      other port on the Main page. Unit ID 0 is a broadcast: every device takes
-      the write and none answers.
+      Clients connect to the other end of the line; locally, use a null-modem
+      pair (com0com, socat).
     </p>
   {/if}
 
@@ -644,9 +634,7 @@
       <AddressFormat />
     </div>
     <p class="dim hint">
-      {bits
-        ? "Click a bit to switch it."
-        : "Click a value to change it. Clients see the change at once."}
+      {bits ? "Click a bit to switch it." : "Click a value to change it."}
     </p>
     {#if problem}<p class="bad">{problem}</p>{/if}
 
