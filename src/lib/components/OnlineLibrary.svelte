@@ -2,7 +2,7 @@
   import { api, errorText } from "#lib/api.ts";
   import { slideIn, smoothResize } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
-  import type { OnlineEntry } from "#lib/types.ts";
+  import type { OnlineEntry, Parsed } from "#lib/types.ts";
   import { fade } from "svelte/transition";
   import Icon from "./Icon.svelte";
   import MapStatus from "./MapStatus.svelte";
@@ -24,6 +24,15 @@
   let search = $state("");
   let pending = $state<Set<string>>(new Set());
   let rowError = $state<Record<string, string>>({});
+  /** The map whose details are open, and the details loaded so far. */
+  let infoPath = $state<string | null>(null);
+  let infoPop: HTMLElement | undefined = $state();
+  let infoAt = $state({ top: 0, left: 0 });
+  let closed: { path: string | null; at: number } = { path: null, at: 0 };
+  const infoEntry = $derived(
+    infoPath ? (entries ?? []).find((x) => x.path === infoPath) : undefined,
+  );
+  let details = $state<Record<string, Parsed | { error: string }>>({});
 
   $effect(() => {
     if (!dialog) return;
@@ -141,6 +150,84 @@
     back();
   }
 
+  /** Opens the details of a map in a popup next to its button. */
+  async function toggleInfo(entry: OnlineEntry, button: HTMLElement) {
+    // A click on the button of the open popup first closes it (light
+    // dismiss); don't open it again right away.
+    if (closed.path === entry.path && performance.now() - closed.at < 400)
+      return;
+    if (infoPath === entry.path) {
+      infoPop?.hidePopover();
+      return;
+    }
+    const r = button.getBoundingClientRect();
+    const width = 420;
+    infoAt = {
+      top: Math.min(r.bottom + 6, window.innerHeight - 200),
+      left: Math.max(
+        12,
+        Math.min(r.right - width, window.innerWidth - width - 12),
+      ),
+    };
+    infoPath = entry.path;
+    infoPop?.showPopover();
+    if (details[entry.path] && !("error" in details[entry.path])) return;
+    try {
+      const parsed = await api.libraryOnlineMap(entry.path);
+      details = { ...details, [entry.path]: parsed };
+    } catch (e) {
+      details = { ...details, [entry.path]: { error: errorText(e) } };
+    }
+  }
+
+  const PROTOCOL = {
+    tcp: "Modbus TCP",
+    rtu: "Modbus RTU",
+    "tcp+rtu": "Modbus TCP and RTU",
+  };
+
+  /** The general data of a map, as label/value pairs (empty ones left out). */
+  function facts(entry: OnlineEntry, p: Parsed): [string, string][] {
+    const m = p.map?.meta;
+    if (!m) return [];
+    const serial = [
+      m.baudrate ? `${m.baudrate} baud` : null,
+      m.data_bits || m.parity || m.stop_bits
+        ? `${m.data_bits ?? 8}${m.parity ?? "E"}${m.stop_bits ?? 1}`
+        : null,
+    ].filter(Boolean);
+    const firmware = [
+      m.firmware,
+      m.firmware_min || m.firmware_max
+        ? `${m.firmware_min ?? "any"} to ${m.firmware_max ?? "latest"}`
+        : null,
+    ].filter(Boolean);
+    const rows: [string, string | null | undefined][] = [
+      ["Models", m.models?.length ? m.models.join(", ") : null],
+      ["Description", m.description],
+      [
+        "Revision",
+        m.revision ? `${m.revision}${m.revised ? `, ${m.revised}` : ""}` : null,
+      ],
+      ["Firmware", firmware.join("; ") || null],
+      ["Registers", String(p.map?.registers.length ?? entry.registers)],
+      ["Protocol", m.protocol ? PROTOCOL[m.protocol] : null],
+      ["Unit ID", m.unit_id?.toString()],
+      ["TCP port", m.port?.toString()],
+      ["Serial", serial.join(", ") || null],
+      ["Byte order", m.byte_order],
+      ["Addresses", m.address_base === null ? null : `${m.address_base}-based`],
+      [
+        "Max read",
+        m.max_read_registers ? `${m.max_read_registers} registers` : null,
+      ],
+      ["Source", m.source],
+      ["Website", m.vendor_website],
+      ["File", entry.path],
+    ];
+    return rows.filter((r): r is [string, string] => !!r[1]);
+  }
+
   async function add(entry: OnlineEntry) {
     const replacing = local.has(key(entry.vendor, entry.model));
     pending = new Set(pending).add(entry.path);
@@ -208,7 +295,7 @@
     />
   </header>
 
-  <div class="list">
+  <div class="list" onscroll={() => infoPop?.hidePopover()}>
     <div data-size>
       {#key view}
         <div in:slideIn={{ dir }}>
@@ -267,8 +354,17 @@
                     </div>
                   {/if}
                 </div>
-                <MapStatus status={e.status} />
+                <span class="status"><MapStatus status={e.status} /></span>
                 <span class="count">{e.registers} registers</span>
+                <button
+                  class="btn small icon ghost info-btn"
+                  class:on={infoPath === e.path}
+                  title="Map details"
+                  aria-label="Details of {e.model}"
+                  aria-expanded={infoPath === e.path}
+                  onclick={(ev) => toggleInfo(e, ev.currentTarget)}
+                  ><Icon name="about" size={16} /></button
+                >
                 {#if inLibrary}
                   <button
                     class="btn ghost small"
@@ -294,6 +390,66 @@
         </div>
       {/key}
     </div>
+  </div>
+
+  <div
+    class="info-pop"
+    popover="auto"
+    bind:this={infoPop}
+    style:top="{infoAt.top}px"
+    style:left="{infoAt.left}px"
+    ontoggle={(ev) => {
+      if ((ev as ToggleEvent).newState !== "closed") return;
+      closed = { path: infoPath, at: performance.now() };
+      infoPath = null;
+    }}
+  >
+    {#if infoEntry}
+      {@const e = infoEntry}
+      {@const d = details[e.path]}
+      <h3 class="pop-title">{e.vendor} {e.model}</h3>
+
+      {#if !d}
+        <p class="muted">Loading the map…</p>
+      {:else if "error" in d}
+        <p class="bad">{d.error}</p>
+      {:else if !d.map}
+        <p class="bad">
+          The map has errors: {d.diagnostics
+            .filter((x) => x.severity === "error")
+            .map((x) => x.message)
+            .join("; ")}
+        </p>
+      {:else}
+        <dl>
+          {#each facts(e, d) as [label, value] (label)}
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          {/each}
+        </dl>
+        {#if d.map.meta.sources?.length}
+          <h4>Sources</h4>
+          <ul>
+            {#each d.map.meta.sources as src, i (i)}
+              <li>
+                {src.title}{src.version ? `, ${src.version}` : ""}{src.date
+                  ? ` (${src.date})`
+                  : ""}{#if src.url}<br /><span class="url">{src.url}</span
+                  >{/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        {#if d.map.meta.notes?.length}
+          <h4>Notes</h4>
+          <ul>
+            {#each d.map.meta.notes as note, i (i)}
+              <li>{note}</li>
+            {/each}
+          </ul>
+        {/if}
+      {/if}
+    {/if}
   </div>
 
   <footer>
@@ -380,9 +536,11 @@
     padding: 0 12px;
   }
 
+  /* Fixed columns after the text, so status icons, counts and buttons line
+     up from row to row */
   .row {
     display: grid;
-    grid-template-columns: auto 1fr auto auto auto;
+    grid-template-columns: 28px 1fr 16px 13ch 28px 96px;
     align-items: center;
     gap: 14px;
     padding: 10px;
@@ -390,7 +548,7 @@
   }
 
   .vendor-row {
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: 28px 1fr auto auto;
     width: 100%;
     border: 0;
     background: none;
@@ -442,10 +600,109 @@
     white-space: nowrap;
   }
 
+  .row:not(.vendor-row) .count {
+    text-align: right;
+  }
+
+  .status {
+    display: flex;
+    justify-content: center;
+  }
+
+  .row .info-btn {
+    width: 28px;
+    min-width: 0;
+    padding: 0;
+    color: var(--text-3);
+  }
+
+  .row .info-btn.on {
+    color: var(--accent);
+  }
+
+  .info-pop {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: 420px;
+    max-height: min(420px, calc(100vh - 40px));
+    overflow: auto;
+    padding: 14px 16px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--text);
+    box-shadow: var(--e3);
+    font-size: 13px;
+    user-select: text;
+  }
+
+  .info-pop:popover-open {
+    animation: rise 0.16s var(--ease);
+  }
+
+  .pop-title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .info-pop dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    margin: 0;
+  }
+
+  .info-pop dt {
+    color: var(--text-3);
+  }
+
+  .info-pop dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .info-pop h4 {
+    margin: 12px 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+
+  .info-pop ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--text-2);
+  }
+
+  .info-pop li + li {
+    margin-top: 2px;
+  }
+
+  .url {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .muted {
+    margin: 0;
+    color: var(--text-3);
+  }
+
   .small {
     height: 28px;
     min-width: 72px;
     padding: 0 12px;
+  }
+
+  .row .accent.small,
+  .row .ghost.small:not(.info-btn) {
+    width: 96px;
+    min-width: 0;
+    padding: 0 8px;
   }
 
   .note {

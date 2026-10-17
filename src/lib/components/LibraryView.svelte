@@ -261,6 +261,7 @@
     <thead>
       <tr>
         <th>Vendor</th>
+        <th class="st"><span class="sr">Status</span></th>
         <th>Model</th>
         <th>Description</th>
         <th class="num">Registers</th>
@@ -282,11 +283,8 @@
               />{e.vendor}</span
             ></td
           >
-          <td class="model"
-            ><span class="model-name"
-              >{e.model}<MapStatus status={e.status} /></span
-            ></td
-          >
+          <td class="st"><MapStatus status={e.status} /></td>
+          <td class="model">{e.model}</td>
           <td class="desc">
             {#if e.error}
               <span class="bad" title={e.error}>Has errors: {e.error}</span>
@@ -351,7 +349,7 @@
         </tr>
       {:else}
         <tr>
-          <td colspan="5" class="empty">
+          <td colspan="6" class="empty">
             {#if bench.library.length}
               No maps match “{search}”.
             {:else}
@@ -436,10 +434,23 @@
     gap: 10px;
   }
 
-  .model-name {
+  /* The status icon in its own narrow column, so the icons line up */
+  .st {
+    width: 16px;
+    padding-right: 0;
+  }
+
+  td.st :global(.status) {
     display: flex;
-    align-items: center;
-    gap: 6px;
+  }
+
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   td {

@@ -126,6 +126,7 @@ pub fn run() {
             commands::open_link,
             commands::library_online_index,
             commands::library_online_import,
+            commands::library_online_map,
             commands::vendor_icon,
             commands::read_device_id,
             commands::check_functions,

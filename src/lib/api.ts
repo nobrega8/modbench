@@ -103,6 +103,8 @@ export const api = {
       | "manual",
   ) => invoke<void>("open_link", { link }),
   libraryOnlineIndex: () => invoke<OnlineEntry[]>("library_online_index"),
+  libraryOnlineMap: (path: string) =>
+    invoke<Parsed>("library_online_map", { path }),
   libraryOnlineImport: (paths: string[]) =>
     invoke<ImportResult[]>("library_online_import", { paths }),
   vendorIcon: (website: string) =>

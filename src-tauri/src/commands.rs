@@ -657,6 +657,16 @@ pub async fn library_online_index() -> Result<Vec<online::OnlineEntry>, ModbusEr
     online::index().await.map_err(ModbusError::Invalid)
 }
 
+/// Downloads one map of the online library and parses it, without adding it
+/// to the local library (to show its details).
+#[tauri::command]
+pub async fn library_online_map(path: String) -> Result<Parsed, ModbusError> {
+    let bytes = online::download(&path)
+        .await
+        .map_err(ModbusError::Invalid)?;
+    Ok(mbmap::parse(&bytes))
+}
+
 /// Downloads maps of the online library into the local library.
 #[tauri::command]
 pub async fn library_online_import(

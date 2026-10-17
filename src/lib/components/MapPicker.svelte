@@ -419,7 +419,7 @@
     line-height: 1.25;
   }
 
-  /* The model name, then its status icon (verified, unverified,
+  /* The model name, then its status icon (verified, official,
      unofficial), as in the Library */
   .model-row {
     display: flex;
