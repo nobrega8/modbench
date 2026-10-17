@@ -58,6 +58,7 @@
         grid: get("--border"),
         axis: get("--border-strong"),
         series: Array.from({ length: 8 }, (_, i) => get(`--series-${i + 1}`)),
+        bad: get("--bad"),
       };
     } finally {
       if (theme === null) root.removeAttribute("data-theme");

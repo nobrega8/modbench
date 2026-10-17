@@ -115,3 +115,21 @@ describe("labels", () => {
     expect(lastLabel([{ t: 0, v: 3 }])).toBe("3");
   });
 });
+
+describe("quality marks in images", () => {
+  it("draw failed reads in the bad colour and missing values muted", async () => {
+    const { classAttrs } = await import("./chart-image");
+    const p = {
+      background: "#fff",
+      text: "#000",
+      text2: "#333",
+      text3: "#999",
+      grid: "#eee",
+      axis: "#ccc",
+      series: [],
+      bad: "#c00",
+    };
+    expect(classAttrs(["mark", "failed"], p)?.stroke).toBe("#c00");
+    expect(classAttrs(["mark", "unavailable"], p)?.stroke).toBe("#999");
+  });
+});

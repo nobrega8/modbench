@@ -24,7 +24,9 @@
   let follow = $state(true);
 
   const shown = $derived(
-    errorsOnly ? bench.log.filter((t) => t.error !== null) : bench.log,
+    errorsOnly
+      ? bench.log.filter((t) => t.error !== null || t.note)
+      : bench.log,
   );
 
   function addr(t: TrafficEntry) {
@@ -36,6 +38,7 @@
   }
 
   function line(t: TrafficEntry): string {
+    if (t.note) return `${clock(t.time_ms)}\t${t.note}`;
     const fc = String(t.function).padStart(2, "0");
     return `${clock(t.time_ms)}\tFC${fc}\t${FUNCTION_NAME[t.function] ?? ""}\t${addr(t)}\t${t.count}\t${t.duration_ms.toFixed(1)} ms\t${t.error ?? "OK"}`;
   }
@@ -123,20 +126,27 @@
     </thead>
     <tbody>
       {#each shown as t, i (i)}
-        <tr
-          class:err={t.error !== null}
-          oncontextmenu={(e) => contextMenu.show(e, rowMenu(t))}
-        >
-          <td class="mono dim">{clock(t.time_ms)}</td>
-          <td
-            ><span class="mono">{String(t.function).padStart(2, "0")}</span>
-            {FUNCTION_NAME[t.function] ?? ""}</td
+        {#if t.note}
+          <tr class="note">
+            <td class="mono dim">{clock(t.time_ms)}</td>
+            <td colspan="5">{t.note}</td>
+          </tr>
+        {:else}
+          <tr
+            class:err={t.error !== null}
+            oncontextmenu={(e) => contextMenu.show(e, rowMenu(t))}
           >
-          <td class="mono">{addr(t)}</td>
-          <td class="mono">{t.count}</td>
-          <td class="mono dim">{t.duration_ms.toFixed(1)} ms</td>
-          <td class="res">{t.error ?? "OK"}</td>
-        </tr>
+            <td class="mono dim">{clock(t.time_ms)}</td>
+            <td
+              ><span class="mono">{String(t.function).padStart(2, "0")}</span>
+              {FUNCTION_NAME[t.function] ?? ""}</td
+            >
+            <td class="mono">{addr(t)}</td>
+            <td class="mono">{t.count}</td>
+            <td class="mono dim">{t.duration_ms.toFixed(1)} ms</td>
+            <td class="res">{t.error ?? "OK"}</td>
+          </tr>
+        {/if}
       {:else}
         <tr><td colspan="6" class="empty">No requests yet.</td></tr>
       {/each}
@@ -191,6 +201,11 @@
     padding: 3px 10px;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
+  }
+
+  tr.note td {
+    color: var(--text-2);
+    font-style: italic;
   }
 
   .mono {

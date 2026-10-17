@@ -1,6 +1,7 @@
 <script lang="ts">
   import { clock } from "#lib/format.ts";
   import {
+    lastGood,
     lastLabel,
     nearest,
     niceTicks,
@@ -115,6 +116,34 @@
     return d;
   }
 
+  /**
+   * Where reads failed or gave no value, per line: one mark per pixel
+   * column, failures first, along the bottom of the plot.
+   */
+  const marks = $derived(
+    visible.map((samples) => {
+      const out = new Map<number, "failed" | "unavailable">();
+      for (const s of samples) {
+        if (!s.q || s.t < from || s.t > to) continue;
+        const px = Math.round(x(s.t));
+        if (out.get(px) !== "failed") out.set(px, s.q);
+      }
+      return [...out];
+    }),
+  );
+
+  /** What a hovered sample says when it has no value. */
+  function noValue(samples: Sample[], s: Sample): string {
+    const why =
+      s.q === "failed"
+        ? "read failed"
+        : s.q === "unavailable"
+          ? "no value"
+          : "—";
+    const held = lastGood(samples, samples.indexOf(s));
+    return held ? `${why} · last ${label(held.v)} (held)` : why;
+  }
+
   const hover = $derived.by(() => {
     if (hoverX === null) return null;
     const t = from + ((hoverX - M.left) / plotW) * span;
@@ -211,6 +240,22 @@
             />
           {/each}
         </g>
+        <!-- Failed reads (×) and values the device did not give (|), so a
+             gap is never mistaken for a value -->
+        {#each lines as l, k (l.index)}
+          {#each marks[k] as [px, q] (px)}
+            {@const base = M.top + plotH - 3 - k * 2}
+            {#if q === "failed"}
+              <path
+                class="mark failed"
+                d="M{px - 2.5},{base - 2.5}L{px + 2.5},{base + 2.5}M{px +
+                  2.5},{base - 2.5}L{px - 2.5},{base + 2.5}"
+              />
+            {:else}
+              <path class="mark unavailable" d="M{px},{base - 3}V{base + 3}" />
+            {/if}
+          {/each}
+        {/each}
 
         {#if hover}
           <line
@@ -247,11 +292,17 @@
                 style:background="var(--series-{p.line.slot})"
               ></span>
               <span class="name">{p.line.reg.name}</span>
-              <span class="mono"
-                >{p.sample ? label(p.sample.v) : "—"}{p.line.reg.unit
-                  ? ` ${p.line.reg.unit}`
-                  : ""}</span
-              >
+              {#if p.sample && !Number.isFinite(p.sample.v)}
+                <span class="mono none"
+                  >{noValue(visible[lines.indexOf(p.line)], p.sample)}</span
+                >
+              {:else}
+                <span class="mono"
+                  >{p.sample ? label(p.sample.v) : "—"}{p.line.reg.unit
+                    ? ` ${p.line.reg.unit}`
+                    : ""}</span
+                >
+              {/if}
             </span>
           {/each}
         </div>
@@ -365,6 +416,24 @@
     fill: var(--text-3);
     font-family: var(--mono);
     font-size: 11px;
+  }
+
+  .mark {
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+  }
+
+  .mark.failed {
+    stroke: var(--bad);
+  }
+
+  .mark.unavailable {
+    stroke: var(--text-3);
+  }
+
+  .tip .none {
+    color: var(--text-2);
   }
 
   .line {
