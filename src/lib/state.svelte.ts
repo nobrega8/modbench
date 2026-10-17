@@ -23,6 +23,7 @@ import { loadAlarms, saveAlarms, type Alarm } from "./alarms";
 import { isCustom, loadCustom, saveCustom } from "./custom-registers";
 import { recordHeader, recordRow } from "./csv";
 import { qualityNotes } from "./quality";
+import { snapMap, snapRead, type Snapshot } from "./snapshots";
 import {
   addRead,
   sameSeries,
@@ -249,6 +250,49 @@ class Bench {
   addressProgress = $state.raw<AddressProgress | null>(null);
   addressHits = $state.raw<AddressRange[] | null>(null);
   addressArea = $state<Area>("holding");
+  /** Values kept to compare with: the base snapshot, and what it is
+   * compared with (another snapshot, or null for the live values). */
+  snapshot = $state.raw<Snapshot | null>(null);
+  compareWith = $state.raw<Snapshot | null>(null);
+  /** Shows only the values that differ from the snapshot. */
+  onlyDifferences = $state(false);
+
+  /** Keeps the values shown now: the map's, or the manual read's. */
+  takeSnapshot(label = "") {
+    const time = new Date().toLocaleTimeString();
+    const name = label || `Snapshot ${time}`;
+    const open = this.map;
+    if (this.source === "map" && open) {
+      this.snapshot = snapMap(
+        open.map.meta,
+        open.map.registers,
+        this.mapResults,
+        name,
+      );
+    } else if (this.read && this.read.data.kind === "registers") {
+      this.snapshot = snapRead(
+        this.read.area,
+        this.read.address,
+        this.read.data.values,
+        name,
+      );
+    } else if (this.read) {
+      this.snapshot = snapRead(
+        this.read.area,
+        this.read.address,
+        this.read.data.values.map((b) => (b ? 1 : 0)),
+        name,
+      );
+    }
+    this.compareWith = null;
+  }
+
+  clearSnapshot() {
+    this.snapshot = null;
+    this.compareWith = null;
+    this.onlyDifferences = false;
+  }
+
   read = $state.raw<{ address: number; area: Area; data: RawData } | null>(
     null,
   );
