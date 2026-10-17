@@ -673,7 +673,7 @@ pub async fn start(
 mod tests {
     use super::*;
     use crate::modbus::{AddressScan, ConnectionConfig, Session};
-    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::{AtomicBool, Ordering};
 
     fn map() -> DeviceMap {
         let text = "@mbmap=1\n@vendor=ACME\n@model=PM-1\n\
@@ -842,6 +842,88 @@ mod tests {
             Err(ModbusError::ReadOnly)
         ));
         assert!(s.check_functions(12, false).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn exceptions_name_the_code_and_the_request() {
+        let device = Device::new(Some(1), Memory::from_map(&map(), true));
+        let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
+        let logged = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let log = logged.clone();
+        s.set_logger(Arc::new(move |e| log.lock().unwrap().push(e.error)));
+
+        let err = s.read(Area::Holding, 50, 2).await.unwrap_err();
+        assert!(matches!(err, ModbusError::Exception { code: 2, .. }));
+        assert_eq!(
+            err.to_string(),
+            "device exception 0x02 (illegal data address) to FC03 (read holding \
+             registers) for 2 from address 50, unit 1"
+        );
+        // The log row already shows the request: its error stays short
+        assert_eq!(
+            logged.lock().unwrap()[0].as_deref(),
+            Some("device exception 0x02 (illegal data address)")
+        );
+        // An exception is an answer: the link is fine
+        assert!(!s.link_lost());
+    }
+
+    #[tokio::test]
+    async fn a_malformed_answer_is_neither_an_exception_nor_a_timeout() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            let mut request = [0u8; 12];
+            stream.read_exact(&mut request).await.unwrap();
+            // Same transaction, but a byte count that does not match the data
+            let mut answer = request[..2].to_vec();
+            answer.extend([0, 0, 0, 5, 1, 3, 4, 0x12, 0x34]);
+            stream.write_all(&answer).await.unwrap();
+            let _ = stream.read(&mut request).await;
+        });
+        let mut s = session(port, 1).await;
+        let err = s.read(Area::Holding, 0, 2).await.unwrap_err();
+        assert!(
+            !matches!(err, ModbusError::Exception { .. } | ModbusError::Timeout(_)),
+            "{err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn single_writes_use_fc06_unless_fc16_is_asked_for() {
+        let device = Device::new(Some(1), Memory::default());
+        let memory = device.memory.clone();
+        let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
+        let sent = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let log = sent.clone();
+        s.set_logger(Arc::new(move |e| log.lock().unwrap().push(e.function)));
+
+        s.write_registers(4, &[7]).await.unwrap();
+        s.write_registers(4, &[8, 9]).await.unwrap();
+        let fc16 = Arc::new(AtomicBool::new(true));
+        s.set_single_as_multiple(fc16.clone());
+        s.write_registers(4, &[10]).await.unwrap();
+        fc16.store(false, Ordering::Relaxed);
+        s.write_registers(5, &[11]).await.unwrap();
+        assert_eq!(*sent.lock().unwrap(), [6, 16, 16, 6]);
+        assert_eq!(
+            memory.lock().unwrap().read(Area::Holding, 4, 2),
+            RawData::Registers(vec![10, 11])
+        );
+
+        // Read-only mode blocks both functions before anything is sent
+        s.set_read_only(Arc::new(AtomicBool::new(true)));
+        for words in [&[1][..], &[1, 2]] {
+            assert!(matches!(
+                s.write_registers(4, words).await,
+                Err(ModbusError::ReadOnly)
+            ));
+        }
+        assert_eq!(sent.lock().unwrap().len(), 4);
     }
 
     #[tokio::test]

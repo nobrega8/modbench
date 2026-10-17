@@ -43,6 +43,7 @@ pub fn run() {
             commands::connect,
             commands::disconnect,
             commands::set_read_only,
+            commands::set_single_write_fc16,
             commands::link_lost,
             commands::reconnect,
             commands::read_raw,

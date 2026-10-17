@@ -37,6 +37,8 @@ export const api = {
   connect: (config: ConnectionConfig) => invoke<void>("connect", { config }),
   disconnect: () => invoke<void>("disconnect"),
   setReadOnly: (on: boolean) => invoke<void>("set_read_only", { on }),
+  setSingleWriteFc16: (on: boolean) =>
+    invoke<void>("set_single_write_fc16", { on }),
   linkLost: () => invoke<boolean>("link_lost"),
   reconnect: () => invoke<void>("reconnect"),
   readRaw: (

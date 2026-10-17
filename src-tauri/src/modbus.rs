@@ -94,8 +94,15 @@ pub enum ModbusError {
     Serial(#[from] tokio_serial::Error),
     #[error("protocol error: {0}")]
     Protocol(String),
-    #[error("device exception 0x{code:02X} ({name})")]
-    Exception { code: u8, name: &'static str },
+    /// The device answered with an exception. `request` says what was
+    /// asked, e.g. " to FC03 (read holding registers) for 10 from address
+    /// 100, unit 1"; it is empty in the traffic log, whose rows show that.
+    #[error("device exception 0x{code:02X} ({name}){request}")]
+    Exception {
+        code: u8,
+        name: &'static str,
+        request: String,
+    },
     #[error("{0}")]
     Invalid(String),
     #[error("read-only mode is on: writes are blocked")]
@@ -123,11 +130,48 @@ fn exception_name(code: ExceptionCode) -> &'static str {
     }
 }
 
+/// Name of a function code, as the traffic log and error messages give it.
+pub fn function_name(function: u8) -> &'static str {
+    match function {
+        1 => "read coils",
+        2 => "read discrete inputs",
+        3 => "read holding registers",
+        4 => "read input registers",
+        5 => "write single coil",
+        6 => "write single register",
+        7 => "read exception status",
+        8 => "diagnostics",
+        11 => "get comm event counter",
+        15 => "write multiple coils",
+        16 => "write multiple registers",
+        17 => "report server ID",
+        20 => "read file record",
+        22 => "mask write register",
+        23 => "read/write multiple registers",
+        24 => "read FIFO queue",
+        43 => "read device identification",
+        _ => "custom function",
+    }
+}
+
+/// What a failed request asked for, appended to its exception message.
+fn request_context(function: u8, address: u16, count: u16, unit: u8) -> String {
+    let what = match function {
+        1..=6 | 15 | 16 => format!(" for {count} from address {address}"),
+        _ => String::new(),
+    };
+    format!(
+        " to FC{function:02} ({}){what}, unit {unit}",
+        function_name(function)
+    )
+}
+
 impl From<ExceptionCode> for ModbusError {
     fn from(code: ExceptionCode) -> Self {
         ModbusError::Exception {
             code: code.into(),
             name: exception_name(code),
+            request: String::new(),
         }
     }
 }
@@ -626,6 +670,9 @@ pub struct Session {
     logger: Option<TrafficLogger>,
     /// When set and true, every write is refused before it reaches the wire.
     read_only: Option<Arc<AtomicBool>>,
+    /// When set and true, a single register is written with FC16 instead of
+    /// FC06, for devices that only accept FC16.
+    single_as_multiple: Option<Arc<AtomicBool>>,
 }
 
 impl Session {
@@ -646,6 +693,7 @@ impl Session {
             timeout: Duration::from_millis(config.timeout_ms.max(1)),
             logger: None,
             read_only: None,
+            single_as_multiple: None,
         })
     }
 
@@ -701,6 +749,11 @@ impl Session {
         self.read_only = Some(switch);
     }
 
+    /// Shares the switch that makes single-register writes use FC16.
+    pub fn set_single_as_multiple(&mut self, switch: Arc<AtomicBool>) {
+        self.single_as_multiple = Some(switch);
+    }
+
     fn check_writable(&self) -> Result<(), ModbusError> {
         match &self.read_only {
             Some(on) if on.load(Ordering::Relaxed) => Err(ModbusError::ReadOnly),
@@ -714,7 +767,7 @@ impl Session {
         address: u16,
         count: u16,
         started: (SystemTime, Instant),
-        result: &Result<T, ModbusError>,
+        result: &mut Result<T, ModbusError>,
     ) {
         if let Some(logger) = &self.logger {
             logger(TrafficEntry {
@@ -729,6 +782,9 @@ impl Session {
                 error: result.as_ref().err().map(ToString::to_string),
             });
         }
+        if let Err(ModbusError::Exception { request, .. }) = result {
+            *request = request_context(function, address, count, self.unit);
+        }
     }
 
     pub async fn read(
@@ -742,7 +798,7 @@ impl Session {
         }
         let started = (SystemTime::now(), Instant::now());
         let (ctx, wait) = (&mut self.ctx, self.timeout);
-        let result = match area {
+        let mut result = match area {
             Area::Coil => with_timeout(wait, ctx.read_coils(address, count))
                 .await
                 .map(RawData::Bits),
@@ -762,7 +818,7 @@ impl Session {
             Area::Holding => 3,
             Area::Input => 4,
         };
-        self.log(function, address, count, started, &result);
+        self.log(function, address, count, started, &mut result);
         self.track(&result);
         let mut data = result?;
         // Coil responses are padded to a whole byte; keep only what was asked.
@@ -808,7 +864,8 @@ impl Session {
         Ok(data)
     }
 
-    /// Writes registers: FC06 for a single register, FC16 otherwise.
+    /// Writes registers: FC06 for a single register, FC16 otherwise (or
+    /// always FC16 when the session's switch says so).
     pub async fn write_registers(
         &mut self,
         address: u16,
@@ -816,10 +873,14 @@ impl Session {
     ) -> Result<(), ModbusError> {
         self.check_writable()?;
         let started = (SystemTime::now(), Instant::now());
+        let multiple = self
+            .single_as_multiple
+            .as_ref()
+            .is_some_and(|on| on.load(Ordering::Relaxed));
         let (ctx, wait) = (&mut self.ctx, self.timeout);
-        let (function, result) = match words {
+        let (function, mut result) = match words {
             [] => return Err(ModbusError::Invalid("nothing to write".into())),
-            [word] => (
+            [word] if !multiple => (
                 6,
                 with_timeout(wait, ctx.write_single_register(address, *word)).await,
             ),
@@ -828,7 +889,7 @@ impl Session {
                 with_timeout(wait, ctx.write_multiple_registers(address, words)).await,
             ),
         };
-        self.log(function, address, words.len() as u16, started, &result);
+        self.log(function, address, words.len() as u16, started, &mut result);
         self.track(&result);
         result
     }
@@ -838,7 +899,7 @@ impl Session {
         self.check_writable()?;
         let started = (SystemTime::now(), Instant::now());
         let (ctx, wait) = (&mut self.ctx, self.timeout);
-        let (function, result) = match bits {
+        let (function, mut result) = match bits {
             [] => return Err(ModbusError::Invalid("nothing to write".into())),
             [bit] => (
                 5,
@@ -849,7 +910,7 @@ impl Session {
                 with_timeout(wait, ctx.write_multiple_coils(address, bits)).await,
             ),
         };
-        self.log(function, address, bits.len() as u16, started, &result);
+        self.log(function, address, bits.len() as u16, started, &mut result);
         self.track(&result);
         result
     }
@@ -891,8 +952,8 @@ impl Session {
         self.ctx.set_slave(Slave(unit));
         let answer = match self.read(area, address, 1).await {
             Ok(_) => Some("responds".into()),
-            Err(ModbusError::Exception { name, .. }) => {
-                Some(format!("responds with exception: {name}"))
+            Err(ModbusError::Exception { code, name, .. }) => {
+                Some(format!("responds with exception 0x{code:02X} ({name})"))
             }
             Err(_) => None,
         };
@@ -915,12 +976,12 @@ impl Session {
         // A device that keeps saying "more follows" must not loop forever.
         for _ in 0..32 {
             let started = (SystemTime::now(), Instant::now());
-            let result = with_timeout(
+            let mut result = with_timeout(
                 self.timeout,
                 self.ctx.call(Request::ReadDeviceIdentification(code, next)),
             )
             .await;
-            self.log(43, next.into(), 1, started, &result);
+            self.log(43, next.into(), 1, started, &mut result);
             self.track(&result);
             let Response::ReadDeviceIdentification(part) = result? else {
                 return Err(ModbusError::Protocol(
@@ -1020,8 +1081,8 @@ impl Session {
         request: Request<'static>,
     ) -> Result<Response, ModbusError> {
         let started = (SystemTime::now(), Instant::now());
-        let result = with_timeout(self.timeout, same_function(self.ctx.call(request))).await;
-        self.log(function, 0, 1, started, &result);
+        let mut result = with_timeout(self.timeout, same_function(self.ctx.call(request))).await;
+        self.log(function, 0, 1, started, &mut result);
         self.track(&result);
         result
     }

@@ -40,6 +40,8 @@ pub struct AppState {
     /// Read-only mode: shared with every session, which refuses writes while
     /// it is on.
     read_only: Arc<std::sync::atomic::AtomicBool>,
+    /// Writes a single holding register with FC16 instead of FC06.
+    single_as_multiple: Arc<std::sync::atomic::AtomicBool>,
     /// The simulated devices: their memory and generators live on while
     /// the simulator is stopped.
     sim_devices: SimDevices,
@@ -143,6 +145,7 @@ pub async fn connect(
     });
     let mut session = Session::connect(&config, Some(raw)).await?;
     session.set_read_only(state.read_only.clone());
+    session.set_single_as_multiple(state.single_as_multiple.clone());
     session.set_logger(Arc::new(move |entry| {
         let _ = app.emit("traffic", entry);
     }));
@@ -173,6 +176,15 @@ pub async fn reconnect(state: State<'_, AppState>) -> Result<(), ModbusError> {
 pub fn set_read_only(state: State<'_, AppState>, on: bool) {
     state
         .read_only
+        .store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Makes single-register writes use FC16 (on) or FC06 (off, the default).
+/// Applies at once, also to a connection that is already open.
+#[tauri::command]
+pub fn set_single_write_fc16(state: State<'_, AppState>, on: bool) {
+    state
+        .single_as_multiple
         .store(on, std::sync::atomic::Ordering::Relaxed);
 }
 

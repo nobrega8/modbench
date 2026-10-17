@@ -64,6 +64,9 @@ report a problem, the source code and the project's Ko-fi page.
     that fails is opened again, and the test goes on.
   \item[Read-only mode] Blocks every write, also on a connection that is
     already open.
+  \item[Write single registers with FC16] One holding register is written
+    with FC06 (Write Single Register) unless this is on; then FC16 (Write
+    Multiple Registers) is used, for devices that only accept FC16.
   \item[CSV separator] For saved logs, exported values and recordings. Use a
     semicolon for spreadsheets set to a language with a decimal comma.
   \item[Requests kept in the log] Older requests are dropped first.
