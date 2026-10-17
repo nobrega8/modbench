@@ -12,6 +12,7 @@
   } from "#lib/contextmenu.svelte.ts";
   import MapStatus from "./MapStatus.svelte";
   import OnlineLibrary from "./OnlineLibrary.svelte";
+  import FindMap from "./FindMap.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
   let search = $state("");
@@ -206,6 +207,8 @@
     {/if}
   </div>
 </div>
+
+<FindMap />
 
 <OnlineLibrary
   bind:open={onlineOpen}

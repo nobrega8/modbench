@@ -70,6 +70,26 @@ fn slot(area: Area) -> usize {
     }
 }
 
+/// What a model register (`role: model`) holds for the map's first model:
+/// the name for text, or the enum value labelled with it.
+fn model_seed(r: &Register, map: &DeviceMap) -> Option<String> {
+    if !matches!(r.role, Some(mbmap::Role::Model)) {
+        return None;
+    }
+    let names: Vec<&String> = if map.meta.models.is_empty() {
+        vec![&map.meta.model]
+    } else {
+        map.meta.models.iter().collect()
+    };
+    if r.ty == DataType::String {
+        return names.first().map(|n| n.to_string());
+    }
+    r.enum_labels
+        .iter()
+        .find(|(_, label)| names.iter().any(|n| n.eq_ignore_ascii_case(label)))
+        .map(|(value, _)| value.to_string())
+}
+
 impl Memory {
     /// Fresh memory shaped after a map: only its addresses exist when
     /// `strict`, its reference values are filled in, and it identifies
@@ -113,11 +133,14 @@ impl Memory {
     }
 
     /// Puts a register's reference value (the raw value a healthy device
-    /// holds) in memory. Registers without one stay at zero.
+    /// holds) in memory, or for a model register without one, the map's
+    /// model, so the device identifies itself as the map says. Other
+    /// registers stay at zero.
     fn seed(&mut self, r: &Register, map: &DeviceMap) {
-        let Some(text) = r.reference.as_deref() else {
+        let Some(owned) = r.reference.clone().or_else(|| model_seed(r, map)) else {
             return;
         };
+        let text = owned.as_str();
         let address = usize::from(r.address);
         let on = matches!(text.to_ascii_lowercase().as_str(), "1" | "true");
         match (r.area, r.ty, r.bit, r.bits) {
@@ -955,6 +978,43 @@ mod tests {
             let hits = scan(&job, &cancel, |_| {}, |_| {}).await.unwrap();
             assert_eq!(hits[0].status, HostStatus::TcpOnly);
             assert_eq!(requests.load(Ordering::Relaxed), asked, "{retries} retries");
+        }
+    }
+
+    #[tokio::test]
+    async fn the_map_a_device_was_shaped_after_is_found_first() {
+        let lib = concat!(env!("CARGO_MANIFEST_DIR"), "/../vendor/mbmap-library/");
+        let load = |rel: &str| {
+            let path = format!("{lib}{rel}");
+            let map = mbmap::parse(&std::fs::read(&path).unwrap()).map.unwrap();
+            (path, map)
+        };
+        let maps = vec![
+            load("examples/example-corp/em-100.mbmap.json"),
+            load("examples/example-corp/em-200.mbmap.json"),
+            load("maps/carlo-gavazzi/em24-ethernet.mbmap.json"),
+            // No identity registers: never suggested
+            load("maps/bmr/fcr0507.mbmap.json"),
+        ];
+        for (shape, expected) in [(1, "em-200.mbmap.json"), (2, "em24-ethernet.mbmap.json")] {
+            let device = Device::new(Some(1), Memory::from_map(&maps[shape].1, true));
+            let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
+            let mut s = session(sim.port().unwrap(), 1).await;
+            let reads = Arc::new(std::sync::Mutex::new(0usize));
+            let count = reads.clone();
+            s.set_logger(Arc::new(move |_| *count.lock().unwrap() += 1));
+
+            let found = crate::mapfind::find_maps(&mut s, &maps).await;
+            assert_eq!(found.candidates, 3);
+            let first = &found.matches[0];
+            assert!(first.path.ends_with(expected), "{found:?}");
+            assert!(
+                first.matched.iter().any(|m| m.starts_with("model")),
+                "{first:?}"
+            );
+            assert!(!found.matches.iter().any(|m| m.path.contains("fcr0507")));
+            // One request per distinct identity register
+            assert_eq!(*reads.lock().unwrap(), found.reads);
         }
     }
 
