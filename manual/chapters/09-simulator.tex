@@ -122,3 +122,19 @@ runs, opening a setup replaces the devices but keeps the interface.
 Values changed by hand are not saved: devices start from their maps'
 reference values.
 \end{note}
+
+\section{The demo}
+\label{sec:demo}
+
+The demo tries Modbench without hardware or a map. On the first start the Main
+page offers it (\ui{Start demo}, \ui{Not now}, \ui{Don't ask again}); later it
+is in \nav{Settings › Connection › Demo}.
+
+It loads a made-up meter, \val{Demo meter (simulated)}, into the simulator,
+with values that move, starts the simulator on a free port of this computer
+(5020 or the next free one), and reads it on the Main page with its map, with
+one value on the chart. A banner says that the device is simulated and points
+to the Device map, Chart and Raw data tabs. \ui{Leave demo} stops reading and
+the simulator and puts back the connection, the request and the simulator's own
+device as they were. Nothing the demo changes is remembered. The demo does not
+start while the simulator runs with a setup of your own.

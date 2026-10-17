@@ -1,0 +1,114 @@
+{
+  "mbmap": 2,
+  "vendor": "Modbench",
+  "model": "Demo meter (simulated)",
+  "description": "A made-up three-phase meter served by Modbench's own simulator, for the demo. No real device has this map",
+  "revision": 1,
+  "protocol": "tcp",
+  "unit_id": 1,
+  "byte_order": "big",
+  "word_order": "big",
+  "address_base": 0,
+  "enums": {
+    "state": { "0": "Stopped", "1": "Running", "2": "Alarm" }
+  },
+  "registers": [
+    {
+      "name": "Voltage L1",
+      "group": "Voltage",
+      "area": "holding",
+      "address": 0,
+      "type": "float32",
+      "unit": "V"
+    },
+    {
+      "name": "Voltage L2",
+      "group": "Voltage",
+      "area": "holding",
+      "address": 2,
+      "type": "float32",
+      "unit": "V"
+    },
+    {
+      "name": "Voltage L3",
+      "group": "Voltage",
+      "area": "holding",
+      "address": 4,
+      "type": "float32",
+      "unit": "V"
+    },
+    {
+      "name": "Current L1",
+      "group": "Current",
+      "area": "holding",
+      "address": 6,
+      "type": "float32",
+      "unit": "A"
+    },
+    {
+      "name": "Active power",
+      "group": "Power",
+      "area": "holding",
+      "address": 8,
+      "type": "int32",
+      "unit": "W"
+    },
+    {
+      "name": "Frequency",
+      "group": "Power",
+      "area": "holding",
+      "address": 10,
+      "type": "uint16",
+      "scale": 0.01,
+      "unit": "Hz",
+      "reference": 5000
+    },
+    {
+      "name": "Energy",
+      "group": "Energy",
+      "area": "holding",
+      "address": 12,
+      "type": "uint32",
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "name": "Temperature",
+      "group": "Status",
+      "area": "holding",
+      "address": 14,
+      "type": "int16",
+      "scale": 0.1,
+      "unit": "°C"
+    },
+    {
+      "name": "State",
+      "group": "Status",
+      "area": "holding",
+      "address": 15,
+      "type": "uint16",
+      "enum": "state",
+      "reference": 1
+    },
+    {
+      "name": "Setpoint",
+      "group": "Settings",
+      "area": "holding",
+      "address": 20,
+      "type": "uint16",
+      "unit": "%",
+      "access": "RW",
+      "write_min": 0,
+      "write_max": 100,
+      "reference": 50
+    },
+    {
+      "name": "Relay",
+      "group": "Settings",
+      "area": "coil",
+      "address": 0,
+      "type": "bool",
+      "access": "RW"
+    }
+  ]
+}

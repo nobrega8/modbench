@@ -6,6 +6,7 @@
   import RequestStep from "#lib/components/RequestStep.svelte";
   import TestStep from "#lib/components/TestStep.svelte";
   import UpdateBanner from "#lib/components/UpdateBanner.svelte";
+  import DemoBanner from "#lib/components/DemoBanner.svelte";
   import LibraryView from "#lib/components/LibraryView.svelte";
   import SettingsView from "#lib/components/SettingsView.svelte";
   import ToolsView from "#lib/components/ToolsView.svelte";
@@ -139,6 +140,7 @@
     <section class="page" in:viewIn><SettingsView /></section>
   {:else}
     <div class="main" in:viewIn>
+      <DemoBanner />
       <ConnectionStep />
       <RequestStep />
       {#if bench.mapError}

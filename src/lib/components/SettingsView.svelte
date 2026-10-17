@@ -12,6 +12,7 @@
   import { viewIn } from "#lib/motion.ts";
   import { api, errorText } from "#lib/api.ts";
   import { bench } from "#lib/state.svelte.ts";
+  import { demo } from "#lib/demo.svelte.ts";
   import {
     settings,
     TEXT_SCALE_MAX,
@@ -403,6 +404,39 @@
               class="switch"
               role="switch"
               bind:checked={settings.autoReconnect}
+              onchange={changed}
+            />
+          </label>
+          <div class="setting">
+            <div class="text">
+              <span class="name">Demo</span>
+              <span class="hint"
+                >Reads a simulated meter played by Modbench's own simulator: no
+                hardware or map needed. Your connection and devices are left as
+                they are.</span
+              >
+            </div>
+            <button
+              class="btn"
+              disabled={demo.active || demo.starting}
+              onclick={() => {
+                bench.page = "main";
+                demo.start();
+              }}>Start demo</button
+            >
+          </div>
+          <label class="setting">
+            <div class="text">
+              <span class="name">Offer the demo at the first start</span>
+              <span class="hint"
+                >Shows the demo on the Main page until a connection is used.</span
+              >
+            </div>
+            <input
+              type="checkbox"
+              class="switch"
+              role="switch"
+              bind:checked={settings.offerDemo}
               onchange={changed}
             />
           </label>
