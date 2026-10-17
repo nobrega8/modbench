@@ -865,6 +865,7 @@ mod tests {
             unit: 1,
             timeout_ms: 200,
             identify: true,
+            retries: 0,
         };
 
         let seen = std::sync::Mutex::new(Vec::new());
@@ -914,6 +915,43 @@ mod tests {
             .await
             .unwrap();
         assert!(hits.is_empty());
+    }
+
+    #[tokio::test]
+    async fn the_fast_mode_asks_once_and_the_thorough_mode_again() {
+        use crate::netscan::{HostStatus, NetScan, scan};
+        use tokio::io::AsyncReadExt;
+        // Counts requests and never answers
+        let silent = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = silent.local_addr().unwrap().port();
+        let requests = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let counted = requests.clone();
+        tokio::spawn(async move {
+            while let Ok((mut stream, _)) = silent.accept().await {
+                let counted = counted.clone();
+                tokio::spawn(async move {
+                    let mut frame = [0u8; 12];
+                    while stream.read_exact(&mut frame).await.is_ok() {
+                        counted.fetch_add(1, Ordering::Relaxed);
+                    }
+                });
+            }
+        });
+        let cancel = AtomicBool::new(false);
+        for (retries, asked) in [(0, 1), (1, 2)] {
+            requests.store(0, Ordering::Relaxed);
+            let job = NetScan {
+                targets: "127.0.0.1".into(),
+                port,
+                unit: 1,
+                timeout_ms: 80,
+                identify: false,
+                retries,
+            };
+            let hits = scan(&job, &cancel, |_| {}, |_| {}).await.unwrap();
+            assert_eq!(hits[0].status, HostStatus::TcpOnly);
+            assert_eq!(requests.load(Ordering::Relaxed), asked, "{retries} retries");
+        }
     }
 
     #[tokio::test]

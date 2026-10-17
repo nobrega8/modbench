@@ -79,8 +79,13 @@ included, shows a Modbus device. Nothing is written.
     (\val{192.168.1.10-50} or \val{192.168.1.10-192.168.2.20}), or addresses
     separated by commas. Up to 65536 addresses (a /16).
   \item[Port, Unit ID] Where to ask, and which unit ID the request carries.
+  \item[Mode] \ui{Fast} waits a short time (150\,ms by default) and does not
+    retry: a quick first pass to find the devices that are online.
+    \ui{Thorough} waits longer (1000\,ms) and asks once more after a timeout,
+    for slow devices, gateways and busy networks. The line under the settings
+    says which wait and retries the scan will use.
   \item[Wait (ms)] How long to wait for the connection, and then for the
-    answer.
+    answer, in the chosen mode; each mode keeps its own.
   \item[Identify (FC43)] Also reads the vendor, product code and revision of
     the devices found.
 \end{description}

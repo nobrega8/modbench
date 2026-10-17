@@ -409,6 +409,8 @@ export interface NetScan {
   unit: number;
   timeout_ms: number;
   identify: boolean;
+  /** Attempts after the first when the connection or the answer times out. */
+  retries: number;
 }
 
 export interface NetHit {
