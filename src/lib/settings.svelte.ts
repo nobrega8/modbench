@@ -2,6 +2,7 @@
 
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { AddressFormat } from "./format";
+import { i18n, type Locale } from "./i18n.svelte";
 
 export type Theme = "system" | "light" | "dark";
 export type CsvSeparator = "," | ";";
@@ -24,6 +25,7 @@ interface Stored {
   textScale: number;
   registerLayout: RegisterLayout;
   offerDemo: boolean;
+  language: Locale | "system";
 }
 
 const KEY = "modbench.settings";
@@ -43,6 +45,7 @@ const DEFAULTS: Stored = {
   textScale: 1,
   registerLayout: "list",
   offerDemo: false,
+  language: "system",
 };
 
 /** Smallest and largest text size, as a zoom factor of the whole window. */
@@ -86,6 +89,8 @@ class Settings {
   /** Offer the demo when Modbench starts for the first time (off unless
    * turned on in Settings). */
   offerDemo = $state(false);
+  /** Display language: a locale, or the system's language. */
+  language = $state<Locale | "system">("system");
 
   constructor() {
     Object.assign(this, load());
@@ -108,6 +113,7 @@ class Settings {
       textScale: this.textScale,
       registerLayout: this.registerLayout,
       offerDemo: this.offerDemo,
+      language: this.language,
     };
     try {
       localStorage.setItem(KEY, JSON.stringify(data));
@@ -128,6 +134,11 @@ class Settings {
     } catch {
       // Not running in Tauri (tests): nothing to zoom.
     }
+  }
+
+  /** Uses the chosen display language. */
+  applyLanguage() {
+    i18n.apply(this.language);
   }
 
   /** Applies the theme to the page (data-theme on <html>). */

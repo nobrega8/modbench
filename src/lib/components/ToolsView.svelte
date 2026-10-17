@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, type Key } from "#lib/i18n.svelte.ts";
   import { viewIn } from "#lib/motion.ts";
   import Icon from "./Icon.svelte";
   import { netScanner } from "#lib/netscan.svelte.ts";
@@ -20,73 +21,25 @@
   const tool = $derived(only ?? bench.tool);
 
   const sections: {
-    title: string;
-    tools: { id: ToolId; name: string; hint: string }[];
+    title: Key;
+    tools: { id: ToolId }[];
   }[] = [
     {
-      title: "Device",
+      title: "tools.device",
       tools: [
-        {
-          id: "identify",
-          name: "Identify",
-          hint: "Ask the device who it is (FC43)",
-        },
-        {
-          id: "addresses",
-          name: "Find addresses",
-          hint: "Which registers answer",
-        },
-        {
-          id: "network",
-          name: "Network scan",
-          hint: "Modbus TCP devices on a subnet",
-        },
-        {
-          id: "simulator",
-          name: "Simulator",
-          hint: "A Modbus TCP device on this computer",
-        },
+        { id: "identify" },
+        { id: "addresses" },
+        { id: "network" },
+        { id: "simulator" },
       ],
     },
     {
-      title: "Data",
-      tools: [
-        {
-          id: "decoder",
-          name: "Data decoder",
-          hint: "Hex as numbers, floats and text",
-        },
-        {
-          id: "frames",
-          name: "Frame decoder",
-          hint: "A frame, field by field",
-        },
-        {
-          id: "player",
-          name: "Trend player",
-          hint: "Play back a recording",
-        },
-      ],
+      title: "tools.data",
+      tools: [{ id: "decoder" }, { id: "frames" }, { id: "player" }],
     },
     {
-      title: "Test",
-      tools: [
-        {
-          id: "request",
-          name: "Send request",
-          hint: "Any function code, or raw bytes",
-        },
-        {
-          id: "stats",
-          name: "Statistics",
-          hint: "Failures by cause and function",
-        },
-        {
-          id: "alarms",
-          name: "Alarms",
-          hint: "Limits on map registers",
-        },
-      ],
+      title: "tools.test",
+      tools: [{ id: "request" }, { id: "stats" }, { id: "alarms" }],
     },
   ];
 
@@ -105,19 +58,21 @@
   {#if !only}
     <nav aria-label="Tools">
       {#each sections as s (s.title)}
-        <h2 class="key">{s.title}</h2>
-        {#each s.tools as t (t.id)}
+        <h2 class="key">{t(s.title)}</h2>
+        {#each s.tools as tool (tool.id)}
           <button
-            class:on={bench.tool === t.id}
-            aria-current={bench.tool === t.id ? "page" : undefined}
-            onclick={() => (bench.tool = t.id)}
+            class:on={bench.tool === tool.id}
+            aria-current={bench.tool === tool.id ? "page" : undefined}
+            onclick={() => (bench.tool = tool.id)}
           >
-            <span class="glyph"><Icon name={t.id} size={16} /></span>
+            <span class="glyph"><Icon name={tool.id} size={16} /></span>
             <span class="name"
-              >{t.name}{#if busy(t.id)}<span class="dot" aria-hidden="true"
+              >{t(`tools.${tool.id}` as Key)}{#if busy(tool.id)}<span
+                  class="dot"
+                  aria-hidden="true"
                 ></span>{/if}</span
             >
-            <span class="hint">{t.hint}</span>
+            <span class="hint">{t(`tools.${tool.id}.hint` as Key)}</span>
           </button>
         {/each}
       {/each}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { api } from "#lib/api.ts";
   import { fieldIn, slidePill } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
@@ -29,7 +30,7 @@
   }
 </script>
 
-<StepCard step={1} title="Connection">
+<StepCard step={1} title={t("step.connection")}>
   <div class="row">
     <div class="field">
       <span>Interface</span>

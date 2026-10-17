@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t, type Key } from "#lib/i18n.svelte.ts";
   import { listen } from "@tauri-apps/api/event";
   import { untrack } from "svelte";
   import { api } from "#lib/api.ts";
@@ -88,11 +89,11 @@
   });
 
   const pages = $derived([
-    { id: "main", label: "Main" },
-    { id: "tools", label: "Tools" },
-    { id: "library", label: "Library" },
-    { id: "settings", label: "Settings" },
-  ] as { id: Page; label: string }[]);
+    { id: "main", label: "nav.main" },
+    { id: "tools", label: "nav.tools" },
+    { id: "library", label: "nav.library" },
+    { id: "settings", label: "nav.settings" },
+  ] as { id: Page; label: Key }[]);
 
   /** macOS draws its own window buttons at the top left of the title bar. */
   const mac = navigator.userAgent.includes("Mac OS X");
@@ -124,7 +125,7 @@
           class:on={bench.page === p.id}
           aria-current={bench.page === p.id ? "page" : undefined}
           onclick={() => (bench.page = p.id)}
-          ><Icon name={p.id} />{p.label}</button
+          ><Icon name={p.id} />{t(p.label)}</button
         >
       {/each}
     </nav>

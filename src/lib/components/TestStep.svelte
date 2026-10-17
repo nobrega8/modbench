@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { slidePill, viewIn } from "#lib/motion.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import { bench, type Tab } from "#lib/state.svelte.ts";
@@ -27,25 +28,25 @@
   const tabs = $derived([
     ...(bench.source === "map"
       ? [
-          { id: "map", label: "Device map" },
+          { id: "map", label: t("tab.map") },
           {
             id: "chart",
-            label: `Chart${bench.chartSeries.length ? ` (${bench.chartSeries.length})` : ""}`,
+            label: `${t("tab.chart")}${bench.chartSeries.length ? ` (${bench.chartSeries.length})` : ""}`,
           },
         ]
       : // A map reads its own registers: the raw grid is for manual reads.
         [
-          { id: "registers", label: "Read registers" },
+          { id: "registers", label: t("tab.registers") },
           {
             id: "chart",
-            label: `Chart${bench.manualSeries.length ? ` (${bench.manualSeries.length})` : ""}`,
+            label: `${t("tab.chart")}${bench.manualSeries.length ? ` (${bench.manualSeries.length})` : ""}`,
           },
         ]),
-    { id: "write", label: "Write values" },
-    { id: "raw", label: "Raw data" },
+    { id: "write", label: t("tab.write") },
+    { id: "raw", label: t("tab.raw") },
     {
       id: "log",
-      label: `Log${bench.log.length ? ` (${bench.log.length})` : ""}`,
+      label: `${t("tab.log")}${bench.log.length ? ` (${bench.log.length})` : ""}`,
     },
   ] as { id: Tab; label: string }[]);
 
@@ -62,18 +63,18 @@
   const where = $derived(bench.connectionText);
 </script>
 
-<StepCard step={3} title="Test" grow>
+<StepCard step={3} title={t("step.test")} grow>
   <div class="controls">
     <button
       class="run start"
       disabled={bench.running || blocked !== null}
-      title={blocked ?? "Start"}
+      title={blocked ?? t("test.start")}
       onclick={() => bench.start()}
     >
       <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"
         ><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg
       >
-      Start
+      {t("test.start")}
     </button>
     <button
       class="run stop"
@@ -90,24 +91,24 @@
           fill="currentColor"
         /></svg
       >
-      Stop
+      {t("test.stop")}
     </button>
 
     <div class="counters">
       <Counter
-        label="Valid responses"
+        label={t("test.valid")}
         value={bench.counters.valid}
         tone="ok"
         onreset={() => (bench.counters.valid = 0)}
       />
       <Counter
-        label="Error responses"
+        label={t("test.errors")}
         value={bench.counters.errors}
         tone="bad"
         onreset={() => (bench.counters.errors = 0)}
       />
       <Counter
-        label="Timeouts"
+        label={t("test.timeouts")}
         value={bench.counters.timeouts}
         tone="warn"
         onreset={() => (bench.counters.timeouts = 0)}
@@ -146,7 +147,9 @@
             : ""}</span
         >
       {:else if bench.running}
-        <span class="live"><span class="dot"></span>Running · {where}</span>
+        <span class="live"
+          ><span class="dot"></span>{t("test.running", { where })}</span
+        >
         {#if bench.source === "map" && bench.lastCycle}
           <span class="sub"
             >{bench.lastCycle.requests} requests per cycle · {bench.lastCycle.duration_ms.toFixed(
@@ -157,7 +160,7 @@
       {:else if blocked}
         <span class="sub">{blocked}</span>
       {:else}
-        <span class="sub">Stopped</span>
+        <span class="sub">{t("test.stopped")}</span>
       {/if}
       {#if bench.status && !bench.status.ok}
         <span class="bad" title={bench.status.text}>{bench.status.text}</span>
