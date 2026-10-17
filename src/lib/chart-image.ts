@@ -79,6 +79,15 @@ export function classAttrs(
   if (has("axis")) return { stroke: p.axis, "stroke-width": "1" };
   if (has("tick"))
     return { fill: p.text3, "font-family": MONO, "font-size": "11" };
+  if (has("marker"))
+    return { stroke: p.text, "stroke-width": "1.5", "stroke-dasharray": "4 3" };
+  if (has("marker-label"))
+    return {
+      fill: p.text,
+      "font-family": FONT,
+      "font-size": "11",
+      "font-weight": "600",
+    };
   if (has("mark"))
     return {
       fill: "none",
