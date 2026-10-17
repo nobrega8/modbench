@@ -253,6 +253,13 @@ impl<T: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + std::fmt::
 }
 
 /// Opens the transport a configuration describes.
+/// A link that is not connected to anything: every request fails with an
+/// I/O error. Holds the place of a link that was closed.
+fn closed_context() -> Context {
+    let (end, _) = tokio::io::duplex(1);
+    rtu::attach(end)
+}
+
 async fn open(config: &ConnectionConfig, raw: Option<RawSink>) -> Result<Context, ModbusError> {
     let wait = Duration::from_millis(config.timeout_ms.max(1));
     let slave = Slave(config.unit_id);
@@ -421,7 +428,7 @@ pub async fn scan_serial(
         let mut found = false;
         for unit in scan.from..=scan.to {
             if cancel.load(Ordering::Relaxed) {
-                let _ = session.disconnect().await;
+                session.disconnect().await;
                 break 'combos;
             }
             progress(&SerialProgress {
@@ -445,7 +452,7 @@ pub async fn scan_serial(
                 });
             }
         }
-        let _ = session.disconnect().await;
+        session.disconnect().await;
         if found && scan.stop_at_first {
             break;
         }
@@ -673,6 +680,8 @@ pub struct Session {
     /// When set and true, a single register is written with FC16 instead of
     /// FC06, for devices that only accept FC16.
     single_as_multiple: Option<Arc<AtomicBool>>,
+    /// See [`Session::last_failure`].
+    last_failure: Option<String>,
 }
 
 impl Session {
@@ -694,6 +703,7 @@ impl Session {
             logger: None,
             read_only: None,
             single_as_multiple: None,
+            last_failure: None,
         })
     }
 
@@ -714,15 +724,39 @@ impl Session {
 
     /// Closes the link and opens it again with the same settings, keeping
     /// the logger, the read-only switch and the unit ID.
+    ///
+    /// The old link is closed and dropped before the new one opens: a
+    /// serial port is opened for exclusive use, so the old handle would
+    /// make the port look busy. When opening fails, the session stays
+    /// without a link (every request fails) and the port stays free.
     pub async fn reconnect(&mut self) -> Result<(), ModbusError> {
-        // A dead link can hang on close; do not wait long for it.
-        let _ = timeout(self.timeout, self.ctx.disconnect()).await;
-        let mut ctx = open(&self.config, self.raw.clone()).await?;
+        self.release().await;
+        let mut ctx = open(&self.config, self.raw.clone())
+            .await
+            .inspect_err(|e| {
+                self.last_failure = Some(e.to_string());
+            })?;
         ctx.set_slave(Slave(self.unit));
         self.ctx = ctx;
         self.broken = false;
         self.timeouts_in_row = 0;
+        self.last_failure = None;
         Ok(())
+    }
+
+    /// Closes the link and drops it, so the port or socket is free, and
+    /// leaves in its place one that fails every request.
+    async fn release(&mut self) {
+        // A dead link can hang on close; do not wait long for it.
+        let _ = timeout(self.timeout, self.ctx.disconnect()).await;
+        self.ctx = closed_context();
+        self.broken = true;
+    }
+
+    /// Why the link was last seen failing (the error of a request or of an
+    /// attempt to open it again), until it works again.
+    pub fn last_failure(&self) -> Option<&str> {
+        self.last_failure.as_deref()
     }
 
     /// Updates the link health after a request.
@@ -731,10 +765,20 @@ impl Session {
             Ok(_) | Err(ModbusError::Exception { .. }) => {
                 self.broken = false;
                 self.timeouts_in_row = 0;
+                self.last_failure = None;
             }
-            Err(ModbusError::Timeout(_)) => self.timeouts_in_row += 1,
-            Err(ModbusError::Io(_)) => self.broken = true,
-            Err(ModbusError::Protocol(_)) if self.over_network() => self.broken = true,
+            Err(e @ ModbusError::Timeout(_)) => {
+                self.timeouts_in_row += 1;
+                self.last_failure = Some(e.to_string());
+            }
+            Err(e @ ModbusError::Io(_)) => {
+                self.broken = true;
+                self.last_failure = Some(e.to_string());
+            }
+            Err(e @ ModbusError::Protocol(_)) if self.over_network() => {
+                self.broken = true;
+                self.last_failure = Some(e.to_string());
+            }
             Err(_) => {}
         }
     }
@@ -1204,9 +1248,11 @@ impl Session {
         result.map(|()| found)
     }
 
-    pub async fn disconnect(mut self) -> Result<(), ModbusError> {
-        self.ctx.disconnect().await?;
-        Ok(())
+    /// Closes the link and frees the port or socket. Closing a dead link
+    /// can fail or hang; the handle is dropped all the same, after at most
+    /// the session's timeout.
+    pub async fn disconnect(mut self) {
+        self.release().await;
     }
 }
 

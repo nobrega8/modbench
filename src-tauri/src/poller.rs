@@ -44,10 +44,12 @@ pub struct PollRequest {
 #[serde(tag = "state", rename_all = "lowercase")]
 pub enum LinkEvent {
     /// The link is lost; the next attempt to open it is `retry_ms` away.
-    /// `error` is why the last attempt failed (none before the first).
+    /// `cause` is the error that showed the link was lost, `error` why the
+    /// last attempt to open it failed (none before the first).
     Reconnecting {
         attempt: u32,
         retry_ms: u64,
+        cause: Option<String>,
         error: Option<String>,
     },
     /// The link is open again.
@@ -315,11 +317,14 @@ pub async fn run(
         let outcome = {
             let mut slot = session.lock().await;
             match slot.as_mut() {
-                Some(s) => Some((poll_once(s, &req).await, s.link_lost())),
+                Some(s) => {
+                    let polled = poll_once(s, &req).await;
+                    Some((polled, s.link_lost(), s.last_failure().map(String::from)))
+                }
                 None => None,
             }
         };
-        let Some(((results, requests), lost)) = outcome else {
+        let Some(((results, requests), lost, cause)) = outcome else {
             report(Err("not connected".into()));
             return;
         };
@@ -330,7 +335,7 @@ pub async fn run(
             requests,
             results,
         }));
-        if req.reconnect && lost && !reopen(&session, &link).await {
+        if req.reconnect && lost && !reopen(&session, cause, &link).await {
             report(Err("not connected".into()));
             return;
         }
@@ -346,13 +351,18 @@ pub async fn run(
 
 /// Opens a lost link again, waiting longer between attempts, until it
 /// opens. False when the session is gone (the user disconnected).
-async fn reopen(session: &Mutex<Option<Session>>, link: &impl Fn(LinkEvent)) -> bool {
+async fn reopen(
+    session: &Mutex<Option<Session>>,
+    cause: Option<String>,
+    link: &impl Fn(LinkEvent),
+) -> bool {
     let mut error = None;
     for attempt in 1.. {
         let retry_ms = BACKOFF_MS[(attempt as usize - 1).min(BACKOFF_MS.len() - 1)];
         link(LinkEvent::Reconnecting {
             attempt,
             retry_ms,
+            cause: cause.clone(),
             error: error.take(),
         });
         tokio::time::sleep(Duration::from_millis(retry_ms)).await;

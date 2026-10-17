@@ -17,6 +17,49 @@ pub mod simulator;
 pub mod tap;
 pub mod udp;
 
+const USAGE: &str = "\
+Modbus client and simulator, with device maps (.mbmap)
+
+Usage: modbench [FILE]
+
+Arguments:
+  [FILE]  A device map (.mbmap.json, .mbmap) or a simulator setup
+          (.mbsim) to open
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+Command-line access without the window: modbench-cli --help
+";
+
+/// What to print, and the exit code, when the arguments ask for help or
+/// the version, or hold an unknown option; `None` opens the window. Other
+/// arguments (a file to open, or what the system adds, such as macOS's
+/// `-psn_…`) are left to the app.
+pub fn command_line(args: &[String]) -> Option<(String, i32)> {
+    for arg in args.iter().skip(1) {
+        match arg.as_str() {
+            "-h" | "--help" => return Some((USAGE.to_string(), 0)),
+            "-V" | "--version" => {
+                return Some((format!("modbench {}\n", env!("CARGO_PKG_VERSION")), 0));
+            }
+            "--" => break,
+            a if a.starts_with("--") => {
+                return Some((
+                    format!(
+                        "error: unexpected argument '{a}'\n\nUsage: modbench [FILE]\n\n\
+                         For more information, try '--help'.\n"
+                    ),
+                    2,
+                ));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -113,6 +156,58 @@ pub fn run() {
                 _ => {}
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Stop polling and free the serial port or socket on the way out.
+            if let tauri::RunEvent::Exit = event {
+                let state = app.state::<commands::AppState>();
+                tauri::async_runtime::block_on(state.shut_down());
+            }
+        });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::command_line;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        std::iter::once("modbench")
+            .chain(list.iter().copied())
+            .map(String::from)
+            .collect()
+    }
+
+    #[test]
+    fn help_and_version_answer_without_the_window() {
+        for flag in ["-h", "--help"] {
+            let (text, code) = command_line(&args(&[flag])).unwrap();
+            assert_eq!(code, 0);
+            assert!(
+                text.starts_with("Modbus client and simulator") && text.contains("Usage: modbench")
+            );
+        }
+        for flag in ["-V", "--version"] {
+            let (text, code) = command_line(&args(&["map.mbmap.json", flag])).unwrap();
+            assert_eq!(
+                (text.trim(), code),
+                (concat!("modbench ", env!("CARGO_PKG_VERSION")), 0)
+            );
+        }
+    }
+
+    #[test]
+    fn files_and_system_arguments_open_the_window() {
+        assert_eq!(command_line(&args(&[])), None);
+        assert_eq!(command_line(&args(&["map.mbmap.json"])), None);
+        assert_eq!(command_line(&args(&["-psn_0_12345"])), None);
+        assert_eq!(command_line(&args(&["--", "--help"])), None);
+    }
+
+    #[test]
+    fn unknown_options_are_an_error() {
+        let (text, code) = command_line(&args(&["--bogus"])).unwrap();
+        assert_eq!(code, 2);
+        assert!(text.contains("unexpected argument '--bogus'"));
+    }
 }

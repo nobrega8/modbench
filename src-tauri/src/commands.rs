@@ -64,6 +64,15 @@ impl AppState {
             handle.abort();
         }
     }
+
+    /// Stops polling and closes the connection, freeing its port. Called
+    /// when the app exits.
+    pub async fn shut_down(&self) {
+        self.stop_poller();
+        if let Some(session) = self.session.lock().await.take() {
+            session.disconnect().await;
+        }
+    }
 }
 
 /// Where a typed value lives and how it is encoded.
@@ -129,8 +138,9 @@ pub async fn connect(
 ) -> Result<(), ModbusError> {
     state.stop_poller();
     let mut slot = state.session.lock().await;
+    // Free the old port before opening: it may be the same one.
     if let Some(old) = slot.take() {
-        let _ = old.disconnect().await;
+        old.disconnect().await;
     }
     let raw_app = app.clone();
     let raw: RawSink = Arc::new(move |direction, bytes: &[u8]| {
@@ -191,10 +201,10 @@ pub fn set_single_write_fc16(state: State<'_, AppState>, on: bool) {
 #[tauri::command]
 pub async fn disconnect(state: State<'_, AppState>) -> Result<(), ModbusError> {
     state.stop_poller();
-    match state.session.lock().await.take() {
-        Some(session) => session.disconnect().await,
-        None => Ok(()),
+    if let Some(session) = state.session.lock().await.take() {
+        session.disconnect().await;
     }
+    Ok(())
 }
 
 #[tauri::command]
@@ -651,7 +661,7 @@ pub async fn scan_serial(
     state.stop_poller();
     // The port must be free: close any connection the app holds.
     if let Some(old) = state.session.lock().await.take() {
-        let _ = old.disconnect().await;
+        old.disconnect().await;
     }
     state
         .scan_cancel
