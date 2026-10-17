@@ -26,6 +26,12 @@
   let rowError = $state<Record<string, string>>({});
   /** The map whose details are open, and the details loaded so far. */
   let infoPath = $state<string | null>(null);
+  let infoPop: HTMLElement | undefined = $state();
+  let infoAt = $state({ top: 0, left: 0 });
+  let closed: { path: string | null; at: number } = { path: null, at: 0 };
+  const infoEntry = $derived(
+    infoPath ? (entries ?? []).find((x) => x.path === infoPath) : undefined,
+  );
   let details = $state<Record<string, Parsed | { error: string }>>({});
 
   $effect(() => {
@@ -144,12 +150,27 @@
     back();
   }
 
-  async function toggleInfo(entry: OnlineEntry) {
+  /** Opens the details of a map in a popup next to its button. */
+  async function toggleInfo(entry: OnlineEntry, button: HTMLElement) {
+    // A click on the button of the open popup first closes it (light
+    // dismiss); don't open it again right away.
+    if (closed.path === entry.path && performance.now() - closed.at < 400)
+      return;
     if (infoPath === entry.path) {
-      infoPath = null;
+      infoPop?.hidePopover();
       return;
     }
+    const r = button.getBoundingClientRect();
+    const width = 420;
+    infoAt = {
+      top: Math.min(r.bottom + 6, window.innerHeight - 200),
+      left: Math.max(
+        12,
+        Math.min(r.right - width, window.innerWidth - width - 12),
+      ),
+    };
     infoPath = entry.path;
+    infoPop?.showPopover();
     if (details[entry.path] && !("error" in details[entry.path])) return;
     try {
       const parsed = await api.libraryOnlineMap(entry.path);
@@ -274,7 +295,7 @@
     />
   </header>
 
-  <div class="list">
+  <div class="list" onscroll={() => infoPop?.hidePopover()}>
     <div data-size>
       {#key view}
         <div in:slideIn={{ dir }}>
@@ -341,7 +362,7 @@
                   title="Map details"
                   aria-label="Details of {e.model}"
                   aria-expanded={infoPath === e.path}
-                  onclick={() => toggleInfo(e)}
+                  onclick={(ev) => toggleInfo(e, ev.currentTarget)}
                   ><Icon name="about" size={16} /></button
                 >
                 {#if inLibrary}
@@ -359,54 +380,6 @@
                     onclick={() => add(e)}>{busy ? "Adding…" : "Add"}</button
                   >
                 {/if}
-                {#if infoPath === e.path}
-                  {@const d = details[e.path]}
-                  <div class="details" in:fade={{ duration: 120 }}>
-                    {#if !d}
-                      <p class="muted">Loading the map…</p>
-                    {:else if "error" in d}
-                      <p class="bad">{d.error}</p>
-                    {:else if !d.map}
-                      <p class="bad">
-                        The map has errors: {d.diagnostics
-                          .filter((x) => x.severity === "error")
-                          .map((x) => x.message)
-                          .join("; ")}
-                      </p>
-                    {:else}
-                      <dl>
-                        {#each facts(e, d) as [label, value] (label)}
-                          <dt>{label}</dt>
-                          <dd>{value}</dd>
-                        {/each}
-                      </dl>
-                      {#if d.map.meta.sources?.length}
-                        <h3>Sources</h3>
-                        <ul>
-                          {#each d.map.meta.sources as src, i (i)}
-                            <li>
-                              {src.title}{src.version
-                                ? `, ${src.version}`
-                                : ""}{src.date
-                                ? ` (${src.date})`
-                                : ""}{#if src.url}<br /><span class="url"
-                                  >{src.url}</span
-                                >{/if}
-                            </li>
-                          {/each}
-                        </ul>
-                      {/if}
-                      {#if d.map.meta.notes?.length}
-                        <h3>Notes</h3>
-                        <ul>
-                          {#each d.map.meta.notes as note, i (i)}
-                            <li>{note}</li>
-                          {/each}
-                        </ul>
-                      {/if}
-                    {/if}
-                  </div>
-                {/if}
               </div>
             {:else}
               <p class="note">
@@ -417,6 +390,66 @@
         </div>
       {/key}
     </div>
+  </div>
+
+  <div
+    class="info-pop"
+    popover="auto"
+    bind:this={infoPop}
+    style:top="{infoAt.top}px"
+    style:left="{infoAt.left}px"
+    ontoggle={(ev) => {
+      if ((ev as ToggleEvent).newState !== "closed") return;
+      closed = { path: infoPath, at: performance.now() };
+      infoPath = null;
+    }}
+  >
+    {#if infoEntry}
+      {@const e = infoEntry}
+      {@const d = details[e.path]}
+      <h3 class="pop-title">{e.vendor} {e.model}</h3>
+
+      {#if !d}
+        <p class="muted">Loading the map…</p>
+      {:else if "error" in d}
+        <p class="bad">{d.error}</p>
+      {:else if !d.map}
+        <p class="bad">
+          The map has errors: {d.diagnostics
+            .filter((x) => x.severity === "error")
+            .map((x) => x.message)
+            .join("; ")}
+        </p>
+      {:else}
+        <dl>
+          {#each facts(e, d) as [label, value] (label)}
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          {/each}
+        </dl>
+        {#if d.map.meta.sources?.length}
+          <h4>Sources</h4>
+          <ul>
+            {#each d.map.meta.sources as src, i (i)}
+              <li>
+                {src.title}{src.version ? `, ${src.version}` : ""}{src.date
+                  ? ` (${src.date})`
+                  : ""}{#if src.url}<br /><span class="url">{src.url}</span
+                  >{/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        {#if d.map.meta.notes?.length}
+          <h4>Notes</h4>
+          <ul>
+            {#each d.map.meta.notes as note, i (i)}
+              <li>{note}</li>
+            {/each}
+          </ul>
+        {/if}
+      {/if}
+    {/if}
   </div>
 
   <footer>
@@ -587,43 +620,63 @@
     color: var(--accent);
   }
 
-  .details {
-    grid-column: 1 / -1;
-    padding: 4px 0 4px 42px;
+  .info-pop {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: 420px;
+    max-height: min(420px, calc(100vh - 40px));
+    overflow: auto;
+    padding: 14px 16px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--text);
+    box-shadow: var(--e3);
     font-size: 13px;
     user-select: text;
   }
 
-  .details dl {
+  .info-pop:popover-open {
+    animation: rise 0.16s var(--ease);
+  }
+
+  .pop-title {
+    margin: 0 0 10px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .info-pop dl {
     display: grid;
     grid-template-columns: max-content 1fr;
     gap: 4px 16px;
     margin: 0;
   }
 
-  .details dt {
+  .info-pop dt {
     color: var(--text-3);
   }
 
-  .details dd {
+  .info-pop dd {
     margin: 0;
     overflow-wrap: anywhere;
   }
 
-  .details h3 {
+  .info-pop h4 {
     margin: 12px 0 4px;
     font-size: 12px;
     font-weight: 600;
     color: var(--text-2);
   }
 
-  .details ul {
+  .info-pop ul {
     margin: 0;
     padding-left: 18px;
     color: var(--text-2);
   }
 
-  .details li + li {
+  .info-pop li + li {
     margin-top: 2px;
   }
 
