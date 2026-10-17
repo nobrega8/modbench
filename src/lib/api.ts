@@ -60,6 +60,10 @@ export const api = {
   openMap: (path: string) => invoke<Parsed>("open_map", { path }),
   demoMap: () => invoke<Parsed>("demo_map"),
   findMaps: (paths: string[]) => invoke<MapSearch>("find_maps", { paths }),
+  sendPdu: (fc: number, data: number[], broadcast: boolean) =>
+    invoke<void>("send_pdu", { function: fc, data, broadcast }),
+  sendRaw: (config: ConnectionConfig, bytes: number[], waitMs: number) =>
+    invoke<number[]>("send_raw", { config, bytes, waitMs }),
   saveMap: (path: string, map: DeviceMap) =>
     invoke<void>("save_map", { path, map }),
   /** Writes a version 2 copy of a version 1 map; returns its path. */

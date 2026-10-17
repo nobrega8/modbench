@@ -111,6 +111,34 @@ list what answered and count the rest. The network scan can be exported while
 it runs, without stopping it. Files are UTF-8, with the CSV separator of the
 settings.
 
+\section{Send request}
+\label{sec:send-request}
+
+Sends any request to the device of step 1, also the functions step 2 does not
+offer, and requests built by hand for unusual tests.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Function] Pick a function code (01--24, 43) and fill in its fields:
+    for Mask write register (22), the address and the AND and OR masks; for
+    Read/write multiple registers (23), the read address and count, the write
+    address and the values; for Diagnostics (08), the sub-function and data.
+    \ui{Other function code…} takes any code and its data in hex. The line
+    below shows the PDU that will be sent. \ui{Broadcast (unit 0)} sends to
+    every device: they act, but none answers.
+  \item[Raw bytes] Bytes exactly as typed, without framing: no MBAP header and
+    no CRC are added. They go out on a link of their own (the connection is
+    closed first, so a serial port is free), and what comes back within
+    \field{Wait (ms)} is shown.
+\end{description}
+
+The frames sent and received are shown, decoded field by field, and appear on
+the Raw data tab and in the log. \ui{Add to list} keeps a request;
+\ui{Send all} sends the list once, \ui{Loop} again and again.
+
+A request that may write (any function other than the reads, the diagnostics
+echo, broadcasts and raw bytes) is not sent while read-only mode is on, and
+asks first when \ui{Confirm before writing} is on.
+
 \section{Data decoder}
 \label{sec:data-decoder}
 

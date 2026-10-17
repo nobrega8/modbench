@@ -89,6 +89,7 @@ export type ToolId =
   | "identify"
   | "addresses"
   | "network"
+  | "request"
   | "decoder"
   | "frames"
   | "stats"
@@ -1073,6 +1074,36 @@ This writes to the device.`,
   }
 
   /**
+   * Sends a request built by hand over the connection of step 1, and
+   * returns the frames that went out and came back.
+   */
+  async sendPdu(
+    fc: number,
+    data: number[],
+    broadcast: boolean,
+  ): Promise<Exchange | null> {
+    if (this.scanning) throw new Error("A scan is running.");
+    return this.withLink(async () => {
+      const before = this.exchanges.length;
+      const last = this.exchanges.at(-1);
+      await api.sendPdu(fc, data, broadcast);
+      // The frames arrive as events; give the last ones a moment.
+      await sleep(30);
+      const now = this.exchanges;
+      const fresh = now.length > before || now.at(-1) !== last;
+      return fresh ? (now.at(-1) ?? null) : null;
+    });
+  }
+
+  /** Sends bytes as they are, without framing, and returns the answer. */
+  async sendRaw(bytes: number[], waitMs: number): Promise<number[]> {
+    if (this.running || this.scanning)
+      throw new Error("Stop the test on the Main page first.");
+    await this.close();
+    return api.sendRaw(this.config(), bytes, waitMs);
+  }
+
+  /**
    * Checks the library's maps (and the maps open now) against the device of
    * step 1 by their identity registers, best fit first.
    */
@@ -1363,6 +1394,12 @@ The values do not change, but a device can still act on a write. Only do this on
   }
 
   onTraffic(entry: TrafficEntry) {
+    if (entry.note) {
+      // Not a Modbus request (raw bytes): logged, not counted
+      this.pendingLog.push(entry);
+      this.scheduleFlush();
+      return;
+    }
     const e = entry.error;
     if (e === null) this.counters.valid++;
     else if (e.startsWith("timed out")) this.counters.timeouts++;

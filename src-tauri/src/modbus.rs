@@ -15,7 +15,7 @@ use tokio_serial::SerialPortBuilderExt;
 
 use crate::ascii;
 use crate::planner::Area;
-use crate::tap::{RawSink, Tap};
+use crate::tap::{Direction, RawSink, Tap};
 use crate::udp::UdpStream;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -415,6 +415,9 @@ pub struct TrafficEntry {
     pub count: u16,
     pub duration_ms: f64,
     pub error: Option<String>,
+    /// Set on lines that are not Modbus requests (raw bytes sent by hand).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 pub type TrafficLogger = Arc<dyn Fn(TrafficEntry) + Send + Sync>;
@@ -694,7 +697,93 @@ async fn same_function(
             request,
             result: Err(answer),
         })) if request.value() == answer.function.value() => Ok(Err(answer.exception)),
+        // A request built by hand (Custom) gets a typed answer for a known
+        // function: the same function, so it is the answer.
+        Err(tokio_modbus::Error::Protocol(tokio_modbus::ProtocolError::FunctionCodeMismatch {
+            request,
+            result: Ok(answer),
+        })) if request.value() == answer.function_code().value() => Ok(Ok(answer)),
         other => other,
+    }
+}
+
+/// Sends bytes exactly as given over a link opened for it (TCP, UDP or the
+/// serial port of `config`), then collects what arrives until `wait_ms`
+/// has passed, or 50 ms after the last byte. `seen` hears both directions.
+pub async fn send_raw(
+    config: &ConnectionConfig,
+    bytes: &[u8],
+    wait_ms: u64,
+    seen: impl Fn(Direction, &[u8]),
+) -> Result<Vec<u8>, ModbusError> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let wait = Duration::from_millis(wait_ms.max(1));
+    let local = local_ip(config)?;
+    let mut link: Box<dyn SerialLink> = match &config.transport {
+        Transport::Tcp { host, port } | Transport::RtuOverTcp { host, port } => {
+            Box::new(connect_tcp(resolve(host, *port)?, local, config.timeout_ms).await?)
+        }
+        Transport::Udp { host, port } | Transport::RtuOverUdp { host, port } => {
+            let addr = resolve(host, *port)?;
+            Box::new(
+                UdpStream::connect(addr, local_for(addr, local)?, wait)
+                    .await
+                    .map_err(|e| bind_error(e, local, addr))?,
+            )
+        }
+        Transport::Rtu {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        }
+        | Transport::Ascii {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => open_serial(port, *baudrate, *parity, *data_bits, *stop_bits)?,
+    };
+    link.write_all(bytes).await?;
+    link.flush().await?;
+    seen(Direction::Out, bytes);
+    let deadline = Instant::now() + wait;
+    let mut back = Vec::new();
+    let mut buf = [0u8; 512];
+    loop {
+        let now = Instant::now();
+        if now >= deadline {
+            break;
+        }
+        // After the first bytes, a 50 ms pause ends the answer
+        let limit = if back.is_empty() {
+            deadline - now
+        } else {
+            (deadline - now).min(Duration::from_millis(50))
+        };
+        match timeout(limit, link.read(&mut buf)).await {
+            Ok(Ok(0)) | Err(_) => break,
+            Ok(Ok(n)) => {
+                seen(Direction::In, &buf[..n]);
+                back.extend_from_slice(&buf[..n]);
+            }
+            Ok(Err(e)) => return Err(e.into()),
+        }
+    }
+    let _ = timeout(Duration::from_millis(100), link.shutdown()).await;
+    Ok(back)
+}
+
+/// Whether a hand-built request can only read: the read functions, and the
+/// diagnostics echo (FC08 sub-function 0). Anything else may change the
+/// device and is refused in read-only mode.
+pub fn pdu_only_reads(function: u8, data: &[u8]) -> bool {
+    match function {
+        1 | 2 | 3 | 4 | 7 | 11 | 12 | 17 | 20 | 24 | 43 => true,
+        8 => data.len() >= 2 && data[0] == 0 && data[1] == 0,
+        _ => false,
     }
 }
 
@@ -920,6 +1009,7 @@ impl Session {
                 count,
                 duration_ms: started.1.elapsed().as_secs_f64() * 1000.0,
                 error: result.as_ref().err().map(ToString::to_string),
+                note: None,
             });
         }
         if let Err(ModbusError::Exception { request, .. }) = result {
@@ -1215,6 +1305,36 @@ impl Session {
     }
 
     /// Sends one probe request, logged and tracked like any other.
+    /// Sends a request built by hand: a function code and the bytes after
+    /// it. Functions that may write are refused in read-only mode (anything
+    /// not known to only read). With `broadcast`, it goes to unit 0, where
+    /// devices act but do not answer: no answer is then the expected result.
+    pub async fn send_pdu(
+        &mut self,
+        function: u8,
+        data: Vec<u8>,
+        broadcast: bool,
+    ) -> Result<(), ModbusError> {
+        if !pdu_only_reads(function, &data) || broadcast {
+            self.check_writable()?;
+        }
+        let own = self.unit;
+        if broadcast {
+            self.ctx.set_slave(Slave(0));
+        }
+        let result = self
+            .send_probe(function, Request::Custom(function, data.into()))
+            .await;
+        if broadcast {
+            self.ctx.set_slave(Slave(own));
+            return match result {
+                Ok(_) | Err(ModbusError::Timeout(_)) => Ok(()),
+                Err(e) => Err(e),
+            };
+        }
+        result.map(|_| ())
+    }
+
     async fn send_probe(
         &mut self,
         function: u8,

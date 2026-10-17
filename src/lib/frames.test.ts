@@ -107,3 +107,25 @@ describe("frames", () => {
     );
   });
 });
+
+describe("mask write and read/write frames", () => {
+  it("decode the fields of FC22 and FC23", async () => {
+    const { decodeFrame } = await import("./frames");
+    const mask = decodeFrame(
+      [0, 1, 0, 0, 0, 8, 1, 0x16, 0, 4, 0x0f, 0x0f, 0x30, 0],
+      "tcp",
+      "request",
+    );
+    expect(mask.fields.map((f) => f.meaning)).toContain("0x0F0F");
+    expect(mask.summary).toBe("Mask write register 4");
+    const rw = decodeFrame(
+      [0, 1, 0, 0, 0, 7, 1, 0x17, 4, 0, 7, 0, 8],
+      "tcp",
+      "response",
+    );
+    expect(rw.summary).toBe("Read/write multiple registers: 2 registers");
+    expect(rw.fields.find((f) => f.label === "Registers")?.meaning).toBe(
+      "7, 8",
+    );
+  });
+});
