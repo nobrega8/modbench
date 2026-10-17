@@ -3,6 +3,9 @@
   import { bench } from "#lib/state.svelte.ts";
   import type { Area, Parity, SerialHit } from "#lib/types.ts";
   import AddressInput from "./AddressInput.svelte";
+  import { settings } from "#lib/settings.svelte.ts";
+  import { serialScanCsv } from "#lib/scan-export.ts";
+  import ExportCsv from "./ExportCsv.svelte";
   import IntInput from "./IntInput.svelte";
 
   // Most common first: they are tried in this order.
@@ -230,6 +233,21 @@
 {#if bench.scanError}
   <p class="bad">{bench.scanError}</p>
 {:else if bench.serialHits && !busy}
+  {#if bench.lastSerialScan}
+    {@const last = bench.lastSerialScan}
+    <div class="export">
+      <ExportCsv
+        name="modbench-serial-scan.csv"
+        make={() =>
+          serialScanCsv(
+            bench.serialHits ?? [],
+            last.scan,
+            last,
+            settings.csvSeparator,
+          )}
+      />
+    </div>
+  {/if}
   {#if bench.serialHits.length}
     <ul class="hits">
       {#each bench.serialHits as h, i (i)}
@@ -256,6 +274,12 @@
 {/if}
 
 <style>
+  .export {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   .opts {
     display: flex;
     flex-wrap: wrap;

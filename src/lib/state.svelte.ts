@@ -197,6 +197,24 @@ class Bench {
   /** Serial settings scan: where it is, and what answered. */
   serialProgress = $state.raw<SerialProgress | null>(null);
   serialHits = $state.raw<SerialHit[] | null>(null);
+  /** The settings of the last scans, and where each stopped (null when it
+   * ran to the end), for exporting their results. */
+  lastUnitScan = $state.raw<{
+    from: number;
+    to: number;
+    timeout_ms: number;
+    connection: string;
+    stoppedAt: number | null;
+  } | null>(null);
+  lastSerialScan = $state.raw<{ scan: SerialScan; stopped: boolean } | null>(
+    null,
+  );
+  lastAddressScan = $state.raw<{
+    scan: AddressScan;
+    connection: string;
+    unit: number;
+    stoppedAt: number | null;
+  } | null>(null);
 
   // Step 3 — test
   running = $state(false);
@@ -820,6 +838,9 @@ This writes to the device.`,
     this.scanHits = null;
     this.scanError = null;
     this.scanUnit = from;
+    this.cancelled = false;
+    this.lastUnitScan = null;
+    const connection = this.connectionText;
     try {
       if (!(await this.open())) {
         this.scanError = this.status?.text ?? "Could not connect.";
@@ -827,6 +848,13 @@ This writes to the device.`,
       }
       this.status = null;
       this.scanHits = await api.scanUnits(from, to, timeoutMs);
+      this.lastUnitScan = {
+        from,
+        to,
+        timeout_ms: timeoutMs,
+        connection,
+        stoppedAt: this.cancelled ? this.scanUnit : null,
+      };
     } catch (e) {
       this.scanError = errorText(e);
     } finally {
@@ -848,13 +876,17 @@ This writes to the device.`,
     this.serialHits = null;
     this.scanError = null;
     this.serialProgress = null;
+    this.cancelled = false;
+    this.lastSerialScan = null;
     try {
       await this.close();
-      this.serialHits = await api.scanSerial({
+      const full: SerialScan = {
         ...scan,
         port: this.serialPort,
         data_bits: this.dataBits,
-      });
+      };
+      this.serialHits = await api.scanSerial(full);
+      this.lastSerialScan = { scan: full, stopped: this.cancelled };
     } catch (e) {
       this.scanError = errorText(e);
     } finally {
@@ -876,8 +908,20 @@ This writes to the device.`,
     this.unitId = hit.unit;
   }
 
+  /** Set when the user stops a scan, to tell a stopped scan from one that
+   * ran to the end. */
+  private cancelled = false;
+
   cancelScan() {
+    this.cancelled = true;
     api.cancelScan().catch(() => {});
+  }
+
+  /** The connection of step 1, in a few words. */
+  get connectionText(): string {
+    return this.transport === "rtu"
+      ? `${this.serialPort} · ${this.framing === "ascii" ? "ASCII " : ""}${this.baudrate} ${this.dataBits}${this.parity}${this.stopBits}`
+      : `${this.host}:${this.tcpPort}`;
   }
 
   onScanProgress(unit: number) {
@@ -1001,8 +1045,19 @@ The values do not change, but a device can still act on a write. Only do this on
       found: 0,
     };
     this.scanError = null;
+    this.cancelled = false;
+    this.lastAddressScan = null;
+    const connection = this.connectionText;
     try {
       this.addressHits = await this.withLink(() => api.scanAddresses(scan));
+      this.lastAddressScan = {
+        scan,
+        connection,
+        unit: this.unitId,
+        stoppedAt: this.cancelled
+          ? (this.addressProgress?.address ?? scan.from)
+          : null,
+      };
     } catch (e) {
       this.scanError = errorText(e);
     } finally {

@@ -17,6 +17,8 @@
   import { bench } from "#lib/state.svelte.ts";
   import AddressFormat from "../AddressFormat.svelte";
   import AddressInput from "../AddressInput.svelte";
+  import { addressScanCsv } from "#lib/scan-export.ts";
+  import ExportCsv from "../ExportCsv.svelte";
   import IntInput from "../IntInput.svelte";
   import Select from "../Select.svelte";
 
@@ -170,6 +172,24 @@
   <div class="ends dim mono">
     <span>{addr(scanned.from)}</span><span>{addr(scanned.to)}</span>
   </div>
+  {#if bench.lastAddressScan}
+    {@const last = bench.lastAddressScan}
+    <div class="export">
+      <ExportCsv
+        name="modbench-address-scan.csv"
+        make={() =>
+          addressScanCsv(
+            hits,
+            { ...last.scan, connection: last.connection, unit: last.unit },
+            last,
+            settings.csvSeparator,
+          )}
+      />
+      {#if last.stoppedAt !== null}
+        <span class="dim">Stopped at {addr(last.stoppedAt)}.</span>
+      {/if}
+    </div>
+  {/if}
   {#if hits.length}
     <p>
       {found} of {scanned.to - scanned.from + 1} addresses answered, in {hits.length}
@@ -214,6 +234,12 @@
 <style>
   p {
     margin: 0;
+  }
+
+  .export {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
   .spacer {
