@@ -5,6 +5,8 @@ import type { AddressFormat } from "./format";
 
 export type Theme = "system" | "light" | "dark";
 export type CsvSeparator = "," | ";";
+/** How the Registers tab lays values out: one row each, or ten per row. */
+export type RegisterLayout = "list" | "grid";
 
 interface Stored {
   theme: Theme;
@@ -20,6 +22,7 @@ interface Stored {
   highlightSeconds: number;
   checkUpdates: boolean;
   textScale: number;
+  registerLayout: RegisterLayout;
 }
 
 const KEY = "modbench.settings";
@@ -37,6 +40,7 @@ const DEFAULTS: Stored = {
   highlightSeconds: 2,
   checkUpdates: true,
   textScale: 1,
+  registerLayout: "list",
 };
 
 /** Smallest and largest text size, as a zoom factor of the whole window. */
@@ -76,6 +80,7 @@ class Settings {
   checkUpdates = $state(true);
   /** Size of text and controls, 0.5 to 3 (1 = normal). */
   textScale = $state(1);
+  registerLayout = $state<RegisterLayout>("list");
 
   constructor() {
     Object.assign(this, load());
@@ -96,6 +101,7 @@ class Settings {
       highlightSeconds: this.highlightSeconds,
       checkUpdates: this.checkUpdates,
       textScale: this.textScale,
+      registerLayout: this.registerLayout,
     };
     try {
       localStorage.setItem(KEY, JSON.stringify(data));

@@ -35,7 +35,12 @@ remove a line, click \ui{×} next to its name in the legend.
     moment.
   \item[Spikes] When there are more samples than pixels, each pixel keeps its
     lowest and highest value, so short spikes stay visible.
-  \item[Gaps] A failed read leaves a gap in the line instead of a false value.
+  \item[Gaps] A failed read leaves a gap in the line instead of a false value,
+    and a mark along the bottom of the chart says why: \ui{×} (in red) where
+    the read failed, \ui{|} where the device gave no value (a reserved value
+    such as \val{Unimplemented}). Pointing at a gap shows the reason and the
+    last good value, marked \val{(held)}. When map registers start failing or
+    read again, the Log tab says which ones and why.
 \end{description}
 
 \ui{Clear} empties the charts and keeps the lines.

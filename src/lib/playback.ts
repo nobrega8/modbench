@@ -71,6 +71,20 @@ export function cellNumber(text: string): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
+/**
+ * A recorded cell as a sample: `#failed` (or any `#` text) is a failed read,
+ * other text that is not a number (a sentinel label) has no value, and a
+ * blank, as older recordings wrote failures, is a gap of unknown cause.
+ */
+export function cellSample(text: string, t: number): Sample {
+  const v = cellNumber(text);
+  if (Number.isFinite(v)) return { t, v };
+  const s = text.trim();
+  if (s.startsWith("#")) return { t, v, q: "failed" };
+  if (s !== "") return { t, v, q: "unavailable" };
+  return { t, v };
+}
+
 /** Reads a recording, or explains why the file is not one. */
 export function parseRecording(text: string): Recording | { error: string } {
   const first = text.split(/\r?\n/, 1)[0] ?? "";
@@ -97,9 +111,7 @@ export function parseRecording(text: string): Recording | { error: string } {
     count++;
     start = Math.min(start, t);
     end = Math.max(end, t);
-    columns.forEach((c, i) =>
-      c.samples.push({ t, v: cellNumber(row[i + 1] ?? "") }),
-    );
+    columns.forEach((c, i) => c.samples.push(cellSample(row[i + 1] ?? "", t)));
   }
   if (!count) return { error: "The recording has no rows." };
   for (const c of columns) c.samples.sort((a, b) => a.t - b.t);

@@ -100,3 +100,36 @@ describe("csv", () => {
     expect(row.split(",").slice(1)).toEqual(["", "5"]);
   });
 });
+
+describe("quality in CSV files", () => {
+  it("records a failed read as #failed, and log notes as notes", () => {
+    const reg = { name: "V", type: "uint16", scale: 1, offset: 0 } as Register;
+    const failed: PointResult = {
+      index: 0,
+      reference: null,
+      value: null,
+      raw: null,
+      error: "timed out",
+      sentinel: null,
+    };
+    const row = recordRow(0, [reg], [0], new Map([[0, failed]]), ",");
+    expect(row.trim().split(",")[1]).toBe("#failed");
+    const log = logCsv(
+      [
+        {
+          time_ms: 0,
+          function: 0,
+          address: 0,
+          count: 0,
+          duration_ms: 0,
+          error: null,
+          note: "V: read failed (timed out)",
+        },
+      ],
+      ",",
+    );
+    expect(log.trim().split("\n")[1]).toMatch(
+      /,,note,,,,V: read failed \(timed out\)$/,
+    );
+  });
+});

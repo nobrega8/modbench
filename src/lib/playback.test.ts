@@ -89,3 +89,29 @@ describe("playback", () => {
     expect(upTo(s, 9)).toBe(s);
   });
 });
+
+describe("recorded quality", () => {
+  it("reads #failed as a failed read, labels as no value, blanks as gaps", async () => {
+    const { parseRecording } = await import("./playback");
+    const rec = parseRecording(
+      [
+        "time,Voltage (V)",
+        "2026-10-14 09:30:00.000,230.1",
+        "2026-10-14 09:30:01.000,#failed",
+        "2026-10-14 09:30:02.000,Unimplemented",
+        "2026-10-14 09:30:03.000,",
+        "2026-10-14 09:30:04.000,0",
+      ].join("\n"),
+    );
+    if ("error" in rec) throw new Error(rec.error);
+    expect(rec.columns[0].samples.map((s) => s.q ?? "ok")).toEqual([
+      "ok",
+      "failed",
+      "unavailable",
+      "ok",
+      "ok",
+    ]);
+    expect(rec.columns[0].samples[4].v).toBe(0);
+    expect(Number.isNaN(rec.columns[0].samples[3].v)).toBe(true);
+  });
+});

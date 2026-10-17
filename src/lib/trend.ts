@@ -7,9 +7,34 @@ export const MAX_SERIES = 8;
 /** Points kept per series; the oldest are dropped first. */
 export const MAX_POINTS = 20_000;
 
+/**
+ * Why a sample has no value: the read failed, or the device sent no usable
+ * value (a sentinel such as "Unimplemented", or nothing to plot). A sample
+ * without `q` is a good reading; NaN without `q` is a gap of unknown cause
+ * (an older recording).
+ */
+export type Quality = "failed" | "unavailable";
+
 export interface Sample {
   t: number;
   v: number;
+  q?: Quality;
+}
+
+/** A sample for one register result: its value, or NaN with the reason. */
+export function sampleOf(r: PointResult, t: number): Sample {
+  if (r.error) return { t, v: NaN, q: "failed" };
+  if (r.sentinel) return { t, v: NaN, q: "unavailable" };
+  const v = plotValue(r.value);
+  return v === null ? { t, v: NaN, q: "unavailable" } : { t, v };
+}
+
+/** The last good sample at or before index `i`, for showing a held value. */
+export function lastGood(samples: Sample[], i: number): Sample | null {
+  for (let k = Math.min(i, samples.length - 1); k >= 0; k--) {
+    if (Number.isFinite(samples[k].v)) return samples[k];
+  }
+  return null;
 }
 
 export interface Series {
@@ -43,7 +68,8 @@ export function freeSlot<T extends { slot: number }>(
 
 /**
  * Adds one cycle's results to the history of the charted registers. Failed
- * reads and sentinels leave a gap (NaN), so the line breaks there. The
+ * reads and sentinels leave a gap (NaN, with the reason), so the line breaks
+ * there instead of dropping to zero. The
  * sample lists are appended in place (they can be long); the returned map is
  * new, so a change is seen.
  */
@@ -57,9 +83,8 @@ export function addCycle(
   for (const { index } of series) {
     const r = results.find((x) => x.index === index);
     if (!r) continue;
-    const v = r.error || r.sentinel ? NaN : (plotValue(r.value) ?? NaN);
     const list = next.get(index) ?? [];
-    list.push({ t, v });
+    list.push(sampleOf(r, t));
     if (list.length > MAX_POINTS) list.splice(0, list.length - MAX_POINTS);
     next.set(index, list);
   }

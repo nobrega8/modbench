@@ -14,6 +14,8 @@ export interface Palette {
   axis: string;
   /** Line colours, slot 1 first. */
   series: string[];
+  /** Marks of failed reads; the second text colour when missing. */
+  bad?: string;
 }
 
 export interface LegendItem {
@@ -77,6 +79,13 @@ export function classAttrs(
   if (has("axis")) return { stroke: p.axis, "stroke-width": "1" };
   if (has("tick"))
     return { fill: p.text3, "font-family": MONO, "font-size": "11" };
+  if (has("mark"))
+    return {
+      fill: "none",
+      stroke: has("failed") ? (p.bad ?? p.text2) : p.text3,
+      "stroke-width": "1.5",
+      "stroke-linecap": "round",
+    };
   if (has("line"))
     return {
       fill: "none",

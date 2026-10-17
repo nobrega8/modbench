@@ -43,8 +43,14 @@
     min-height: 0;
   }
 
+  .step:not(.grow) {
+    flex-shrink: 0;
+  }
+
   .step.grow {
     flex: 1;
+    /* Room for the results in a short window: the page scrolls instead */
+    min-height: 440px;
   }
 
   .rail {

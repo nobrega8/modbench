@@ -35,15 +35,17 @@ export function logCsv(entries: TrafficEntry[], sep: Separator): string {
     ),
     ...entries.map((t) =>
       csvRow(
-        [
-          stamp(t.time_ms),
-          t.function,
-          FUNCTION_NAME[t.function] ?? "",
-          t.address,
-          t.count,
-          t.duration_ms.toFixed(1),
-          t.error ?? "OK",
-        ],
+        t.note
+          ? [stamp(t.time_ms), "", "note", "", "", "", t.note]
+          : [
+              stamp(t.time_ms),
+              t.function,
+              FUNCTION_NAME[t.function] ?? "",
+              t.address,
+              t.count,
+              t.duration_ms.toFixed(1),
+              t.error ?? "OK",
+            ],
         sep,
       ),
     ),
@@ -104,6 +106,19 @@ export function recordHeader(registers: Register[], sep: Separator): string {
   );
 }
 
+/**
+ * A recorded cell: the value; `#failed` when the read failed, so a failure
+ * is never mistaken for a value or for a register that was not read; the
+ * sentinel label for a reserved value.
+ */
+export function recordCell(reg: Register, r: PointResult | undefined): string {
+  if (r?.error) return FAILED_CELL;
+  return cellText(reg, r);
+}
+
+/** What a recording holds for a failed read. Older readers see a gap. */
+export const FAILED_CELL = "#failed";
+
 /** One recorded cycle, in the column order of `indexes`. */
 export function recordRow(
   time_ms: number,
@@ -116,7 +131,7 @@ export function recordRow(
     csvRow(
       [
         stamp(time_ms),
-        ...indexes.map((i) => cellText(registers[i], results.get(i))),
+        ...indexes.map((i) => recordCell(registers[i], results.get(i))),
       ],
       sep,
     ) + "\n"

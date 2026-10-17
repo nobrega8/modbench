@@ -248,6 +248,8 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    /* A short window scrolls rather than squeezing the values away */
+    overflow-y: auto;
   }
 
   .page {
