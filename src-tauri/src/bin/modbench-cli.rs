@@ -232,6 +232,11 @@ struct Conn {
     /// map's); longer reads are split
     #[arg(long)]
     max_regs: Option<u16>,
+    /// Local IP address to send from over TCP or UDP, to pick the network
+    /// interface (default: the system's routing)
+    #[arg(long)]
+    #[serde(default)]
+    source: Option<String>,
 }
 
 fn default_timeout() -> u64 {
@@ -310,6 +315,7 @@ impl Conn {
             transport,
             unit_id: self.unit.or(meta.and_then(|m| m.unit_id)).unwrap_or(1),
             timeout_ms: self.timeout,
+            local_address: self.source.clone(),
         })
     }
 

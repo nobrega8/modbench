@@ -7,6 +7,7 @@
   import { settings } from "#lib/settings.svelte.ts";
   import ExportCsv from "../ExportCsv.svelte";
   import IntInput from "../IntInput.svelte";
+  import InterfaceSelect from "../InterfaceSelect.svelte";
 
   const progress = $derived(
     scan.progress ? scan.progress.done / Math.max(1, scan.progress.total) : 0,
@@ -106,6 +107,7 @@
       onchange={(n) => (scan.timeoutMs = n)}
     />
   </label>
+  <InterfaceSelect disabled={scan.running} />
   <label class="check" title="Read vendor and product of the devices found">
     <input
       type="checkbox"

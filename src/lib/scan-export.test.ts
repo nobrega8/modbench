@@ -107,6 +107,7 @@ describe("scan exports", () => {
         timeout_ms: 150,
         identify: false,
         retries: 0,
+        local_address: null,
       },
       { done: 3, total: 3 },
       ",",
@@ -114,6 +115,7 @@ describe("scan exports", () => {
     );
     expect(text).toContain('addresses,"10.0.0.0/30, 10.0.0.9"');
     expect(text).toContain("no connection,2");
+    expect(text).toContain("send from,automatic");
     expect(text).toContain(
       '10.0.0.5,502,1,port open,150.0,"timed out, ""late""",',
     );

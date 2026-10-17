@@ -3,6 +3,7 @@
   import { fieldIn, slidePill } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
   import StepCard from "./StepCard.svelte";
+  import InterfaceSelect from "./InterfaceSelect.svelte";
   import Select from "./Select.svelte";
 
   const baudrates = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
@@ -182,6 +183,7 @@
           disabled={locked}
         />
       </label>
+      <InterfaceSelect disabled={locked} />
     {/if}
     <label class="field" title="Pause between two requests">
       <span>Delay (ms)</span>

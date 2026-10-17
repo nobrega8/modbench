@@ -2,6 +2,7 @@
 // pages are shown.
 
 import { api, errorText } from "./api";
+import { bench } from "./state.svelte";
 import type { NetHit, NetProgress, NetScan } from "./types";
 
 /** Orders hits by address, numerically. */
@@ -56,6 +57,8 @@ class NetScanner {
       timeout_ms: this.timeoutMs,
       identify: this.identify,
       retries: this.retries,
+      // The interface chosen for the connection of step 1
+      local_address: bench.localAddress.trim() || null,
     };
     this.running = true;
     this.error = null;

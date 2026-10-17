@@ -127,6 +127,7 @@ const CONNECTION_FIELDS = [
   "transport",
   "host",
   "tcpPort",
+  "localAddress",
   "serialPort",
   "framing",
   "baudrate",
@@ -153,6 +154,9 @@ class Bench {
   transport = $state<TransportKind>("tcp");
   host = $state("127.0.0.1");
   tcpPort = $state(502);
+  /** Local address to send from over TCP/UDP, to pick the network
+   * interface; empty for the system's routing. */
+  localAddress = $state("");
   serialPort = $state("");
   framing = $state<Framing>("rtu");
   baudrate = $state(9600);
@@ -395,7 +399,14 @@ This writes to the device.`,
             stop_bits: this.stopBits,
           }
         : { kind: this.transport, host: this.host.trim(), port: this.tcpPort };
-    return { transport, unit_id: this.unitId, timeout_ms: this.timeoutMs };
+    const config: ConnectionConfig = {
+      transport,
+      unit_id: this.unitId,
+      timeout_ms: this.timeoutMs,
+    };
+    if (this.transport !== "rtu" && this.localAddress.trim())
+      config.local_address = this.localAddress.trim();
+    return config;
   }
 
   // ---- maps
@@ -921,7 +932,7 @@ This writes to the device.`,
   get connectionText(): string {
     return this.transport === "rtu"
       ? `${this.serialPort} · ${this.framing === "ascii" ? "ASCII " : ""}${this.baudrate} ${this.dataBits}${this.parity}${this.stopBits}`
-      : `${this.host}:${this.tcpPort}`;
+      : `${this.host}:${this.tcpPort}${this.localAddress.trim() ? ` from ${this.localAddress.trim()}` : ""}`;
   }
 
   onScanProgress(unit: number) {

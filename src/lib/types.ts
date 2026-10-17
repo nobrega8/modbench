@@ -36,6 +36,16 @@ export interface ConnectionConfig {
   transport: Transport;
   unit_id: number;
   timeout_ms: number;
+  /** Local address to send from over TCP/UDP; absent for the system's
+   * routing. */
+  local_address?: string;
+}
+
+/** A network interface of this computer and one of its addresses. */
+export interface LocalInterface {
+  name: string;
+  address: string;
+  loopback: boolean;
 }
 
 export type RawData =
@@ -411,6 +421,8 @@ export interface NetScan {
   identify: boolean;
   /** Attempts after the first when the connection or the answer times out. */
   retries: number;
+  /** Local address to send from; null for the system's routing. */
+  local_address: string | null;
 }
 
 export interface NetHit {

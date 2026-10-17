@@ -169,6 +169,7 @@ export function networkScanCsv(
     [
       ["addresses", scan.targets],
       ["port", scan.port],
+      ["send from", scan.local_address ?? "automatic"],
       ["unit ID", scan.unit],
       ["wait_ms", scan.timeout_ms],
       ["retries", scan.retries],

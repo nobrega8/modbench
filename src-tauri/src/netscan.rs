@@ -38,6 +38,9 @@ pub struct NetScan {
     /// when they time out. 0 is the fast mode.
     #[serde(default)]
     pub retries: u8,
+    /// Local address to send from, to pick the network interface.
+    #[serde(default)]
+    pub local_address: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -196,6 +199,7 @@ async fn probe(host: Ipv4Addr, scan: Arc<NetScan>) -> Option<NetHit> {
         },
         unit_id: scan.unit,
         timeout_ms: scan.timeout_ms.max(1),
+        local_address: scan.local_address.clone(),
     };
     let mut session = None;
     for _ in 0..=scan.retries {

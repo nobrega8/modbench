@@ -106,6 +106,7 @@ fn config(addr: SocketAddr) -> ConnectionConfig {
         },
         unit_id: 1,
         timeout_ms: 1000,
+        local_address: None,
     }
 }
 
@@ -599,4 +600,48 @@ async fn a_lost_link_remembers_why_until_it_works_again() {
     assert_eq!(s.last_failure(), Some(err.to_string().as_str()));
     s.reconnect().await.unwrap();
     assert_eq!(s.last_failure(), None);
+}
+
+#[tokio::test]
+async fn a_chosen_local_address_is_used_and_a_foreign_one_explained() {
+    let addr = start_device(FakeDevice::default()).await;
+    let from = |ip: &str| ConnectionConfig {
+        local_address: Some(ip.into()),
+        ..config(addr)
+    };
+    let mut s = Session::connect(&from("127.0.0.1"), None).await.unwrap();
+    assert!(s.read(Area::Holding, 0, 1).await.is_ok());
+
+    // An address this computer does not have (TEST-NET-3)
+    let err = Session::connect(&from("203.0.113.7"), None)
+        .await
+        .err()
+        .unwrap()
+        .to_string();
+    assert!(err.contains("not an address of this computer"), "{err}");
+
+    let err = Session::connect(&from("::1"), None)
+        .await
+        .err()
+        .unwrap()
+        .to_string();
+    assert!(err.contains("IPv4 and the other IPv6"), "{err}");
+    let err = Session::connect(&from("eth0"), None)
+        .await
+        .err()
+        .unwrap()
+        .to_string();
+    assert!(err.contains("not an IP address"), "{err}");
+    // Empty means the system's routing
+    assert!(Session::connect(&from(" "), None).await.is_ok());
+}
+
+#[test]
+fn local_interfaces_include_the_loopback() {
+    let list = modbench_lib::modbus::local_interfaces().unwrap();
+    assert!(list.iter().any(|i| i.loopback && i.address == "127.0.0.1"));
+    // Interfaces that are not the loopback come first
+    if let Some(first_loopback) = list.iter().position(|i| i.loopback) {
+        assert!(list[first_loopback..].iter().all(|i| i.loopback));
+    }
 }

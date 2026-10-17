@@ -36,12 +36,13 @@ impl std::fmt::Debug for UdpStream {
 impl UdpStream {
     /// Sends to and receives from `peer` only. A request is sent up to
     /// [`RESENDS`] more times within `timeout`.
-    pub async fn connect(peer: std::net::SocketAddr, timeout: Duration) -> io::Result<Self> {
-        let local: std::net::SocketAddr = if peer.is_ipv4() {
-            ([0, 0, 0, 0], 0).into()
-        } else {
-            (std::net::Ipv6Addr::UNSPECIFIED, 0).into()
-        };
+    /// Opens a socket bound to `local` (port 0 for any) that talks only to
+    /// `peer`.
+    pub async fn connect(
+        peer: std::net::SocketAddr,
+        local: std::net::SocketAddr,
+        timeout: Duration,
+    ) -> io::Result<Self> {
         let socket = UdpSocket::bind(local).await?;
         socket.connect(peer).await?;
         Ok(Self {
@@ -123,9 +124,10 @@ mod tests {
     async fn a_lost_answer_is_asked_for_again() {
         let server = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let addr = server.local_addr().unwrap();
-        let mut stream = UdpStream::connect(addr, Duration::from_millis(300))
-            .await
-            .unwrap();
+        let mut stream =
+            UdpStream::connect(addr, ([0, 0, 0, 0], 0).into(), Duration::from_millis(300))
+                .await
+                .unwrap();
         stream.write_all(b"ask").await.unwrap();
         let mut buf = [0u8; 16];
         let mut got = [0u8; 16];

@@ -693,6 +693,7 @@ mod tests {
             },
             unit_id: unit,
             timeout_ms: 300,
+            local_address: None,
         };
         Session::connect(&config, None).await.unwrap()
     }
@@ -765,6 +766,7 @@ mod tests {
                 transport,
                 unit_id: 1,
                 timeout_ms: 300,
+                local_address: None,
             };
             let mut s = Session::connect(&config, None).await.unwrap();
             let checks = s.check_functions(0, false).await.unwrap();
@@ -866,6 +868,7 @@ mod tests {
             timeout_ms: 200,
             identify: true,
             retries: 0,
+            local_address: None,
         };
 
         let seen = std::sync::Mutex::new(Vec::new());
@@ -947,6 +950,7 @@ mod tests {
                 timeout_ms: 80,
                 identify: false,
                 retries,
+                local_address: None,
             };
             let hits = scan(&job, &cancel, |_| {}, |_| {}).await.unwrap();
             assert_eq!(hits[0].status, HostStatus::TcpOnly);
@@ -1191,6 +1195,7 @@ mod tests {
             },
             unit_id: unit,
             timeout_ms: 300,
+            local_address: None,
         };
         let mut s = Session::connect(&config(1), None).await.unwrap();
         assert_eq!(
@@ -1245,6 +1250,7 @@ mod tests {
                     },
                     unit_id: unit,
                     timeout_ms: 300,
+                    local_address: None,
                 }
             };
             let mut s = Session::connect(&config(1), None).await.unwrap();
