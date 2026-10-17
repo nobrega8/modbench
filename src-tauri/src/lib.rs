@@ -9,6 +9,7 @@ pub mod library;
 pub mod mbmap;
 mod mbmap_v2;
 pub mod modbus;
+pub mod netscan;
 pub mod online;
 pub mod planner;
 pub mod poller;
@@ -108,6 +109,7 @@ pub fn run() {
             commands::scan_units,
             commands::scan_serial,
             commands::cancel_scan,
+            commands::scan_network,
             commands::startup_file,
             commands::library_folder,
             commands::library_list,

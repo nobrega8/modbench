@@ -845,6 +845,78 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_network_scan_tells_modbus_devices_from_open_ports() {
+        use crate::netscan::{HostStatus, NetScan, scan};
+        let device = Device::new(Some(1), Memory::from_map(&map(), true));
+        let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
+        // A port that accepts connections but never answers
+        let silent = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let silent_port = silent.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            let mut kept = Vec::new();
+            while let Ok((stream, _)) = silent.accept().await {
+                kept.push(stream);
+            }
+        });
+        let cancel = AtomicBool::new(false);
+        let ask = |port: u16| NetScan {
+            targets: "127.0.0.1".into(),
+            port,
+            unit: 1,
+            timeout_ms: 200,
+            identify: true,
+        };
+
+        let seen = std::sync::Mutex::new(Vec::new());
+        let hits = scan(
+            &ask(sim.port().unwrap()),
+            &cancel,
+            |h| seen.lock().unwrap().push(h.ip.clone()),
+            |_| {},
+        )
+        .await
+        .unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].status, HostStatus::Modbus);
+        assert_eq!(hits[0].response, "responds");
+        assert!(hits[0].identity.is_some());
+        assert_eq!(*seen.lock().unwrap(), ["127.0.0.1"]);
+
+        let hits = scan(&ask(silent_port), &cancel, |_| {}, |_| {})
+            .await
+            .unwrap();
+        assert_eq!(hits[0].status, HostStatus::TcpOnly);
+        assert!(
+            hits[0].response.contains("timed out"),
+            "{}",
+            hits[0].response
+        );
+
+        // Nothing listens on a closed port: no result
+        let closed = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let closed_port = closed.local_addr().unwrap().port();
+        drop(closed);
+        let progress = std::sync::Mutex::new(Vec::new());
+        let hits = scan(
+            &ask(closed_port),
+            &cancel,
+            |_| {},
+            |p| progress.lock().unwrap().push((p.done, p.total)),
+        )
+        .await
+        .unwrap();
+        assert!(hits.is_empty());
+        assert_eq!(*progress.lock().unwrap(), [(0, 1), (1, 1)]);
+
+        // A cancelled scan stops and keeps what it found
+        cancel.store(true, Ordering::Relaxed);
+        let hits = scan(&ask(sim.port().unwrap()), &cancel, |_| {}, |_| {})
+            .await
+            .unwrap();
+        assert!(hits.is_empty());
+    }
+
+    #[tokio::test]
     async fn exceptions_name_the_code_and_the_request() {
         let device = Device::new(Some(1), Memory::from_map(&map(), true));
         let sim = start(tcp(), devices(vec![device]), None).await.unwrap();

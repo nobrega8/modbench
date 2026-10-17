@@ -400,3 +400,30 @@ export interface ScanHit {
   unit: number;
   response: string;
 }
+
+/** A Modbus TCP scan of a range of addresses (netscan.rs). */
+export interface NetScan {
+  /** 192.168.1.0/24, 192.168.1.10-50, or addresses separated by commas. */
+  targets: string;
+  port: number;
+  unit: number;
+  timeout_ms: number;
+  identify: boolean;
+}
+
+export interface NetHit {
+  ip: string;
+  port: number;
+  unit: number;
+  /** modbus: it answered; tcp_only: the port opened but nothing answered. */
+  status: "modbus" | "tcp_only";
+  response_ms: number;
+  response: string;
+  identity: string | null;
+}
+
+export interface NetProgress {
+  done: number;
+  total: number;
+  found: number;
+}

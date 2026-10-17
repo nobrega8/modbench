@@ -14,6 +14,8 @@ import type {
   Generator,
   ImportResult,
   LibraryEntry,
+  NetHit,
+  NetScan,
   OnlineEntry,
   Parsed,
   PollCycle,
@@ -102,6 +104,7 @@ export const api = {
   scanSerial: (scan: SerialScan) =>
     invoke<SerialHit[]>("scan_serial", { scan }),
   cancelScan: () => invoke<void>("cancel_scan"),
+  scanNetwork: (scan: NetScan) => invoke<NetHit[]>("scan_network", { scan }),
   readText: (path: string) => invoke<string>("read_text", { path }),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),
