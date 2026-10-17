@@ -59,10 +59,10 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
           PLATFORMS: ${{ inputs.platforms || 'all' }}
           SUMMARY: ${{ inputs.summary }}
-          DOWNLOAD: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux, `.dmg` for macOS (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
+          DOWNLOAD: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux (`amd64`/`x86_64` for PCs, `arm64`/`aarch64` for the Raspberry Pi and other 64-bit ARM boards), `.dmg` for macOS (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
           DOWNLOAD_MACOS: "Download the `.dmg` (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
           DOWNLOAD_WINDOWS: "Download the `-setup.exe` or the `.msi`. Installed copies update themselves from here."
-          DOWNLOAD_LINUX: "Download the `.AppImage` or the `.deb`. Installed copies update themselves from here."
+          DOWNLOAD_LINUX: "Download the `.AppImage` or the `.deb` (`amd64`/`x86_64` for PCs, `arm64`/`aarch64` for 64-bit ARM). Installed copies update themselves from here."
         run: |
           tag="$TAG"
           line=$(echo "${tag#v}" | cut -d. -f1,2)
@@ -82,7 +82,9 @@ jobs:
           if [ -z "$summary" ]; then
             summary=$(sed -n 's/^[*-] \(.*\)$/\1/p' <<<"$changes" | sed -E 's/ by @[^ ]+ in [^ ]+$//' | paste -sd'\t' | sed 's/\t/ · /g')
           fi
-          all='[{"platform":"windows","os":"windows-latest"},{"platform":"linux","os":"ubuntu-22.04"},{"platform":"macos","os":"macos-latest","args":"--target universal-apple-darwin"}]'
+          # Linux is built twice: x86-64, and arm64 for the Raspberry Pi and
+          # other 64-bit ARM boards (GitHub's arm64 runner, same Ubuntu)
+          all='[{"platform":"windows","os":"windows-latest"},{"platform":"linux","os":"ubuntu-22.04"},{"platform":"linux","os":"ubuntu-22.04-arm"},{"platform":"macos","os":"macos-latest","args":"--target universal-apple-darwin"}]'
           matrix=$(jq -c --arg p "$PLATFORMS" 'map(select($p == "all" or .platform == $p))' <<<"$all")
           download="$DOWNLOAD"
           if [ "$PLATFORMS" != all ]; then

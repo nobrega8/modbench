@@ -236,11 +236,12 @@
           </div>
         </div>
         <p class="sub">
-          Install with APT (Debian, Ubuntu); updates then come with
+          Install with APT (Debian, Ubuntu, Raspberry Pi OS;
+          <code>amd64</code> and <code>arm64</code>); updates then come with
           <code>apt upgrade</code>:
         </p>
         <pre><code>curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
+echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
 sudo apt update &amp;&amp; sudo apt install modbench</code></pre>
       </section>
     </main>
