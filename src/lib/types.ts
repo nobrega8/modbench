@@ -349,7 +349,7 @@ export interface LibraryEntry {
   model: string;
   description: string | null;
   vendor_website: string | null;
-  /** x_status of the map: "verified", "unverified" or "unofficial". */
+  /** x_status of the map: "verified", "official" or "unofficial" (older maps say "unverified" for "official"). */
   status: string | null;
   registers: number;
   warnings: number;
@@ -363,7 +363,7 @@ export interface OnlineEntry {
   model: string;
   description: string | null;
   vendor_website: string | null;
-  /** x_status of the map: "verified", "unverified" or "unofficial". */
+  /** x_status of the map: "verified", "official" or "unofficial" (older maps say "unverified" for "official"). */
   status?: string | null;
   registers: number;
 }

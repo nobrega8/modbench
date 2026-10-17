@@ -30,6 +30,7 @@
   import ComputedForm from "./ComputedForm.svelte";
   import { formulaOf } from "#lib/computed.ts";
   import Select from "./Select.svelte";
+  import { mapStatus } from "./MapStatus.svelte";
   import SnapshotBar from "./SnapshotBar.svelte";
   import { differs, shownText, snapText } from "#lib/snapshots.ts";
 
@@ -68,8 +69,8 @@
 
   const meta = $derived(open.map.meta);
   /** The library's x_status of the map: how far it can be trusted. */
-  const mapStatus = $derived(
-    meta.extra.find(([k]) => k === "x_status")?.[1] ?? null,
+  const status = $derived(
+    mapStatus(meta.extra.find(([k]) => k === "x_status")?.[1]),
   );
   const alarms = $derived(byIndex(bench.alarms, open.map.registers));
   /** Registers whose value is outside their alarm limits right now. */
@@ -360,13 +361,13 @@
         >{meta.description}</span
       >{/if}
   </div>
-  {#if mapStatus === "unverified"}
+  {#if status === "official"}
     <span
       class="refs"
       title="Written from the manufacturer's documentation, but not tested on a device yet. Check a value on the device before relying on the rest."
-      >Unverified</span
+      >Official</span
     >
-  {:else if mapStatus === "unofficial"}
+  {:else if status === "unofficial"}
     <span
       class="refs bad"
       title="Converted from another catalogue and not checked against the manufacturer's documentation. Check a value on the device before relying on the rest."

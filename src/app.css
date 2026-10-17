@@ -151,7 +151,7 @@
   --ok: rgb(var(--rx-rgb));
   --live: rgb(var(--rx-rgb));
   --status-verified: var(--rx);
-  --status-unverified: var(--tx);
+  --status-official: var(--tx);
   --bad: rgb(var(--alert-rgb));
   --warn: rgb(var(--alert-rgb));
   --lcd: rgb(var(--surface-2-rgb));
