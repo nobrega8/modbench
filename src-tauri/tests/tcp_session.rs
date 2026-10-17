@@ -141,7 +141,7 @@ async fn reads_and_writes_registers() {
         s.read(Area::Holding, 20, 3).await.unwrap(),
         RawData::Registers(vec![1, 2, 3])
     );
-    s.disconnect().await.unwrap();
+    s.disconnect().await;
 }
 
 #[tokio::test]
@@ -531,4 +531,72 @@ async fn poller_applies_scale_factors_read_in_the_same_cycle() {
     assert!((w - 234.5).abs() < 1e-9);
     assert_eq!(results[1].value, None);
     assert!(results[1].error.as_deref().unwrap().contains("A_SF"));
+}
+
+/// A server that accepts one connection, then stops listening, and says
+/// when it stopped listening and when that connection is closed by the
+/// client.
+async fn one_connection() -> (
+    SocketAddr,
+    tokio::sync::oneshot::Receiver<()>,
+    tokio::sync::oneshot::Receiver<()>,
+) {
+    use tokio::io::AsyncReadExt;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let (deaf, on_deaf) = tokio::sync::oneshot::channel();
+    let (closed, on_closed) = tokio::sync::oneshot::channel();
+    tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        drop(listener);
+        let _ = deaf.send(());
+        let mut buf = [0u8; 64];
+        while stream.read(&mut buf).await.is_ok_and(|n| n > 0) {}
+        let _ = closed.send(());
+    });
+    (addr, on_deaf, on_closed)
+}
+
+async fn closed_soon(on_closed: tokio::sync::oneshot::Receiver<()>) -> bool {
+    tokio::time::timeout(std::time::Duration::from_secs(2), on_closed)
+        .await
+        .is_ok()
+}
+
+#[tokio::test]
+async fn disconnect_releases_the_link() {
+    let (addr, _, on_closed) = one_connection().await;
+    let s = Session::connect(&config(addr), None).await.unwrap();
+    s.disconnect().await;
+    assert!(closed_soon(on_closed).await);
+}
+
+#[tokio::test]
+async fn a_failed_reconnect_leaves_the_old_link_closed() {
+    let (addr, on_deaf, on_closed) = one_connection().await;
+    let mut s = Session::connect(&config(addr), None).await.unwrap();
+    on_deaf.await.unwrap();
+    // Nobody listens any more: opening again fails...
+    let err = s.reconnect().await.unwrap_err();
+    // ...and the old link was closed before the attempt, so a serial port
+    // would be free to open again.
+    assert!(closed_soon(on_closed).await);
+    assert!(s.link_lost());
+    assert_eq!(s.last_failure(), Some(err.to_string().as_str()));
+    // Requests fail at once instead of using the old link.
+    assert!(matches!(
+        s.read(Area::Holding, 0, 1).await,
+        Err(ModbusError::Io(_))
+    ));
+}
+
+#[tokio::test]
+async fn a_lost_link_remembers_why_until_it_works_again() {
+    let device = FakeDevice::default();
+    let addr = start_flaky_device(device, 1).await;
+    let mut s = Session::connect(&config(addr), None).await.unwrap();
+    let err = s.read(Area::Holding, 2, 1).await.unwrap_err();
+    assert_eq!(s.last_failure(), Some(err.to_string().as_str()));
+    s.reconnect().await.unwrap();
+    assert_eq!(s.last_failure(), None);
 }

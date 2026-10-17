@@ -402,7 +402,7 @@ async fn read_registers(
         .read_chunked(area, address, count, conn.max_regs.unwrap_or(125))
         .await
         .map_err(|e| e.to_string());
-    let _ = session.disconnect().await;
+    session.disconnect().await;
     Ok((Conn::describe(&cfg), data?))
 }
 
@@ -542,7 +542,7 @@ async fn read_map(
         .await
         .map_err(|e| format!("could not connect ({}): {e}", Conn::describe(&cfg)))?;
     let (mut results, _) = poller::poll_once(&mut session, &request).await;
-    let _ = session.disconnect().await;
+    session.disconnect().await;
     results.sort_by_key(|r| r.index);
     let rows = results
         .into_iter()
@@ -808,7 +808,7 @@ async fn read_id(conn: &Conn, level: u8) -> Result<(String, modbus::DeviceIdenti
         .read_device_id(level)
         .await
         .map_err(|e| e.to_string());
-    let _ = session.disconnect().await;
+    session.disconnect().await;
     Ok((Conn::describe(&cfg), id?))
 }
 
@@ -919,7 +919,7 @@ async fn scan(cfg: &ConnectionConfig, from: u8, to: u8) -> Result<Vec<modbus::Sc
             |_| {},
         )
         .await;
-    let _ = session.disconnect().await;
+    session.disconnect().await;
     Ok(hits)
 }
 

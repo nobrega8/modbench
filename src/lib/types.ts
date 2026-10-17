@@ -191,6 +191,9 @@ export type LinkEvent =
       state: "reconnecting";
       attempt: number;
       retry_ms: number;
+      /** The error that showed the link was lost. */
+      cause: string | null;
+      /** Why the last attempt to open it again failed. */
       error: string | null;
     }
   | { state: "restored" };

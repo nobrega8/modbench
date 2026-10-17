@@ -137,10 +137,15 @@
         <span class="live warn"
           ><span class="dot"></span>Reconnecting · {where}</span
         >
-        <span class="sub" title={bench.link.error ?? undefined}
-          >Connection lost. Attempt {bench.link.attempt} in {(
-            bench.link.retry_ms / 1000
-          ).toFixed(1)} s{bench.link.error
+        <span
+          class="sub"
+          title={[bench.link.cause, bench.link.error]
+            .filter(Boolean)
+            .join("\n") || undefined}
+          >Connection lost{bench.link.cause ? ` (${bench.link.cause})` : ""}.
+          Attempt {bench.link.attempt} in {(bench.link.retry_ms / 1000).toFixed(
+            1,
+          )} s{bench.link.error
             ? ` · last error: ${bench.link.error}`
             : ""}</span
         >

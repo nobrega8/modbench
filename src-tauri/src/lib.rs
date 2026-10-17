@@ -156,8 +156,15 @@ pub fn run() {
                 _ => {}
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Stop polling and free the serial port or socket on the way out.
+            if let tauri::RunEvent::Exit = event {
+                let state = app.state::<commands::AppState>();
+                tauri::async_runtime::block_on(state.shut_down());
+            }
+        });
 }
 
 #[cfg(test)]
