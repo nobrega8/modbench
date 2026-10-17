@@ -42,7 +42,7 @@ const DEFAULTS: Stored = {
   checkUpdates: true,
   textScale: 1,
   registerLayout: "list",
-  offerDemo: true,
+  offerDemo: false,
 };
 
 /** Smallest and largest text size, as a zoom factor of the whole window. */
@@ -83,8 +83,9 @@ class Settings {
   /** Size of text and controls, 0.5 to 3 (1 = normal). */
   textScale = $state(1);
   registerLayout = $state<RegisterLayout>("list");
-  /** Offer the demo when Modbench starts for the first time. */
-  offerDemo = $state(true);
+  /** Offer the demo when Modbench starts for the first time (off unless
+   * turned on in Settings). */
+  offerDemo = $state(false);
 
   constructor() {
     Object.assign(this, load());
