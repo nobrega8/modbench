@@ -164,6 +164,28 @@ function pdu(
     const a = take(2, "Address", (x) => String(word(x, 0)));
     const q = take(2, "Quantity", (x) => String(word(x, 0)));
     if (a && q) summary += ` ${word(a, 0)} × ${word(q, 0)} done`;
+  } else if (fc === 22) {
+    // Same fields both ways: the answer echoes the request
+    const a = take(2, "Address", (x) => String(word(x, 0)));
+    take(2, "AND mask", (x) => `0x${hex(word(x, 0))}`);
+    take(2, "OR mask", (x) => `0x${hex(word(x, 0))}`);
+    if (a)
+      summary += ` ${word(a, 0)}${direction === "response" ? " (echo)" : ""}`;
+  } else if (fc === 23 && direction === "request") {
+    const ra = take(2, "Read address", (x) => String(word(x, 0)));
+    const rn = take(2, "Read quantity", (x) => String(word(x, 0)));
+    const wa = take(2, "Write address", (x) => String(word(x, 0)));
+    const wn = take(2, "Write quantity", (x) => String(word(x, 0)));
+    const n = take(1, "Byte count", (x) => String(x[0]));
+    if (n) dataFields("words", n[0]);
+    if (ra && rn && wa && wn)
+      summary += `: read ${word(ra, 0)} × ${word(rn, 0)}, write ${word(wa, 0)} × ${word(wn, 0)}`;
+  } else if (fc === 23) {
+    const n = take(1, "Byte count", (x) => String(x[0]));
+    if (n) {
+      dataFields("words", n[0]);
+      summary += `: ${n[0] / 2} registers`;
+    }
   } else if (fc === 43) {
     take(1, "MEI type", (x) =>
       x[0] === 14 ? "14 = read device identification" : String(x[0]),

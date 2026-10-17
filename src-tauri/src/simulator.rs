@@ -323,6 +323,20 @@ impl Memory {
                 *w = (*w & and) | (or & !and);
                 Response::MaskWriteRegister(a, and, or)
             }
+            // FC23: the write is done first, then the read (spec 6.17)
+            ReadWriteMultipleRegisters(read, count, write, values) => {
+                if !words(count) || !(1..=121).contains(&values.len()) {
+                    return Err(ExceptionCode::IllegalDataValue);
+                }
+                self.check(Area::Holding, write, values.len())?;
+                self.check(Area::Holding, read, count.into())?;
+                let start = usize::from(write);
+                self.holding[start..start + values.len()].copy_from_slice(&values);
+                let RawData::Registers(back) = self.read(Area::Holding, read, count) else {
+                    unreachable!("register areas hold words");
+                };
+                Response::ReadWriteMultipleRegisters(back)
+            }
             ReadDeviceIdentification(code, _) => {
                 if code == ReadCode::Specific {
                     return Err(ExceptionCode::IllegalDataValue);
@@ -851,7 +865,7 @@ mod tests {
                 (15, Supported),
                 (16, Supported),
                 (22, Supported),
-                (23, NotSupported)
+                (23, Supported)
             ]
         );
         // Every write put back what was there
@@ -1019,6 +1033,65 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn hand_built_requests_and_raw_bytes_reach_the_device() {
+        let device = Device::new(Some(1), Memory::default());
+        let memory = device.memory.clone();
+        let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
+        let mut s = session(sim.port().unwrap(), 1).await;
+
+        // FC22: HR 4 = (0x00FF & 0x0F0F) | (0x3000 & !0x0F0F)
+        memory
+            .lock()
+            .unwrap()
+            .answer(Request::WriteSingleRegister(4, 0x00FF))
+            .unwrap();
+        s.send_pdu(22, vec![0, 4, 0x0F, 0x0F, 0x30, 0x00], false)
+            .await
+            .unwrap();
+        // FC23: write 7, 8 at 10, read 2 from 10
+        s.send_pdu(23, vec![0, 10, 0, 2, 0, 10, 0, 2, 4, 0, 7, 0, 8], false)
+            .await
+            .unwrap();
+        assert_eq!(
+            memory.lock().unwrap().read(Area::Holding, 4, 1),
+            RawData::Registers(vec![0x300F])
+        );
+        assert_eq!(
+            memory.lock().unwrap().read(Area::Holding, 10, 2),
+            RawData::Registers(vec![7, 8])
+        );
+
+        // Read-only mode refuses what may write, not what only reads
+        s.set_read_only(Arc::new(AtomicBool::new(true)));
+        assert!(matches!(
+            s.send_pdu(22, vec![0, 4, 0, 0, 0, 0], false).await,
+            Err(ModbusError::ReadOnly)
+        ));
+        assert!(matches!(
+            s.send_pdu(8, vec![0, 1, 0, 0], false).await,
+            Err(ModbusError::ReadOnly)
+        ));
+        assert!(s.send_pdu(3, vec![0, 10, 0, 1], false).await.is_ok());
+
+        // Raw bytes: a Modbus TCP frame typed by hand, and its answer
+        let config = ConnectionConfig {
+            transport: tcp_to(sim.port().unwrap()),
+            unit_id: 1,
+            timeout_ms: 500,
+            local_address: None,
+        };
+        let seen = std::sync::Mutex::new(Vec::new());
+        let frame = [0, 9, 0, 0, 0, 6, 1, 3, 0, 10, 0, 2];
+        let back = crate::modbus::send_raw(&config, &frame, 500, |d, b| {
+            seen.lock().unwrap().push((d, b.len()))
+        })
+        .await
+        .unwrap();
+        assert_eq!(back, [0, 9, 0, 0, 0, 7, 1, 3, 4, 0, 7, 0, 8]);
+        assert_eq!(seen.lock().unwrap()[0].1, 12);
+    }
+
+    #[tokio::test]
     async fn exceptions_name_the_code_and_the_request() {
         let device = Device::new(Some(1), Memory::from_map(&map(), true));
         let sim = start(tcp(), devices(vec![device]), None).await.unwrap();
@@ -1133,6 +1206,13 @@ mod tests {
         let limit = s.largest_read(Area::Holding, 0).await.unwrap();
         assert_eq!((limit.largest, limit.limit), (125, None));
         assert_eq!(s.largest_read(Area::Coil, 0).await.unwrap().largest, 2000);
+    }
+
+    fn tcp_to(port: u16) -> Transport {
+        Transport::Tcp {
+            host: "127.0.0.1".into(),
+            port,
+        }
     }
 
     fn tcp() -> Transport {

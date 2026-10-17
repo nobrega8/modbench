@@ -10,6 +10,7 @@
   import DeviceIdTool from "./tools/DeviceIdTool.svelte";
   import FrameDecoderTool from "./tools/FrameDecoderTool.svelte";
   import NetworkScanTool from "./tools/NetworkScanTool.svelte";
+  import SendRequestTool from "./tools/SendRequestTool.svelte";
   import SimulatorTool from "./tools/SimulatorTool.svelte";
   import StatsTool from "./tools/StatsTool.svelte";
   import TrendPlayerTool from "./tools/TrendPlayerTool.svelte";
@@ -71,6 +72,11 @@
       title: "Test",
       tools: [
         {
+          id: "request",
+          name: "Send request",
+          hint: "Any function code, or raw bytes",
+        },
+        {
           id: "stats",
           name: "Statistics",
           hint: "Failures by cause and function",
@@ -128,6 +134,8 @@
         <AddressScanTool />
       {:else if tool === "network"}
         <NetworkScanTool />
+      {:else if tool === "request"}
+        <SendRequestTool />
       {:else if tool === "decoder"}
         <DataDecoderTool />
       {:else if tool === "frames"}

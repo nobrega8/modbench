@@ -114,6 +114,8 @@ pub fn run() {
             commands::local_interfaces,
             commands::demo_map,
             commands::find_maps,
+            commands::send_pdu,
+            commands::send_raw,
             commands::startup_file,
             commands::library_folder,
             commands::library_list,

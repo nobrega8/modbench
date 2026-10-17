@@ -462,6 +462,77 @@ pub async fn find_maps(
     Ok(crate::mapfind::find_maps(session, &maps).await)
 }
 
+/// Sends a request built by hand (function code and data) over the open
+/// connection. The frames show on the Raw data tab and in the log.
+#[tauri::command]
+pub async fn send_pdu(
+    state: State<'_, AppState>,
+    function: u8,
+    data: Vec<u8>,
+    broadcast: bool,
+) -> Result<(), ModbusError> {
+    let mut slot = state.session.lock().await;
+    slot.as_mut()
+        .ok_or(ModbusError::NotConnected)?
+        .send_pdu(function, data, broadcast)
+        .await
+}
+
+/// Sends bytes exactly as given, without framing, over a link of its own
+/// (the open connection is closed first: a serial port can only be opened
+/// once), and returns what comes back within `wait_ms`. Refused in
+/// read-only mode: raw bytes can do anything.
+#[tauri::command]
+pub async fn send_raw(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    config: ConnectionConfig,
+    bytes: Vec<u8>,
+    wait_ms: u64,
+) -> Result<Vec<u8>, ModbusError> {
+    if state.read_only.load(std::sync::atomic::Ordering::Relaxed) {
+        return Err(ModbusError::ReadOnly);
+    }
+    state.stop_poller();
+    if let Some(old) = state.session.lock().await.take() {
+        old.disconnect().await;
+    }
+    let emit = |direction, bytes: &[u8]| {
+        let _ = app.emit(
+            "raw",
+            RawChunk {
+                time_ms: now_ms(),
+                direction,
+                bytes: bytes.to_vec(),
+            },
+        );
+    };
+    let started = std::time::Instant::now();
+    let answer = modbus::send_raw(&config, &bytes, wait_ms, emit).await;
+    let note = match &answer {
+        Ok(back) => format!(
+            "Raw bytes: {} sent, {} received in {} ms",
+            bytes.len(),
+            back.len(),
+            started.elapsed().as_millis()
+        ),
+        Err(e) => format!("Raw bytes: {} sent, failed: {e}", bytes.len()),
+    };
+    let _ = app.emit(
+        "traffic",
+        modbus::TrafficEntry {
+            time_ms: now_ms(),
+            function: 0,
+            address: 0,
+            count: 0,
+            duration_ms: started.elapsed().as_secs_f64() * 1000.0,
+            error: None,
+            note: Some(note),
+        },
+    );
+    answer
+}
+
 /// The map of the demo's simulated meter, built into the app.
 #[tauri::command]
 pub fn demo_map() -> Parsed {
