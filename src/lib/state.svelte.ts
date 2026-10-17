@@ -23,6 +23,7 @@ import { loadAlarms, saveAlarms, type Alarm } from "./alarms";
 import { isCustom, loadCustom, saveCustom } from "./custom-registers";
 import { recordHeader, recordRow } from "./csv";
 import { qualityNotes } from "./quality";
+import { computeResults, isComputed } from "./computed";
 import { snapMap, snapRead, type Snapshot } from "./snapshots";
 import {
   addRead,
@@ -842,7 +843,12 @@ This writes to the device.`,
     this.readFor = version ? versionText(version) : null;
     const indexes = all
       .map((_, i) => i)
-      .filter((i) => !this.skipped.has(i) && appliesTo(all[i], version));
+      .filter(
+        (i) =>
+          !this.skipped.has(i) &&
+          !isComputed(all[i]) &&
+          appliesTo(all[i], version),
+      );
     const registers = indexes.map((i) => all[i]);
     // Scale factors of read registers are read too, even when switched off.
     const names = new Set(registers.map((r) => r.name));
@@ -1283,7 +1289,10 @@ The values do not change, but a device can still act on a write. Only do this on
 
   // ---- events from the backend
 
-  onPoll(cycle: PollCycle) {
+  onPoll(read: PollCycle) {
+    // Computed values are worked out from what was just read, and join the
+    // cycle like read registers (charts, recordings, alarms)
+    const cycle = this.withComputed(read);
     const regs = this.map?.map.registers;
     if (regs) {
       const notes = qualityNotes(regs, this.mapResults, cycle.results);
@@ -1376,6 +1385,16 @@ The values do not change, but a device can still act on a write. Only do this on
     this.status = { ok: false, text: `Reading stopped: ${reason}` };
     this.running = false;
     this.connected = false;
+  }
+
+  /** A cycle with the results of the map's computed values added. */
+  private withComputed(cycle: PollCycle): PollCycle {
+    const regs = this.map?.map.registers;
+    if (!regs?.some(isComputed)) return cycle;
+    const now = new Map(this.mapResults);
+    for (const r of cycle.results) now.set(r.index, r);
+    const extra = computeResults(regs, now, this.skipped);
+    return { ...cycle, results: [...cycle.results, ...extra] };
   }
 
   /** Adds the app's own lines to the log (not requests: no statistics). */

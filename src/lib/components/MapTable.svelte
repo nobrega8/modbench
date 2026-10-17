@@ -27,6 +27,8 @@
   import { MAX_SERIES } from "#lib/trend.ts";
   import AddressFormat from "./AddressFormat.svelte";
   import CustomRegisterForm from "./CustomRegisterForm.svelte";
+  import ComputedForm from "./ComputedForm.svelte";
+  import { formulaOf } from "#lib/computed.ts";
   import Select from "./Select.svelte";
   import SnapshotBar from "./SnapshotBar.svelte";
   import { differs, shownText, snapText } from "#lib/snapshots.ts";
@@ -46,6 +48,8 @@
   let converting = $state(false);
   /** The form to add a register the map is missing is open. */
   let adding = $state(false);
+  /** The form to add a computed value is open. */
+  let computing = $state(false);
   let convertError = $state<string | null>(null);
 
   async function convert() {
@@ -207,6 +211,8 @@
   }
 
   function typeLabel(reg: Register): string {
+    const formula = formulaOf(reg);
+    if (formula !== null) return `= ${formula}`;
     if (reg.type === "string") return `string[${reg.length}]`;
     if (reg.type === "bool" && reg.bit !== null) return `bit ${reg.bit}`;
     if (reg.bits !== null && reg.bit !== null)
@@ -566,14 +572,16 @@
           </td>
           <td
             class="addr mono"
-            title="{AREA_NAME[reg.area]} {reg.address} on the wire{base
-              ? ` (${reg.address + base} in the manual)`
-              : ''}"
-            ><span class="area">{AREA_TAG[reg.area]}</span>{formatAddress(
-              reg.address,
-              settings.addressFormat,
-              reg.area,
-            )}</td
+            title={formulaOf(reg) !== null
+              ? "Computed on this computer, not read from the device"
+              : `${AREA_NAME[reg.area]} ${reg.address} on the wire${base ? ` (${reg.address + base} in the manual)` : ""}`}
+            >{#if formulaOf(reg) !== null}<span class="area">calc</span
+              >{:else}<span class="area">{AREA_TAG[reg.area]}</span
+              >{formatAddress(
+                reg.address,
+                settings.addressFormat,
+                reg.area,
+              )}{/if}</td
           >
           <td class="name" title={reg.description || undefined}
             >{reg.name}{#if reg.group && !group}<span class="grp"
@@ -749,9 +757,14 @@
         <td colspan={snap ? 9 : 8}>
           {#if adding}
             <CustomRegisterForm {open} onclose={() => (adding = false)} />
+          {:else if computing}
+            <ComputedForm {open} onclose={() => (computing = false)} />
           {:else}
             <button class="btn ghost small" onclick={() => (adding = true)}
               >Add a register the map is missing…</button
+            >
+            <button class="btn ghost small" onclick={() => (computing = true)}
+              >Add a computed value…</button
             >
           {/if}
         </td>
