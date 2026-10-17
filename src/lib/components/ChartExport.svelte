@@ -1,9 +1,12 @@
 <!--
-  Export image… for the Chart tab and the Trend player: saves the charts
-  shown, with their legends, units and time span, as PNG or SVG, in the
-  current theme or always light (see chart-image.ts).
+  Export image… for the Chart tab and the Trend player: copies the charts
+  shown, with their legends, units and time span, to the clipboard, or saves
+  them as PNG or SVG, in the current theme or always light (see
+  chart-image.ts).
 -->
 <script lang="ts">
+  import { Image } from "@tauri-apps/api/image";
+  import { writeImage } from "@tauri-apps/plugin-clipboard-manager";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
   import {
@@ -96,10 +99,10 @@
   }
 
   /** Draws the SVG at twice its size, for sharp text in reports. */
-  async function png(svg: string, width: number, height: number) {
+  async function draw(svg: string, width: number, height: number) {
     const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
     try {
-      const img = new Image();
+      const img = new window.Image();
       img.src = url;
       await img.decode();
       const canvas = document.createElement("canvas");
@@ -108,13 +111,41 @@
       const ctx = canvas.getContext("2d")!;
       ctx.scale(2, 2);
       ctx.drawImage(img, 0, 0, width, height);
-      const blob = await new Promise<Blob | null>((ok) =>
-        canvas.toBlob(ok, "image/png"),
-      );
-      if (!blob) throw new Error("The image could not be drawn.");
-      return new Uint8Array(await blob.arrayBuffer());
+      return { canvas, ctx };
     } finally {
       URL.revokeObjectURL(url);
+    }
+  }
+
+  async function png(svg: string, width: number, height: number) {
+    const { canvas } = await draw(svg, width, height);
+    const blob = await new Promise<Blob | null>((ok) =>
+      canvas.toBlob(ok, "image/png"),
+    );
+    if (!blob) throw new Error("The image could not be drawn.");
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+
+  /** Puts the charts on the clipboard as an image, as the PNG would be. */
+  async function copyImage(light: boolean) {
+    note = null;
+    const shot = image(light);
+    try {
+      const { canvas, ctx } = await draw(shot.svg, shot.width, shot.height);
+      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const picture = await Image.new(
+        new Uint8Array(pixels.data.buffer),
+        canvas.width,
+        canvas.height,
+      );
+      try {
+        await writeImage(picture);
+      } finally {
+        await picture.close().catch(() => {});
+      }
+      note = { ok: true, text: "Copied." };
+    } catch (e) {
+      note = { ok: false, text: `Not copied: ${errorText(e)}` };
     }
   }
 
@@ -139,6 +170,9 @@
 
   function menu(e: MouseEvent) {
     contextMenu.show(e, [
+      { label: "Copy image", action: () => copyImage(false) },
+      { label: "Copy image, light theme", action: () => copyImage(true) },
+      null,
       { label: "PNG…", action: () => exportImage("png", false) },
       { label: "SVG…", action: () => exportImage("svg", false) },
       null,
