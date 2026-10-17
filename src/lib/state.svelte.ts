@@ -124,7 +124,7 @@ const READ_AREA: Record<number, Area> = {
   4: "input",
 };
 const CONNECTION_KEY = "modbench.connection";
-const CONNECTION_FIELDS = [
+export const CONNECTION_FIELDS = [
   "transport",
   "host",
   "tcpPort",
@@ -151,6 +151,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const BACKOFF_MS = [500, 1000, 2000, 5000, 10000];
 
 class Bench {
+  /** The demo runs: nothing it changes is remembered (see demo.svelte.ts). */
+  demo = $state(false);
+
   // Step 1 — connection
   transport = $state<TransportKind>("tcp");
   host = $state("127.0.0.1");
@@ -309,7 +312,7 @@ class Bench {
 
   /** Remembers the connection settings used for the last test. */
   private saveConnection() {
-    if (!settings.rememberConnection) return;
+    if (!settings.rememberConnection || this.demo) return;
     const data: Record<string, unknown> = {};
     for (const field of CONNECTION_FIELDS) data[field] = this[field];
     try {
@@ -417,6 +420,27 @@ This writes to the device.`,
     this.library = await api.libraryList();
   }
 
+  /** Opens a map that is not a file (the demo's), under a made-up path. */
+  openMapObject(map: DeviceMap, path: string) {
+    const entry: OpenMap = { path, map, warnings: [], version: 2 };
+    const existing = this.maps.findIndex((m) => m.path === path);
+    if (existing >= 0) this.maps[existing] = entry;
+    else this.maps.push(entry);
+    this.selectMap(existing >= 0 ? existing : this.maps.length - 1);
+  }
+
+  /** Closes an open map by its path. */
+  closeMapPath(path: string) {
+    const index = this.maps.findIndex((m) => m.path === path);
+    if (index < 0) return;
+    this.maps.splice(index, 1);
+    if (this.activeMap === index) {
+      this.activeMap = null;
+      this.source = "manual";
+    } else if (this.activeMap !== null && this.activeMap > index)
+      this.activeMap--;
+  }
+
   async openMap(path: string) {
     const parsed = await api.openMap(path);
     if (!parsed.map) {
@@ -461,7 +485,7 @@ This writes to the device.`,
     this.activeMap = index;
     this.source = "map";
     const path = this.maps[index]?.path;
-    if (path) {
+    if (path && !this.demo) {
       this.lastMap = path;
       try {
         localStorage.setItem(LAST_MAP_KEY, path);
@@ -520,7 +544,7 @@ This writes to the device.`,
   private persistDevice() {
     const open = this.map;
     const key = this.deviceKey;
-    if (!open || !key || !settings.rememberDevices) return;
+    if (!open || !key || !settings.rememberDevices || this.demo) return;
     const ids = idsOf(this.skipped, open.map.registers);
     saveProfile(key, {
       v: 1,

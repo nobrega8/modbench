@@ -442,6 +442,12 @@ pub async fn open_map(path: String) -> Result<Parsed, ModbusError> {
     Ok(mbmap::parse(&bytes))
 }
 
+/// The map of the demo's simulated meter, built into the app.
+#[tauri::command]
+pub fn demo_map() -> Parsed {
+    mbmap::parse(include_bytes!("demo.mbmap.json"))
+}
+
 /// Writes a map to a file, in format version 2.
 #[tauri::command]
 pub async fn save_map(path: String, map: DeviceMap) -> Result<(), ModbusError> {
@@ -1215,4 +1221,15 @@ pub fn sim_write(
         .map_err(ModbusError::Invalid)?;
     sim_changed(&app);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests_demo {
+    #[test]
+    fn the_demo_map_is_valid() {
+        let parsed = super::demo_map();
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        let map = parsed.map.unwrap();
+        assert!(map.meta.model.contains("simulated"));
+    }
 }

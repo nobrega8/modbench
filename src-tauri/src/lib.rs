@@ -111,6 +111,7 @@ pub fn run() {
             commands::cancel_scan,
             commands::scan_network,
             commands::local_interfaces,
+            commands::demo_map,
             commands::startup_file,
             commands::library_folder,
             commands::library_list,

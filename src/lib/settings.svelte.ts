@@ -23,6 +23,7 @@ interface Stored {
   checkUpdates: boolean;
   textScale: number;
   registerLayout: RegisterLayout;
+  offerDemo: boolean;
 }
 
 const KEY = "modbench.settings";
@@ -41,6 +42,7 @@ const DEFAULTS: Stored = {
   checkUpdates: true,
   textScale: 1,
   registerLayout: "list",
+  offerDemo: true,
 };
 
 /** Smallest and largest text size, as a zoom factor of the whole window. */
@@ -81,6 +83,8 @@ class Settings {
   /** Size of text and controls, 0.5 to 3 (1 = normal). */
   textScale = $state(1);
   registerLayout = $state<RegisterLayout>("list");
+  /** Offer the demo when Modbench starts for the first time. */
+  offerDemo = $state(true);
 
   constructor() {
     Object.assign(this, load());
@@ -102,6 +106,7 @@ class Settings {
       checkUpdates: this.checkUpdates,
       textScale: this.textScale,
       registerLayout: this.registerLayout,
+      offerDemo: this.offerDemo,
     };
     try {
       localStorage.setItem(KEY, JSON.stringify(data));
