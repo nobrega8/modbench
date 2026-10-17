@@ -118,6 +118,35 @@ the map picker:
 order than the map says: \emph{as the map says}, or one of the four orders.
 Use it to check a map whose values look wrong; it is remembered per device.
 
+\section{Computed values}
+\label{sec:computed}
+
+\ui{Add a computed value…} under the registers adds a value worked out from
+others: a name, a unit and a formula, for example power from voltage and
+current, or the difference between two counters:
+
+\begin{lstlisting}
+Voltage_L1 * Current_L1 / 1000
+[Energy import] - [Energy export]
+round(Power / Power_max * 100, 1)
+\end{lstlisting}
+
+A register is named by its name with underscores for spaces and other signs
+(\val{Voltage L1} is \val{Voltage\_L1}), or by its exact name in brackets.
+Formulas take \val{+ - * / \%} and \val{**} (power), comparisons
+(\val{< <= > >= == !=}, which give 1 or 0), \val{\&\& ||}, bit operators
+(\val{\& | \^{} ~ << >>}), hexadecimal and binary numbers, and the functions
+\val{abs}, \val{min}, \val{max}, \val{avg}, \val{round}, \val{floor},
+\val{ceil}, \val{sqrt} and \val{pow}. A formula with a mistake or a name the
+map does not have is refused, saying what is wrong.
+
+A computed value is shown with \ui{calc} instead of an address and its formula
+as its type. It is worked out every cycle from the values just read and can be
+charted, recorded and given alarms like a register. When one of its inputs
+failed, it has no value (a gap) and says which input. Like registers added by
+hand, computed values are kept for the map file on this computer and never
+written into it; \ui{Remove} deletes one.
+
 \section{Exporting and recording}
 
 \begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
