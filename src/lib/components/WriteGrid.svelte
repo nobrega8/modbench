@@ -31,11 +31,7 @@
 </script>
 
 {#if !isWrite}
-  <p class="note">
-    Choose a write command in step 2 (e.g. Write multiple registers) to send
-    these values. Use “Copy data to write values” on the Registers tab to start
-    from what you read.
-  </p>
+  <p class="note">Choose a write command in step 2 to send these values.</p>
 {:else}
   <p class="note">
     {bits

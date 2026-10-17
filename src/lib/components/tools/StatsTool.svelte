@@ -32,11 +32,7 @@
 
 <header class="tool-head">
   <h1>Statistics</h1>
-  <p>
-    Every request sent on the Main page since the last reset, by result and by
-    function code. A pattern points to the cause: timeouts to wiring, baud rate
-    or unit ID; exception 2 to an address the device does not have.
-  </p>
+  <p>Requests since the last reset, by result and function.</p>
 </header>
 
 <div class="row">
@@ -101,10 +97,6 @@
         {/each}
       </tbody>
     </table>
-    <p class="dim note">
-      Times count answers only (also exceptions): a timeout says nothing about
-      how fast the device is.
-    </p>
   </section>
 
   <section>

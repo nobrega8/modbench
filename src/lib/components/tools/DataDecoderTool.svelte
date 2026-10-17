@@ -27,11 +27,7 @@
 
 <header class="tool-head">
   <h1>Data decoder</h1>
-  <p>
-    Type or paste registers to see them as every type at once, in all four byte
-    orders. Useful to find a value's type and byte order before writing a map.
-    Works without a connection.
-  </p>
+  <p>Registers as every type, in all four byte orders.</p>
 </header>
 
 <div class="row">
@@ -78,8 +74,8 @@
 {#if !words}
   <p class="bad">
     {decimal
-      ? "Type whole registers from 0 to 65535 (or −32768 to 32767), separated by spaces."
-      : "Type hex with four digits per register, e.g. 4148 0000 or 41 48 00 00."}
+      ? "Registers 0–65535 (or −32768–32767), separated by spaces."
+      : "Hex, four digits per register, e.g. 4148 0000."}
   </p>
 {:else}
   <table class="data">
@@ -99,9 +95,7 @@
     </tbody>
   </table>
   <p class="dim note">
-    ABCD is the Modbus standard. CDAB swaps the registers, BADC the bytes in
-    each register, DCBA both. 32-bit values use the first two registers, 64-bit
-    the first four.
+    ABCD is standard; CDAB swaps words, BADC bytes, DCBA both.
   </p>
 
   <table class="data">

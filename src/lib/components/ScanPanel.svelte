@@ -162,8 +162,7 @@
         </ul>
       {:else}
         <p class="dim">
-          No unit ID answered. Check the cable, baud rate and parity, or raise
-          the wait.
+          No unit ID answered. Check the cable, baud rate, parity or the wait.
         </p>
       {/if}
     {/if}

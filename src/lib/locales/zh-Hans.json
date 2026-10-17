@@ -62,10 +62,10 @@
   "settings.theme.light": "浅色",
   "settings.theme.dark": "深色",
   "settings.textSize": "文字大小",
-  "settings.textSize.hint": "调小可一次看到更多内容，调大便于远距离阅读。文字和控件一起缩放。",
+  "settings.textSize.hint": "文字和控件一起缩放。",
   "settings.reset": "重置",
   "settings.language": "语言",
-  "settings.language.hint": "目前已翻译：导航、主页的步骤、工具列表和这些设置；其余部分暂时为英文。",
+  "settings.language.hint": "部分已翻译；其余为英文。",
   "settings.language.system": "跟随系统（{language}）",
   "count.registers": {
     "other": "{count} 个寄存器"

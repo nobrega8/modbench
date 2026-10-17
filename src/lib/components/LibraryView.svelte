@@ -12,11 +12,14 @@
   } from "#lib/contextmenu.svelte.ts";
   import MapStatus from "./MapStatus.svelte";
   import OnlineLibrary from "./OnlineLibrary.svelte";
-  import FindMap from "./FindMap.svelte";
+  import Icon from "./Icon.svelte";
+  import MapExplorer from "./MapExplorer.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
   let search = $state("");
-  let confirmDelete = $state<string | null>(null);
+  /** A row asking to confirm a delete or an edit. */
+  let confirm = $state<{ path: string; kind: "delete" | "edit" } | null>(null);
+  let exploring = $state<string | null>(null);
   let message = $state<{ ok: boolean; text: string } | null>(null);
   let busy = $state(false);
   let menuOpen = $state(false);
@@ -104,7 +107,7 @@
   }
 
   async function remove(path: string) {
-    confirmDelete = null;
+    confirm = null;
     try {
       await api.libraryDelete(path);
       await bench.refreshLibrary();
@@ -113,6 +116,26 @@
       message = { ok: false, text: errorText(e) };
     }
   }
+
+  async function edit(path: string) {
+    confirm = null;
+    try {
+      await api.libraryEdit(path);
+      message = {
+        ok: true,
+        text: "Opened in the text editor. Changes show here when you come back.",
+      };
+    } catch (e) {
+      message = { ok: false, text: errorText(e) };
+    }
+  }
+
+  // A map edited outside the app is read again when the window is back.
+  $effect(() => {
+    const focus = () => bench.refreshLibrary().catch(() => {});
+    window.addEventListener("focus", focus);
+    return () => window.removeEventListener("focus", focus);
+  });
 
   async function use(path: string) {
     await bench.openMap(path);
@@ -134,6 +157,11 @@
         hint: bench.running ? "stop first" : undefined,
         action: () => use(e.path),
       },
+      { label: "Explore", action: () => (exploring = e.path) },
+      {
+        label: "Edit…",
+        action: () => (confirm = { path: e.path, kind: "edit" }),
+      },
       {
         label: "Simulate this device",
         disabled: !!e.error,
@@ -153,7 +181,7 @@
       {
         label: "Delete…",
         danger: true,
-        action: () => (confirmDelete = e.path),
+        action: () => (confirm = { path: e.path, kind: "delete" }),
       },
     ];
   }
@@ -163,7 +191,7 @@
   <input
     class="input search"
     type="search"
-    placeholder="Search vendor or model"
+    placeholder="Search"
     bind:value={search}
     aria-label="Search the library"
   />
@@ -173,7 +201,16 @@
       class="btn"
       disabled={busy}
       onclick={() => importPaths([current.path])}
-      >Add {current.map.meta.model} to library</button
+      ><Icon name="plus" />{current.map.meta.model}</button
+    >
+  {/if}
+  {#if bench.libraryFolder}
+    <button
+      class="btn icon"
+      title="Open the library folder"
+      aria-label="Open the library folder"
+      onclick={() => api.libraryOpenFolder().catch(() => {})}
+      ><Icon name="folder" /></button
     >
   {/if}
   <div class="menu-wrap" bind:this={menu}>
@@ -183,7 +220,7 @@
       aria-haspopup="menu"
       aria-expanded={menuOpen}
       onclick={() => (menuOpen = !menuOpen)}
-      >Import maps
+      >Import
       <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg
       ></button
     >
@@ -191,7 +228,6 @@
       <div class="menu" role="menu" in:popIn out:popOut>
         <button role="menuitem" onclick={chooseFiles}>
           <span class="item">From a file…</span>
-          <span class="sub">A <code>.mbmap</code> file on this computer</span>
         </button>
         <button
           role="menuitem"
@@ -201,14 +237,13 @@
           }}
         >
           <span class="item">From the online library…</span>
-          <span class="sub">Maps shared on GitHub by other users</span>
         </button>
       </div>
     {/if}
   </div>
 </div>
 
-<FindMap />
+<MapExplorer bind:path={exploring} />
 
 <OnlineLibrary
   bind:open={onlineOpen}
@@ -264,22 +299,52 @@
           </td>
           <td class="num">{e.error ? "" : e.registers}</td>
           <td class="act">
-            {#if confirmDelete === e.path}
-              <span class="ask">Delete this map?</span>
-              <button class="btn small danger" onclick={() => remove(e.path)}
-                >Delete</button
+            {#if confirm?.path === e.path}
+              <span class="ask"
+                >{confirm.kind === "delete"
+                  ? "Delete this map?"
+                  : "Edits the library's copy of this map."}</span
               >
-              <button class="btn small" onclick={() => (confirmDelete = null)}
-                >Keep</button
+              {#if confirm.kind === "delete"}
+                <button class="btn small danger" onclick={() => remove(e.path)}
+                  >Delete</button
+                >
+              {:else}
+                <button class="btn small accent" onclick={() => edit(e.path)}
+                  >Edit</button
+                >
+              {/if}
+              <button class="btn small" onclick={() => (confirm = null)}
+                >Cancel</button
               >
             {:else}
               <button
                 class="btn small accent"
                 disabled={!!e.error || bench.running}
+                title={bench.running ? "Stop the test first" : undefined}
                 onclick={() => use(e.path)}>Use</button
               >
-              <button class="btn small" onclick={() => (confirmDelete = e.path)}
-                >Delete…</button
+              <button
+                class="btn small icon ghost"
+                title="Explore"
+                aria-label="Explore {e.model}"
+                disabled={!!e.error}
+                onclick={() => (exploring = e.path)}
+                ><Icon name="explore" /></button
+              >
+              <button
+                class="btn small icon ghost"
+                title="Edit"
+                aria-label="Edit {e.model}"
+                onclick={() => (confirm = { path: e.path, kind: "edit" })}
+                ><Icon name="edit" /></button
+              >
+              <button
+                class="btn small icon ghost del"
+                title="Delete"
+                aria-label="Delete {e.model}"
+                onclick={() => (confirm = { path: e.path, kind: "delete" })}
+                ><Icon name="trash" /></button
               >
             {/if}
           </td>
@@ -290,8 +355,7 @@
             {#if bench.library.length}
               No maps match “{search}”.
             {:else}
-              The library is empty. Import <code>.mbmap</code> files to keep your
-              device maps here, ready for step 2.
+              No maps yet. Import some to use them in step 2.
             {/if}
           </td>
         </tr>
@@ -299,17 +363,6 @@
     </tbody>
   </table>
 </div>
-
-{#if bench.libraryFolder}
-  <div class="folder">
-    <button
-      class="btn"
-      title={bench.libraryFolder}
-      onclick={() => api.libraryOpenFolder().catch(() => {})}
-      >Open folder</button
-    >
-  </div>
-{/if}
 
 <style>
   .toolbar {
@@ -346,7 +399,7 @@
     right: 0;
     top: calc(100% + 6px);
     z-index: 10;
-    width: 280px;
+    width: 220px;
     padding: 5px;
     border-radius: 12px;
     background: var(--card);
@@ -375,11 +428,6 @@
 
   .menu .item {
     font-weight: 500;
-  }
-
-  .menu .sub {
-    font-size: 12px;
-    color: var(--text-3);
   }
 
   .vendor {
@@ -479,7 +527,16 @@
   }
 
   .act .btn + .btn {
-    margin-left: 4px;
+    margin-left: 2px;
+  }
+
+  .act .icon {
+    width: 26px;
+    vertical-align: middle;
+  }
+
+  .act .del:hover:not(:disabled) {
+    color: rgb(var(--alert-rgb));
   }
 
   .ask {
@@ -496,14 +553,5 @@
   .empty {
     color: var(--text-2);
     padding: 16px 10px;
-  }
-
-  .folder {
-    margin: 8px 0 0;
-  }
-
-  code {
-    font-family: var(--mono);
-    font-size: 12px;
   }
 </style>

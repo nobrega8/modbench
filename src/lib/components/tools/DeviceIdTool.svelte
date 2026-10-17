@@ -127,11 +127,7 @@
 
 <header class="tool-head">
   <h1>Identify the device</h1>
-  <p>
-    Asks the device for its vendor, product code and revision with Read Device
-    Identification (FC43). Uses the connection of step 1 on the Main page:
-    {where}. Reads only.
-  </p>
+  <p>Vendor, product and revision via FC43 · {where}. Read only.</p>
 </header>
 
 <div class="row">
@@ -178,20 +174,15 @@
     Conformity 0x{hex(result.conformity, 2)}: {conformity(result.conformity)}.
   </p>
 {:else}
-  <p class="empty">
-    Many devices answer with their name and firmware version. Devices that do
-    not support it answer "illegal function".
-  </p>
+  <p class="empty">Devices without FC43 answer "illegal function".</p>
 {/if}
 
 <section class="functions">
   <header class="tool-head">
     <h2>Function codes</h2>
     <p>
-      Sends one request per function at an address and shows how the device
-      answers: "illegal function" means it does not have the function; another
-      exception means it has it but refused this request, for example because it
-      has no such address. Reads only, unless write functions are allowed.
+      "Illegal function": not supported. Any other answer: supported. Read only
+      unless writes are allowed.
     </p>
   </header>
   <div class="row">
@@ -251,21 +242,15 @@
       </tbody>
     </table>
     {#if bench.transport !== "rtu"}
-      <p class="dim">
-        Functions for serial lines only often answer "illegal function" over
-        TCP, also on devices that have them on their RS-485 port.
-      </p>
+      <p class="dim">Serial-only functions often fail over TCP.</p>
     {/if}
   {/if}
 
   <header class="tool-head">
     <h2>Largest read</h2>
     <p>
-      Finds how many registers or bits the device returns in one read from the
-      address above, by halving: up to 125 registers or 2000 bits. When one more
-      fails with "illegal data value", that is the device's limit: set it as Max
-      registers on the Main page. "Illegal data address" means the area has a
-      gap there instead.
+      Most registers or bits in one read from the address above. Use it as Max
+      registers in step 1.
     </p>
   </header>
   <div class="row">

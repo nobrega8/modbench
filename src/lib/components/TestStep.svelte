@@ -188,10 +188,7 @@
           {#if bench.map}
             {#key bench.map.path}<MapTable open={bench.map} />{/key}
           {:else}
-            <p class="empty">
-              Open a <code>.mbmap</code> file in step 2 to see the device's registers
-              by name, with types, units and scaling.
-            </p>
+            <p class="empty">Open a device map in step 2.</p>
           {/if}
         {:else if bench.tab === "chart"}
           {#if bench.source === "manual"}
@@ -206,8 +203,7 @@
         {:else if bench.tab === "write"}
           {#if settings.readOnly}
             <p class="ro-note" role="status">
-              Read-only mode is on: nothing on this tab is written to the
-              device.
+              Read-only mode is on.
               <button
                 class="btn small"
                 onclick={() => (bench.page = "settings")}>Settings</button

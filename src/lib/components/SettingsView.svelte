@@ -165,9 +165,7 @@
           <div class="setting">
             <div class="text">
               <span class="name">User manual</span>
-              <span class="hint"
-                >Every page and tool explained, with screenshots. A PDF.</span
-              >
+              <span class="hint">Every page and tool, as a PDF.</span>
             </div>
             <button
               class="btn"
@@ -189,10 +187,7 @@
           <div class="setting">
             <div class="text">
               <span class="name">Report a problem</span>
-              <span class="hint"
-                >Something wrong, or a device Modbench does not handle? Open an
-                issue on GitHub.</span
-              >
+              <span class="hint">Bugs and device requests, on GitHub.</span>
             </div>
             <button
               class="btn"
@@ -207,10 +202,7 @@
           <div class="setting">
             <div class="text">
               <span class="name">Licence</span>
-              <span class="hint"
-                >Free and open source under the GPL-3.0. The source code is on
-                GitHub.</span
-              >
+              <span class="hint">GPL-3.0, on GitHub.</span>
             </div>
             <button class="btn" onclick={() => run(() => api.openLink("repo"))}
               >Source code {@render external()}</button
@@ -219,9 +211,7 @@
           <div class="setting">
             <div class="text">
               <span class="name">Support this project</span>
-              <span class="hint"
-                >Modbench is free. A coffee on Ko-fi helps its development.</span
-              >
+              <span class="hint">A coffee on Ko-fi helps development.</span>
             </div>
             <button
               class="btn"
@@ -330,9 +320,7 @@
             <div class="text">
               <span class="name">Highlight changed values</span>
               <span class="hint"
-                >A value that changes stays highlighted this long, in the
-                register grid and the device map. Helps to find what moves on an
-                unknown device.</span
+                >How long a changed value stays highlighted.</span
               >
             </div>
             <Select
@@ -351,10 +339,7 @@
           <label class="setting">
             <div class="text">
               <span class="name">Remember the last connection</span>
-              <span class="hint"
-                >Port, baud rate, address, device and timing are filled in again
-                the next time Modbench opens.</span
-              >
+              <span class="hint">Step 1 is filled in again at start.</span>
             </div>
             <input
               type="checkbox"
@@ -369,9 +354,7 @@
               <span class="name">Remember register choices for each device</span
               >
               <span class="hint"
-                >Which registers are read, the byte order and Loop come back
-                when you pick the same map on the same connection and unit ID.
-                Nothing is sent to the device when they are restored.</span
+                >Registers read, byte order and Loop, per map and unit ID.</span
               >
             </div>
             <input
@@ -396,10 +379,7 @@
           <label class="setting">
             <div class="text">
               <span class="name">Confirm before writing to a device</span>
-              <span class="hint"
-                >Asks before every write: write commands, map values and control
-                commands.</span
-              >
+              <span class="hint">Ask before every write.</span>
             </div>
             <input
               type="checkbox"
@@ -413,9 +393,8 @@
             <div class="text">
               <span class="name">Reconnect when the connection is lost</span>
               <span class="hint"
-                >While a test runs, a connection that fails (an I/O error, or
-                over TCP three timeouts in a row) is opened again, after 0.5 s
-                and then less often, up to every 10 s.</span
+                >Reopen a failed connection during a test, backing off up to 10
+                s.</span
               >
             </div>
             <input
@@ -430,9 +409,7 @@
             <div class="text">
               <span class="name">Demo</span>
               <span class="hint"
-                >Reads a simulated meter played by Modbench's own simulator: no
-                hardware or map needed. Your connection and devices are left as
-                they are.</span
+                >A simulated meter; your settings are kept.</span
               >
             </div>
             <button
@@ -448,7 +425,7 @@
             <div class="text">
               <span class="name">Offer the demo at the first start</span>
               <span class="hint"
-                >Shows the demo on the Main page until a connection is used.</span
+                >Offer the demo until a connection is used.</span
               >
             </div>
             <input
@@ -463,8 +440,7 @@
             <div class="text">
               <span class="name">Read-only mode</span>
               <span class="hint"
-                >Blocks every write, also on a connection that is already open.
-                Reading is not affected. Use it on a plant in operation.</span
+                >Block every write. For plants in operation.</span
               >
             </div>
             <input
@@ -479,9 +455,7 @@
             <div class="text">
               <span class="name">Write single registers with FC16</span>
               <span class="hint"
-                >One holding register is written with FC06 (Write Single
-                Register). Turn this on for devices that only accept FC16 (Write
-                Multiple Registers).</span
+                >Write single registers with FC16 instead of FC06.</span
               >
             </div>
             <input
@@ -496,8 +470,7 @@
             <div class="text">
               <span class="name">CSV separator</span>
               <span class="hint"
-                >For saved logs, exported values and recordings. Use a semicolon
-                if your spreadsheet expects a decimal comma.</span
+                >Semicolon for spreadsheets with a decimal comma.</span
               >
             </div>
             <Select
@@ -556,8 +529,7 @@
             <div class="text">
               <span class="name">Shared maps</span>
               <span class="hint"
-                >The <span class="mono">.mbmap</span> format and the maps other users
-                share live in the mbmap-library repository.</span
+                >The <span class="mono">.mbmap</span> format and shared maps.</span
               >
             </div>
             <div class="buttons">

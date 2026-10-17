@@ -333,6 +333,12 @@ select.input option {
   color: rgb(var(--alert-fg-rgb));
 }
 
+/* Square button holding only an icon; give it a title for its name */
+.btn.icon {
+  width: 30px;
+  padding: 0;
+}
+
 .btn.ghost {
   background: transparent;
   color: var(--text-2);

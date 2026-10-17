@@ -38,11 +38,7 @@
 
 <header class="tool-head">
   <h1>Frame decoder</h1>
-  <p>
-    Paste a frame from a log, a bus analyser or another tool to read it field by
-    field, with its CRC or LRC checked. Frames on the Raw data tab are decoded
-    the same way.
-  </p>
+  <p>A frame field by field, with its CRC or LRC checked.</p>
 </header>
 
 <div class="row">
@@ -92,8 +88,7 @@
 
 {#if !bytes}
   <p class="bad">
-    Type the frame as hex bytes, e.g. 01 03 00 00 00 0A C5 CD, or an ASCII frame
-    starting with ":".
+    Hex bytes, e.g. 01 03 00 00 00 0A C5 CD, or ASCII starting with ":".
   </p>
 {:else if decoded}
   <FrameFields {decoded} />

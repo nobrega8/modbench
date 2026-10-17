@@ -231,16 +231,23 @@ pub fn import(root: &Path, sources: &[String]) -> Vec<ImportResult> {
         .collect()
 }
 
-/// Deletes a map, refusing anything outside the library folder.
-pub fn delete(root: &Path, path: &str) -> std::io::Result<()> {
+/// The map at `path`, refused unless it is a map inside the library folder.
+pub fn library_map(root: &Path, path: &str) -> std::io::Result<PathBuf> {
     let target = std::fs::canonicalize(path)?;
     let root = std::fs::canonicalize(root)?;
     if !target.starts_with(&root) || !is_map(&target) {
         return Err(std::io::Error::new(
             std::io::ErrorKind::PermissionDenied,
-            "only maps inside the library can be deleted",
+            "only maps inside the library can be changed",
         ));
     }
+    Ok(target)
+}
+
+/// Deletes a map, refusing anything outside the library folder.
+pub fn delete(root: &Path, path: &str) -> std::io::Result<()> {
+    let target = library_map(root, path)?;
+    let root = std::fs::canonicalize(root)?;
     std::fs::remove_file(&target)?;
     // Drop the vendor folder once it is empty.
     if let Some(dir) = target.parent()

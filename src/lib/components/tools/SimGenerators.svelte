@@ -196,10 +196,7 @@
       </tbody>
     </table>
   {:else if editing === null}
-    <p class="empty">
-      None yet. Add one to make a value move, e.g. a voltage that swings around
-      230 V, or a status that follows a coil.
-    </p>
+    <p class="empty">None yet. Add one to make a value move.</p>
   {/if}
 
   {#if editing !== null}

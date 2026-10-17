@@ -91,6 +91,7 @@ export const api = {
     invoke<ImportResult[]>("library_import", { paths }),
   libraryDelete: (path: string) => invoke<void>("library_delete", { path }),
   libraryOpenFolder: () => invoke<void>("library_open_folder"),
+  libraryEdit: (path: string) => invoke<void>("library_edit", { path }),
   openLink: (
     link:
       | "repo"

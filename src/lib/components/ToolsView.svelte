@@ -61,18 +61,18 @@
         <h2 class="key">{t(s.title)}</h2>
         {#each s.tools as tool (tool.id)}
           <button
+            title={t(`tools.${tool.id}.hint` as Key)}
             class:on={bench.tool === tool.id}
             aria-current={bench.tool === tool.id ? "page" : undefined}
             onclick={() => (bench.tool = tool.id)}
           >
-            <span class="glyph"><Icon name={tool.id} size={16} /></span>
+            <Icon name={tool.id} size={16} />
             <span class="name"
               >{t(`tools.${tool.id}` as Key)}{#if busy(tool.id)}<span
                   class="dot"
                   aria-hidden="true"
                 ></span>{/if}</span
             >
-            <span class="hint">{t(`tools.${tool.id}.hint` as Key)}</span>
           </button>
         {/each}
       {/each}
@@ -111,8 +111,8 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 244px 1fr;
-    gap: 22px;
+    grid-template-columns: 184px 1fr;
+    gap: 20px;
   }
 
   .tools.alone {
@@ -135,12 +135,11 @@
   }
 
   nav button {
-    display: grid;
-    grid-template-columns: 16px 1fr;
-    column-gap: 10px;
-    row-gap: 1px;
+    display: flex;
+    gap: 10px;
     align-items: center;
-    padding: 7px 10px;
+    padding: 6px 10px;
+    color: var(--text-2);
     border: 0;
     border-radius: 9px;
     background: none;
@@ -155,6 +154,7 @@
 
   nav button.on {
     background: var(--subtle);
+    color: var(--text);
   }
 
   .name {
@@ -162,23 +162,7 @@
     align-items: center;
     gap: 7px;
     font-weight: 500;
-  }
-
-  .glyph {
-    grid-row: span 2;
-    align-self: start;
-    margin-top: 2px;
-    color: var(--text-2);
-  }
-
-  nav button.on .glyph {
     color: var(--text);
-  }
-
-  .hint {
-    grid-column: 2;
-    font-size: 12px;
-    color: var(--text-3);
   }
 
   .dot {
@@ -193,7 +177,7 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     overflow: auto;
   }
 
