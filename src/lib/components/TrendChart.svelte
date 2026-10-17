@@ -10,6 +10,7 @@
     type Sample,
   } from "#lib/trend.ts";
   import type { Register } from "#lib/types.ts";
+  import type { Markers } from "#lib/markers.svelte.ts";
 
   export interface Line {
     index: number;
@@ -25,6 +26,7 @@
     from,
     to,
     onremove,
+    markers,
   }: {
     unit: string;
     lines: Line[];
@@ -32,7 +34,41 @@
     from: number;
     to: number;
     onremove: (index: number) => void;
+    /** Markers A and B, shared by the charts of one view; none: no markers. */
+    markers?: Markers;
   } = $props();
+
+  /** The marker being dragged. */
+  let dragging = $state<"a" | "b" | null>(null);
+
+  /** The time at a pointer position, inside the span. */
+  function timeAt(e: PointerEvent): number | null {
+    const box = (e.currentTarget as SVGElement).getBoundingClientRect();
+    const px = e.clientX - box.left;
+    if (px < M.left || px > M.left + plotW) return null;
+    return from + ((px - M.left) / plotW) * span;
+  }
+
+  /** Grabs a marker near the pointer, or places one where it is. */
+  function ondown(e: PointerEvent) {
+    if (!markers || e.button !== 0) return;
+    const t = timeAt(e);
+    if (t === null) return;
+    const box = (e.currentTarget as SVGElement).getBoundingClientRect();
+    const px = e.clientX - box.left;
+    const near = (m: number | null) => m !== null && Math.abs(x(m) - px) <= 6;
+    dragging = near(markers.a) ? "a" : near(markers.b) ? "b" : null;
+    if (dragging)
+      (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
+    else markers.place(t);
+  }
+
+  function ondrag(e: PointerEvent) {
+    onmove(e);
+    if (!markers || !dragging) return;
+    const t = timeAt(e);
+    if (t !== null) markers.move(dragging, t);
+  }
 
   const M = { top: 10, right: 14, bottom: 24, left: 58 };
   let width = $state(0);
@@ -193,8 +229,11 @@
         {height}
         role="img"
         aria-label="{lines.map((l) => l.reg.name).join(', ')} over time"
-        onpointermove={onmove}
+        onpointermove={ondrag}
+        onpointerdown={ondown}
+        onpointerup={() => (dragging = null)}
         onpointerleave={() => (hoverX = null)}
+        class:markable={!!markers}
       >
         {#each yTicks as v (v)}
           <line
@@ -257,6 +296,22 @@
           {/each}
         {/each}
 
+        {#if markers}
+          {#each [["a", markers.a], ["b", markers.b]] as [name, t] (name)}
+            {#if t !== null && typeof t === "number" && t >= from && t <= to}
+              <line
+                class="marker"
+                x1={x(t)}
+                x2={x(t)}
+                y1={M.top}
+                y2={M.top + plotH}
+              />
+              <text class="marker-label" x={x(t) + 4} y={M.top + 10}
+                >{String(name).toUpperCase()}</text
+              >
+            {/if}
+          {/each}
+        {/if}
         {#if hover}
           <line
             class="cross"
@@ -416,6 +471,22 @@
     fill: var(--text-3);
     font-family: var(--mono);
     font-size: 11px;
+  }
+
+  svg.markable {
+    cursor: crosshair;
+  }
+
+  .marker {
+    stroke: var(--text);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+  }
+
+  .marker-label {
+    fill: var(--text);
+    font-size: 11px;
+    font-weight: 600;
   }
 
   .mark {

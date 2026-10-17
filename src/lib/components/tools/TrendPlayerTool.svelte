@@ -21,6 +21,8 @@
   import Select from "../Select.svelte";
   import TrendChart, { type Line } from "../TrendChart.svelte";
   import ChartExport from "../ChartExport.svelte";
+  import MarkerTable from "../MarkerTable.svelte";
+  import { Markers } from "#lib/markers.svelte.ts";
 
   const speeds = [1, 2, 4, 8, 16, 60];
   const windows = [
@@ -33,6 +35,8 @@
 
   let playing = $state(false);
   let problem = $state<string | null>(null);
+  /** Markers A and B of this view's charts. */
+  const markers = new Markers();
   let charts: HTMLDivElement | undefined = $state();
 
   /** Registers made up from the column headers, for the chart. */
@@ -218,9 +222,11 @@
           from={span.from}
           to={span.to}
           onremove={toggle}
+          {markers}
         />
       {/each}
     </div>
+    <MarkerTable {markers} lines={groups.flatMap((g) => g.lines)} />
   {/if}
 {:else if !problem}
   <p class="empty">

@@ -9,6 +9,8 @@
   import { MAX_SERIES } from "#lib/trend.ts";
   import TrendChart, { type Line } from "./TrendChart.svelte";
   import ChartExport from "./ChartExport.svelte";
+  import MarkerTable from "./MarkerTable.svelte";
+  import { Markers } from "#lib/markers.svelte.ts";
 
   let {
     groups,
@@ -46,6 +48,8 @@
   let windowMs = $state(5 * 60_000);
   /** The add menu; it goes back to its prompt after a pick. */
   let pick = $state(-1);
+  /** Markers A and B of this view's charts. */
+  const markers = new Markers();
   let charts: HTMLDivElement | undefined = $state();
 
   const full = $derived(count >= MAX_SERIES);
@@ -117,9 +121,11 @@
         from={span.from}
         to={span.to}
         {onremove}
+        {markers}
       />
     {/each}
   </div>
+  <MarkerTable {markers} lines={groups.flatMap((g) => g.lines)} />
 {/if}
 
 <style>
