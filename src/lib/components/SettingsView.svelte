@@ -7,6 +7,13 @@
 </script>
 
 <script lang="ts">
+  import {
+    LOCALES,
+    detectLocale,
+    t,
+    type Key,
+    type Locale,
+  } from "#lib/i18n.svelte.ts";
   import Icon from "./Icon.svelte";
   import Select from "./Select.svelte";
   import { viewIn } from "#lib/motion.ts";
@@ -22,10 +29,10 @@
   import { forgetAll } from "#lib/profiles.ts";
   import { APT_UPGRADE, updates } from "#lib/updates.svelte.ts";
 
-  const themes: { id: Theme; label: string }[] = [
-    { id: "system", label: "Same as system" },
-    { id: "light", label: "Light" },
-    { id: "dark", label: "Dark" },
+  const themes: { id: Theme; label: Key }[] = [
+    { id: "system", label: "settings.theme.system" },
+    { id: "light", label: "settings.theme.light" },
+    { id: "dark", label: "settings.theme.dark" },
   ];
   const logLimits = [200, 1000, 5000, 20000];
   const holds = [
@@ -38,35 +45,25 @@
   ];
 
   const categories: {
-    title: string;
-    sections: { id: SectionId; name: string; hint: string }[];
+    title: Key;
+    sections: { id: SectionId }[];
   }[] = [
     {
-      title: "Modbench",
-      sections: [
-        { id: "about", name: "About", hint: "Version, manual and links" },
-        { id: "updates", name: "Updates", hint: "New versions" },
-      ],
+      title: "settings.modbench",
+      sections: [{ id: "about" }, { id: "updates" }],
     },
     {
-      title: "Display",
-      sections: [
-        { id: "appearance", name: "Appearance", hint: "Theme and text size" },
-        { id: "values", name: "Values", hint: "Highlighting changes" },
-      ],
+      title: "settings.display",
+      sections: [{ id: "appearance" }, { id: "values" }],
     },
     {
-      title: "Devices",
-      sections: [
-        {
-          id: "connection",
-          name: "Connection",
-          hint: "Remembering, writes, logs",
-        },
-        { id: "library", name: "Device library", hint: "Where maps are kept" },
-      ],
+      title: "settings.devices",
+      sections: [{ id: "connection" }, { id: "library" }],
     },
   ];
+
+  /** The language the system asks for, as Modbench supports it. */
+  const systemLocale: Locale = detectLocale(navigator.languages);
 
   let version = $state("");
   let copied = $state(false);
@@ -116,7 +113,7 @@
 <div class="settings">
   <nav aria-label="Settings">
     {#each categories as c (c.title)}
-      <h2 class="key">{c.title}</h2>
+      <h2 class="key">{t(c.title)}</h2>
       {#each c.sections as s (s.id)}
         <button
           class:on={section === s.id}
@@ -124,8 +121,8 @@
           onclick={() => (section = s.id)}
         >
           <span class="glyph"><Icon name={s.id} size={16} /></span>
-          <span class="name">{s.name}</span>
-          <span class="hint">{s.hint}</span>
+          <span class="name">{t(`settings.${s.id}` as Key)}</span>
+          <span class="hint">{t(`settings.${s.id}.hint` as Key)}</span>
         </button>
       {/each}
     {/each}
@@ -239,39 +236,36 @@
         </div>
       {:else if section === "appearance"}
         <header class="head">
-          <h1>Appearance</h1>
+          <h1>{t("settings.appearance")}</h1>
         </header>
         <div class="group">
           <div class="setting theme-row">
-            <span class="name">Theme</span>
+            <span class="name">{t("settings.theme")}</span>
             <div class="themes" role="radiogroup" aria-label="Theme">
-              {#each themes as t (t.id)}
+              {#each themes as th (th.id)}
                 <button
                   class="theme"
                   role="radio"
-                  aria-checked={settings.theme === t.id}
-                  class:on={settings.theme === t.id}
+                  aria-checked={settings.theme === th.id}
+                  class:on={settings.theme === th.id}
                   onclick={() => {
-                    settings.theme = t.id;
+                    settings.theme = th.id;
                     changed();
                   }}
                 >
-                  <span class="preview {t.id}" aria-hidden="true">
+                  <span class="preview {th.id}" aria-hidden="true">
                     <span class="layer light"><i></i><b></b><b></b></span>
                     <span class="layer dark"><i></i><b></b><b></b></span>
                   </span>
-                  <span class="label">{t.label}</span>
+                  <span class="label">{t(th.label)}</span>
                 </button>
               {/each}
             </div>
           </div>
           <div class="setting">
             <div class="text">
-              <span class="name">Text size</span>
-              <span class="hint"
-                >Smaller to see more at once, larger to read from further away.
-                Text and controls scale together.</span
-              >
+              <span class="name">{t("settings.textSize")}</span>
+              <span class="hint">{t("settings.textSize.hint")}</span>
             </div>
             <div class="scale">
               <input
@@ -297,14 +291,39 @@
                   settings.textScale = 1;
                   settings.applyTextScale();
                   changed();
-                }}>Reset</button
+                }}>{t("settings.reset")}</button
               >
             </div>
+          </div>
+          <div class="setting">
+            <div class="text">
+              <span class="name">{t("settings.language")}</span>
+              <span class="hint">{t("settings.language.hint")}</span>
+            </div>
+            <Select
+              bind:value={settings.language}
+              label={t("settings.language")}
+              width="230px"
+              options={[
+                {
+                  value: "system",
+                  label: t("settings.language.system", {
+                    language:
+                      LOCALES.find((l) => l.id === systemLocale)?.name ?? "",
+                  }),
+                },
+                ...LOCALES.map((l) => ({ value: l.id, label: l.name })),
+              ]}
+              onchange={() => {
+                settings.applyLanguage();
+                changed();
+              }}
+            />
           </div>
         </div>
       {:else if section === "values"}
         <header class="head">
-          <h1>Values</h1>
+          <h1>{t("settings.values")}</h1>
         </header>
         <div class="group">
           <label class="setting">
@@ -326,7 +345,7 @@
         </div>
       {:else if section === "connection"}
         <header class="head">
-          <h1>Connection</h1>
+          <h1>{t("settings.connection")}</h1>
         </header>
         <div class="group">
           <label class="setting">
@@ -509,7 +528,7 @@
         </div>
       {:else if section === "library"}
         <header class="head">
-          <h1>Device library</h1>
+          <h1>{t("settings.library")}</h1>
         </header>
         <div class="group">
           <div class="setting">
@@ -557,7 +576,7 @@
         </div>
       {:else if section === "updates"}
         <header class="head">
-          <h1>Updates</h1>
+          <h1>{t("settings.updates")}</h1>
         </header>
         <div class="group">
           <label class="setting">

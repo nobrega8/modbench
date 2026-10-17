@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { FUNCTION_NAME } from "#lib/format.ts";
   import { fieldIn, slidePill } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
@@ -56,7 +57,7 @@
   }
 </script>
 
-<StepCard step={2} title="Request">
+<StepCard step={2} title={t("step.request")}>
   <div class="row">
     <label class="field">
       <span>Device</span>

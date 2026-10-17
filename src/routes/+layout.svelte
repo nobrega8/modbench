@@ -4,6 +4,7 @@
   import { settings } from "#lib/settings.svelte.ts";
 
   $effect(() => settings.applyTheme());
+  $effect(() => settings.applyLanguage());
   $effect(() => {
     settings.applyTextScale();
   });
