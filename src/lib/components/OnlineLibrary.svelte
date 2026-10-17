@@ -2,7 +2,7 @@
   import { api, errorText } from "#lib/api.ts";
   import { slideIn, smoothResize } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
-  import type { OnlineEntry } from "#lib/types.ts";
+  import type { OnlineEntry, Parsed } from "#lib/types.ts";
   import { fade } from "svelte/transition";
   import Icon from "./Icon.svelte";
   import MapStatus from "./MapStatus.svelte";
@@ -24,6 +24,9 @@
   let search = $state("");
   let pending = $state<Set<string>>(new Set());
   let rowError = $state<Record<string, string>>({});
+  /** The map whose details are open, and the details loaded so far. */
+  let infoPath = $state<string | null>(null);
+  let details = $state<Record<string, Parsed | { error: string }>>({});
 
   $effect(() => {
     if (!dialog) return;
@@ -139,6 +142,69 @@
     if (vendor === null) return;
     e.preventDefault();
     back();
+  }
+
+  async function toggleInfo(entry: OnlineEntry) {
+    if (infoPath === entry.path) {
+      infoPath = null;
+      return;
+    }
+    infoPath = entry.path;
+    if (details[entry.path] && !("error" in details[entry.path])) return;
+    try {
+      const parsed = await api.libraryOnlineMap(entry.path);
+      details = { ...details, [entry.path]: parsed };
+    } catch (e) {
+      details = { ...details, [entry.path]: { error: errorText(e) } };
+    }
+  }
+
+  const PROTOCOL = {
+    tcp: "Modbus TCP",
+    rtu: "Modbus RTU",
+    "tcp+rtu": "Modbus TCP and RTU",
+  };
+
+  /** The general data of a map, as label/value pairs (empty ones left out). */
+  function facts(entry: OnlineEntry, p: Parsed): [string, string][] {
+    const m = p.map?.meta;
+    if (!m) return [];
+    const serial = [
+      m.baudrate ? `${m.baudrate} baud` : null,
+      m.data_bits || m.parity || m.stop_bits
+        ? `${m.data_bits ?? 8}${m.parity ?? "E"}${m.stop_bits ?? 1}`
+        : null,
+    ].filter(Boolean);
+    const firmware = [
+      m.firmware,
+      m.firmware_min || m.firmware_max
+        ? `${m.firmware_min ?? "any"} to ${m.firmware_max ?? "latest"}`
+        : null,
+    ].filter(Boolean);
+    const rows: [string, string | null | undefined][] = [
+      ["Models", m.models?.length ? m.models.join(", ") : null],
+      ["Description", m.description],
+      [
+        "Revision",
+        m.revision ? `${m.revision}${m.revised ? `, ${m.revised}` : ""}` : null,
+      ],
+      ["Firmware", firmware.join("; ") || null],
+      ["Registers", String(p.map?.registers.length ?? entry.registers)],
+      ["Protocol", m.protocol ? PROTOCOL[m.protocol] : null],
+      ["Unit ID", m.unit_id?.toString()],
+      ["TCP port", m.port?.toString()],
+      ["Serial", serial.join(", ") || null],
+      ["Byte order", m.byte_order],
+      ["Addresses", m.address_base === null ? null : `${m.address_base}-based`],
+      [
+        "Max read",
+        m.max_read_registers ? `${m.max_read_registers} registers` : null,
+      ],
+      ["Source", m.source],
+      ["Website", m.vendor_website],
+      ["File", entry.path],
+    ];
+    return rows.filter((r): r is [string, string] => !!r[1]);
   }
 
   async function add(entry: OnlineEntry) {
@@ -267,8 +333,17 @@
                     </div>
                   {/if}
                 </div>
-                <MapStatus status={e.status} />
+                <span class="status"><MapStatus status={e.status} /></span>
                 <span class="count">{e.registers} registers</span>
+                <button
+                  class="btn small icon ghost info-btn"
+                  class:on={infoPath === e.path}
+                  title="Map details"
+                  aria-label="Details of {e.model}"
+                  aria-expanded={infoPath === e.path}
+                  onclick={() => toggleInfo(e)}
+                  ><Icon name="about" size={16} /></button
+                >
                 {#if inLibrary}
                   <button
                     class="btn ghost small"
@@ -283,6 +358,54 @@
                     disabled={busy}
                     onclick={() => add(e)}>{busy ? "Adding…" : "Add"}</button
                   >
+                {/if}
+                {#if infoPath === e.path}
+                  {@const d = details[e.path]}
+                  <div class="details" in:fade={{ duration: 120 }}>
+                    {#if !d}
+                      <p class="muted">Loading the map…</p>
+                    {:else if "error" in d}
+                      <p class="bad">{d.error}</p>
+                    {:else if !d.map}
+                      <p class="bad">
+                        The map has errors: {d.diagnostics
+                          .filter((x) => x.severity === "error")
+                          .map((x) => x.message)
+                          .join("; ")}
+                      </p>
+                    {:else}
+                      <dl>
+                        {#each facts(e, d) as [label, value] (label)}
+                          <dt>{label}</dt>
+                          <dd>{value}</dd>
+                        {/each}
+                      </dl>
+                      {#if d.map.meta.sources?.length}
+                        <h3>Sources</h3>
+                        <ul>
+                          {#each d.map.meta.sources as src, i (i)}
+                            <li>
+                              {src.title}{src.version
+                                ? `, ${src.version}`
+                                : ""}{src.date
+                                ? ` (${src.date})`
+                                : ""}{#if src.url}<br /><span class="url"
+                                  >{src.url}</span
+                                >{/if}
+                            </li>
+                          {/each}
+                        </ul>
+                      {/if}
+                      {#if d.map.meta.notes?.length}
+                        <h3>Notes</h3>
+                        <ul>
+                          {#each d.map.meta.notes as note, i (i)}
+                            <li>{note}</li>
+                          {/each}
+                        </ul>
+                      {/if}
+                    {/if}
+                  </div>
                 {/if}
               </div>
             {:else}
@@ -380,9 +503,11 @@
     padding: 0 12px;
   }
 
+  /* Fixed columns after the text, so status icons, counts and buttons line
+     up from row to row */
   .row {
     display: grid;
-    grid-template-columns: auto 1fr auto auto auto;
+    grid-template-columns: 28px 1fr 16px 13ch 28px 96px;
     align-items: center;
     gap: 14px;
     padding: 10px;
@@ -390,7 +515,7 @@
   }
 
   .vendor-row {
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: 28px 1fr auto auto;
     width: 100%;
     border: 0;
     background: none;
@@ -442,10 +567,89 @@
     white-space: nowrap;
   }
 
+  .row:not(.vendor-row) .count {
+    text-align: right;
+  }
+
+  .status {
+    display: flex;
+    justify-content: center;
+  }
+
+  .row .info-btn {
+    width: 28px;
+    min-width: 0;
+    padding: 0;
+    color: var(--text-3);
+  }
+
+  .row .info-btn.on {
+    color: var(--accent);
+  }
+
+  .details {
+    grid-column: 1 / -1;
+    padding: 4px 0 4px 42px;
+    font-size: 13px;
+    user-select: text;
+  }
+
+  .details dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    margin: 0;
+  }
+
+  .details dt {
+    color: var(--text-3);
+  }
+
+  .details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .details h3 {
+    margin: 12px 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+
+  .details ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--text-2);
+  }
+
+  .details li + li {
+    margin-top: 2px;
+  }
+
+  .url {
+    color: var(--text-3);
+    font-family: var(--mono);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .muted {
+    margin: 0;
+    color: var(--text-3);
+  }
+
   .small {
     height: 28px;
     min-width: 72px;
     padding: 0 12px;
+  }
+
+  .row .accent.small,
+  .row .ghost.small:not(.info-btn) {
+    width: 96px;
+    min-width: 0;
+    padding: 0 8px;
   }
 
   .note {
