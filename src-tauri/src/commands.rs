@@ -645,6 +645,16 @@ pub async fn library_import(
         .map_err(|e| ModbusError::Invalid(e.to_string()))
 }
 
+/// Copies a library map as "<model> copy"; returns the new map's path.
+#[tauri::command]
+pub async fn library_duplicate(app: AppHandle, path: String) -> Result<String, ModbusError> {
+    let root = library_root(&app)?;
+    tokio::task::spawn_blocking(move || library::duplicate(&root, &path))
+        .await
+        .map_err(|e| ModbusError::Invalid(e.to_string()))?
+        .map_err(ModbusError::Invalid)
+}
+
 #[tauri::command]
 pub async fn library_delete(app: AppHandle, path: String) -> Result<(), ModbusError> {
     let root = library_root(&app)?;
@@ -677,7 +687,7 @@ pub async fn library_online_import(
     let mut results = Vec::new();
     for path in paths {
         let outcome = match online::download(&path).await {
-            Ok(bytes) => library::store(&root, &bytes),
+            Ok(bytes) => library::store(&root, &bytes, library::Origin::Online),
             Err(e) => Err(e),
         };
         results.push(ImportResult::new(&path, outcome));

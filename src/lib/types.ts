@@ -354,6 +354,10 @@ export interface LibraryEntry {
   registers: number;
   warnings: number;
   error: string | null;
+  /** Where the map came from; null for maps stored by older releases. */
+  origin: "online" | "imported" | null;
+  /** The file changed since it was stored. */
+  edited: boolean;
 }
 
 /** A map published in the online library (the mbmap-library repository). */

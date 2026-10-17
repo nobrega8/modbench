@@ -90,6 +90,8 @@ export const api = {
   libraryImport: (paths: string[]) =>
     invoke<ImportResult[]>("library_import", { paths }),
   libraryDelete: (path: string) => invoke<void>("library_delete", { path }),
+  libraryDuplicate: (path: string) =>
+    invoke<string>("library_duplicate", { path }),
   libraryOpenFolder: () => invoke<void>("library_open_folder"),
   libraryEdit: (path: string) => invoke<void>("library_edit", { path }),
   openLink: (

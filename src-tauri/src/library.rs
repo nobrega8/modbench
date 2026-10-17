@@ -2,10 +2,15 @@
 //! `<vendor>/<model>.mbmap.json` (format version 2), the layout of the
 //! mbmap-library repo. Maps are stored in version 2 whatever version they
 //! came in, and `upgrade` converts the version 1 files of older releases.
+//!
+//! `.origins.json` in the library folder remembers where each map came from
+//! (the online library, or a file the user added) and a hash of what was
+//! stored, so the Library can show which maps the user added or changed.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::mbmap::{self, DeviceMap, Parsed, Severity};
 
@@ -22,6 +27,79 @@ pub struct LibraryEntry {
     pub warnings: usize,
     /// Why the file cannot be used, if it has errors.
     pub error: Option<String>,
+    /// Where the map came from: "online" or "imported" (added by the user);
+    /// none for maps stored by older releases.
+    pub origin: Option<Origin>,
+    /// The file changed since it was stored.
+    pub edited: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Origin {
+    Online,
+    Imported,
+}
+
+/// What the library remembers of a stored map.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Record {
+    origin: Origin,
+    /// FNV-1a hash of the bytes that were stored, as hex.
+    hash: String,
+}
+
+const ORIGINS: &str = ".origins.json";
+
+/// FNV-1a 64-bit: stable across builds, enough to notice an edited file.
+fn hash(bytes: &[u8]) -> String {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in bytes {
+        h ^= u64::from(*b);
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("{h:016x}")
+}
+
+/// The key of a map in the origins file: its path inside the library.
+fn key(root: &Path, path: &Path) -> Option<String> {
+    let rel = path.strip_prefix(root).ok()?;
+    Some(rel.to_string_lossy().replace('\\', "/"))
+}
+
+fn read_origins(root: &Path) -> BTreeMap<String, Record> {
+    std::fs::read(root.join(ORIGINS))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default()
+}
+
+fn write_origins(root: &Path, origins: &BTreeMap<String, Record>) -> std::io::Result<()> {
+    let text = serde_json::to_string_pretty(origins).map_err(std::io::Error::other)?;
+    std::fs::write(root.join(ORIGINS), text)
+}
+
+/// Remembers (or, with `None`, forgets) where the map at `path` came from.
+fn remember(root: &Path, path: &Path, origin: Option<(Origin, &[u8])>) -> std::io::Result<()> {
+    let Some(k) = key(root, path) else {
+        return Ok(());
+    };
+    let mut origins = read_origins(root);
+    match origin {
+        Some((origin, bytes)) => {
+            origins.insert(
+                k,
+                Record {
+                    origin,
+                    hash: hash(bytes),
+                },
+            );
+        }
+        None => {
+            origins.remove(&k);
+        }
+    }
+    write_origins(root, &origins)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -116,6 +194,7 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
     if !root.exists() {
         return Ok(entries);
     }
+    let origins = read_origins(root);
     for vendor in std::fs::read_dir(root)? {
         let vendor = vendor?.path();
         if !vendor.is_dir() {
@@ -127,6 +206,9 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                 continue;
             }
             let bytes = std::fs::read(&path)?;
+            let record = key(root, &path).and_then(|k| origins.get(&k));
+            let origin = record.map(|r| r.origin);
+            let edited = record.is_some_and(|r| r.hash != hash(&bytes));
             let parsed = mbmap::parse(&bytes);
             let warnings = parsed
                 .diagnostics
@@ -150,6 +232,8 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                     registers: map.registers.len(),
                     warnings,
                     error: None,
+                    origin,
+                    edited,
                 },
                 None => LibraryEntry {
                     path: path.display().to_string(),
@@ -172,6 +256,8 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                     registers: 0,
                     warnings,
                     error,
+                    origin,
+                    edited,
                 },
             };
             entries.push(entry);
@@ -186,13 +272,19 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
 
 /// Stores a valid map of either version, as version 2; returns where it was
 /// stored. A map with the same vendor and model replaces the stored one.
-pub fn store(root: &Path, bytes: &[u8]) -> Result<String, String> {
+pub fn store(root: &Path, bytes: &[u8], origin: Origin) -> Result<String, String> {
     let map = read_valid(bytes)?;
-    let target = path_for(root, &map);
+    write_map(root, &map, origin)
+}
+
+fn write_map(root: &Path, map: &DeviceMap, origin: Origin) -> Result<String, String> {
+    let target = path_for(root, map);
     if let Some(dir) = target.parent() {
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
-    std::fs::write(&target, mbmap::to_string(&map)).map_err(|e| e.to_string())?;
+    let text = mbmap::to_string(map);
+    std::fs::write(&target, &text).map_err(|e| e.to_string())?;
+    remember(root, &target, Some((origin, text.as_bytes()))).map_err(|e| e.to_string())?;
     // The version 1 copy an older release stored for the same model.
     let legacy = target.with_extension("");
     if legacy.exists() {
@@ -225,7 +317,7 @@ pub fn import(root: &Path, sources: &[String]) -> Vec<ImportResult> {
         .map(|source| {
             let outcome = std::fs::read(source)
                 .map_err(|e| e.to_string())
-                .and_then(|bytes| store(root, &bytes));
+                .and_then(|bytes| store(root, &bytes, Origin::Imported));
             ImportResult::new(source, outcome)
         })
         .collect()
@@ -244,11 +336,35 @@ pub fn library_map(root: &Path, path: &str) -> std::io::Result<PathBuf> {
     Ok(target)
 }
 
+/// Copies a library map as a new map of the same vendor, named
+/// "<model> copy" (or "copy 2", "copy 3"…). Returns where it was stored.
+pub fn duplicate(root: &Path, path: &str) -> Result<String, String> {
+    let source = library_map(root, path).map_err(|e| e.to_string())?;
+    let mut map = read_valid(&std::fs::read(&source).map_err(|e| e.to_string())?)?;
+    let model = map.meta.model.clone();
+    let mut n = 1;
+    loop {
+        map.meta.model = if n == 1 {
+            format!("{model} copy")
+        } else {
+            format!("{model} copy {n}")
+        };
+        if !path_for(root, &map).exists() {
+            break;
+        }
+        n += 1;
+    }
+    // The copy is the user's: it keeps no list of other model names.
+    map.meta.models = Vec::new();
+    write_map(root, &map, Origin::Imported)
+}
+
 /// Deletes a map, refusing anything outside the library folder.
 pub fn delete(root: &Path, path: &str) -> std::io::Result<()> {
     let target = library_map(root, path)?;
     let root = std::fs::canonicalize(root)?;
     std::fs::remove_file(&target)?;
+    remember(&root, &target, None)?;
     // Drop the vendor folder once it is empty.
     if let Some(dir) = target.parent()
         && dir != root
@@ -316,6 +432,36 @@ mod tests {
         assert!(delete(&lib, &src.display().to_string()).is_err());
         assert!(src.exists());
 
+        // Imported, not edited; editing the file shows it.
+        assert_eq!(entries[0].origin, Some(Origin::Imported));
+        assert!(!entries[0].edited);
+        let stored = std::fs::read_to_string(&entries[0].path).unwrap();
+        std::fs::write(&entries[0].path, stored.replace("PM 200/B", "PM 200/C")).unwrap();
+        assert!(list(&lib).unwrap()[0].edited);
+        std::fs::write(&entries[0].path, stored).unwrap();
+
+        // A duplicate is a new imported map of the same vendor.
+        let copy = duplicate(&lib, &entries[0].path).unwrap();
+        assert!(copy.ends_with("pm-200-b-copy.mbmap.json"));
+        assert!(
+            duplicate(&lib, &entries[0].path)
+                .unwrap()
+                .ends_with("pm-200-b-copy-2.mbmap.json")
+        );
+        let all = list(&lib).unwrap();
+        assert_eq!(all.len(), 3);
+        assert!(all.iter().any(|e| e.model == "PM 200/B copy"
+            && e.origin == Some(Origin::Imported)
+            && !e.edited));
+        delete(&lib, &copy).unwrap();
+        for e in list(&lib)
+            .unwrap()
+            .iter()
+            .filter(|e| e.model.contains("copy"))
+        {
+            delete(&lib, &e.path).unwrap();
+        }
+
         delete(&lib, &entries[0].path).unwrap();
         assert!(list(&lib).unwrap().is_empty());
         assert!(!lib.join("acme-meters").exists());
@@ -346,7 +492,7 @@ mod tests {
 
         // Storing the same model again replaces the old copy, in version 2.
         std::fs::write(dir.join("pm-200-b.mbmap"), MAP).unwrap();
-        store(&root, MAP.as_bytes()).unwrap();
+        store(&root, MAP.as_bytes(), Origin::Imported).unwrap();
         assert!(!dir.join("pm-200-b.mbmap").exists());
         let _ = std::fs::remove_dir_all(&root);
     }

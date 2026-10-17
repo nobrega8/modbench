@@ -137,6 +137,17 @@
     return () => window.removeEventListener("focus", focus);
   });
 
+  /** Copies a map as "<model> copy", to change it without losing the original. */
+  async function duplicate(e: LibraryEntry) {
+    try {
+      await api.libraryDuplicate(e.path);
+      await bench.refreshLibrary();
+      message = { ok: true, text: `${e.vendor} ${e.model} copied.` };
+    } catch (err) {
+      message = { ok: false, text: errorText(err) };
+    }
+  }
+
   async function use(path: string) {
     await bench.openMap(path);
   }
@@ -161,6 +172,11 @@
       {
         label: "Edit…",
         action: () => (confirm = { path: e.path, kind: "edit" }),
+      },
+      {
+        label: "Duplicate",
+        disabled: !!e.error,
+        action: () => duplicate(e),
       },
       {
         label: "Simulate this device",
@@ -262,6 +278,7 @@
       <tr>
         <th>Vendor</th>
         <th class="st"><span class="sr">Status</span></th>
+        <th class="st"><span class="sr">Origin</span></th>
         <th>Model</th>
         <th>Description</th>
         <th class="num">Registers</th>
@@ -284,6 +301,23 @@
             ></td
           >
           <td class="st"><MapStatus status={e.status} /></td>
+          <td class="st origin">
+            {#if e.edited}
+              <span
+                role="img"
+                aria-label="Edited: changed since it was added"
+                title="Edited: changed since it was added"
+                ><Icon name="edited" size={14} /></span
+              >
+            {:else if e.origin === "imported"}
+              <span
+                role="img"
+                aria-label="Imported: added by you"
+                title="Imported: added by you"
+                ><Icon name="imported" size={14} /></span
+              >
+            {/if}
+          </td>
           <td class="model">{e.model}</td>
           <td class="desc">
             {#if e.error}
@@ -338,6 +372,13 @@
                 ><Icon name="edit" /></button
               >
               <button
+                class="btn small icon ghost"
+                title="Duplicate"
+                aria-label="Duplicate {e.model}"
+                disabled={!!e.error}
+                onclick={() => duplicate(e)}><Icon name="duplicate" /></button
+              >
+              <button
                 class="btn small icon ghost del"
                 title="Delete"
                 aria-label="Delete {e.model}"
@@ -349,7 +390,7 @@
         </tr>
       {:else}
         <tr>
-          <td colspan="6" class="empty">
+          <td colspan="7" class="empty">
             {#if bench.library.length}
               No maps match “{search}”.
             {:else}
@@ -440,8 +481,13 @@
     padding-right: 0;
   }
 
-  td.st :global(.status) {
+  td.st :global(.status),
+  td.origin span {
     display: flex;
+  }
+
+  td.origin {
+    color: var(--text-3);
   }
 
   .sr {
