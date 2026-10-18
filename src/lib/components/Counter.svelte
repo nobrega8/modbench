@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   let {
     label,
     value,
@@ -25,8 +26,8 @@
     >
     <button
       class="reset"
-      title="Reset {label.toLowerCase()}"
-      aria-label="Reset {label.toLowerCase()}"
+      title={t("counter.reset", { label })}
+      aria-label={t("counter.reset", { label })}
       onclick={onreset}
     >
       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"

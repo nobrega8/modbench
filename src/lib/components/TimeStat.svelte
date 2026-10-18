@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import {
     average,
     ms,
@@ -27,25 +28,22 @@
   const cells = $derived(
     times.count
       ? [
-          { label: "Last", value: ms(times.last) },
-          { label: "Min", value: ms(times.min) },
-          { label: "Avg", value: ms(average(times)) },
-          { label: "Max", value: ms(times.max) },
+          { label: t("time.last"), value: ms(times.last) },
+          { label: t("time.min"), value: ms(times.min) },
+          { label: t("time.avg"), value: ms(average(times)) },
+          { label: t("time.max"), value: ms(times.max) },
         ]
       : [
-          { label: "Last", value: "—" },
-          { label: "Min", value: "—" },
-          { label: "Avg", value: "—" },
-          { label: "Max", value: "—" },
+          { label: t("time.last"), value: "—" },
+          { label: t("time.min"), value: "—" },
+          { label: t("time.avg"), value: "—" },
+          { label: t("time.max"), value: "—" },
         ],
   );
 </script>
 
-<div
-  class="stat"
-  title="How long the device takes to answer, in milliseconds. Timeouts are not counted."
->
-  <span class="label">Response time (ms)</span>
+<div class="stat" title={t("time.hint")}>
+  <span class="label">{t("time.title")}</span>
   <div class="body">
     <span class="lcd">
       {#each cells as c (c.label)}
@@ -56,8 +54,8 @@
     </span>
     <button
       class="reset"
-      title="Reset response times"
-      aria-label="Reset response times"
+      title={t("time.reset")}
+      aria-label={t("time.reset")}
       onclick={onreset}
     >
       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
@@ -75,14 +73,17 @@
       <button
         class="use"
         disabled={locked || suggested === timeout}
-        title="Suggested timeout: 4 × the slowest answer ({ms(
-          times.max,
-        )} ms). {suggested === timeout
-          ? 'Step 1 already uses it.'
-          : locked
-            ? 'Stop the test to change step 1.'
-            : 'Click to use it in step 1.'}"
-        onclick={() => onuse?.(suggested)}>Timeout {suggested} ms</button
+        title={t("time.suggested", {
+          ms: ms(times.max),
+          note:
+            suggested === timeout
+              ? t("time.used")
+              : locked
+                ? t("time.locked")
+                : t("time.click"),
+        })}
+        onclick={() => onuse?.(suggested)}
+        >{t("time.use", { ms: suggested })}</button
       >
     {/if}
   </div>

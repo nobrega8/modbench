@@ -33,11 +33,11 @@
 <StepCard step={1} title={t("step.connection")}>
   <div class="row">
     <div class="field">
-      <span>Interface</span>
+      <span>{t("conn.interface")}</span>
       <div
         class="segmented"
         role="tablist"
-        aria-label="Connection type"
+        aria-label={t("conn.type")}
         use:slidePill
       >
         <button
@@ -45,32 +45,32 @@
           aria-selected={serial}
           class:on={serial}
           disabled={locked}
-          onclick={() => setSerial(true)}>Serial</button
+          onclick={() => setSerial(true)}>{t("conn.serial")}</button
         >
         <button
           role="tab"
           aria-selected={!serial}
           class:on={!serial}
           disabled={locked}
-          onclick={() => setSerial(false)}>Ethernet</button
+          onclick={() => setSerial(false)}>{t("conn.ethernet")}</button
         >
       </div>
     </div>
     {#if serial}
       <label in:fieldIn class="field port">
-        <span>Port</span>
+        <span>{t("conn.port")}</span>
         <span class="with-btn">
           <Select
             bind:value={bench.serialPort}
             disabled={locked}
-            label="Serial port"
-            placeholder="No ports found"
+            label={t("conn.serialPort")}
+            placeholder={t("conn.noPorts")}
             options={ports.map((p) => ({ value: p, label: p }))}
           />
           <button
             class="btn icon"
-            title="Search for serial ports again"
-            aria-label="Search for serial ports again"
+            title={t("conn.rescan")}
+            aria-label={t("conn.rescan")}
             disabled={locked}
             onclick={refreshPorts}
           >
@@ -87,16 +87,12 @@
           </button>
         </span>
       </label>
-      <label
-        in:fieldIn
-        class="field"
-        title="RTU sends binary frames with a CRC; ASCII sends hex text with an LRC, used by some older devices"
-      >
-        <span>Framing</span>
+      <label in:fieldIn class="field" title={t("conn.framing.hint")}>
+        <span>{t("conn.framing")}</span>
         <Select
           bind:value={bench.framing}
           disabled={locked}
-          label="Framing"
+          label={t("conn.framing")}
           options={[
             { value: "rtu", label: "RTU" },
             { value: "ascii", label: "ASCII" },
@@ -104,58 +100,58 @@
         />
       </label>
       <label in:fieldIn class="field">
-        <span>Baud rate</span>
+        <span>{t("conn.baud")}</span>
         <Select
           bind:value={bench.baudrate}
           disabled={locked}
-          label="Baud rate"
+          label={t("conn.baud")}
           options={baudrates.map((b) => ({ value: b, label: String(b) }))}
         />
       </label>
       <label in:fieldIn class="field">
-        <span>Data bits</span>
+        <span>{t("conn.dataBits")}</span>
         <Select
           bind:value={bench.dataBits}
           disabled={locked}
-          label="Data bits"
+          label={t("conn.dataBits")}
           options={[
-            { value: 8, label: "8 bits" },
-            { value: 7, label: "7 bits" },
+            { value: 8, label: t("conn.bits8") },
+            { value: 7, label: t("conn.bits7") },
           ]}
         />
       </label>
       <label in:fieldIn class="field">
-        <span>Parity</span>
+        <span>{t("conn.parity")}</span>
         <Select
           bind:value={bench.parity}
           disabled={locked}
-          label="Parity"
+          label={t("conn.parity")}
           options={[
-            { value: "N", label: "None" },
-            { value: "E", label: "Even" },
-            { value: "O", label: "Odd" },
+            { value: "N", label: t("conn.parity.none") },
+            { value: "E", label: t("conn.parity.even") },
+            { value: "O", label: t("conn.parity.odd") },
           ]}
         />
       </label>
       <label in:fieldIn class="field">
-        <span>Stop bits</span>
+        <span>{t("conn.stopBits")}</span>
         <Select
           bind:value={bench.stopBits}
           disabled={locked}
-          label="Stop bits"
+          label={t("conn.stopBits")}
           options={[
-            { value: 1, label: "1 stop bit" },
-            { value: 2, label: "2 stop bits" },
+            { value: 1, label: t("conn.stop1") },
+            { value: 2, label: t("conn.stop2") },
           ]}
         />
       </label>
     {:else}
       <label in:fieldIn class="field">
-        <span>Protocol</span>
+        <span>{t("conn.protocol")}</span>
         <Select
           bind:value={bench.transport}
           disabled={locked}
-          label="Protocol"
+          label={t("conn.protocol")}
           options={[
             { value: "tcp", label: "Modbus TCP" },
             { value: "rtuovertcp", label: "Modbus RTU over TCP" },
@@ -165,7 +161,7 @@
         />
       </label>
       <label in:fieldIn class="field host">
-        <span>IP address</span>
+        <span>{t("conn.ip")}</span>
         <input
           class="input num"
           bind:value={bench.host}
@@ -174,7 +170,7 @@
         />
       </label>
       <label in:fieldIn class="field">
-        <span>Port</span>
+        <span>{t("conn.port")}</span>
         <input
           class="input num short"
           type="number"
@@ -186,8 +182,8 @@
       </label>
       <InterfaceSelect disabled={locked} />
     {/if}
-    <label class="field" title="Pause between two requests">
-      <span>Delay (ms)</span>
+    <label class="field" title={t("conn.delay.hint")}>
+      <span>{t("conn.delay")}</span>
       <input
         class="input num short"
         type="number"
@@ -197,11 +193,8 @@
         disabled={locked}
       />
     </label>
-    <label
-      class="field"
-      title="Largest number of registers in one read request. Lower it for devices that cannot read 125 at once: longer reads are split into several requests."
-    >
-      <span>Max registers</span>
+    <label class="field" title={t("conn.maxRegs.hint")}>
+      <span>{t("conn.maxRegs")}</span>
       <input
         class="input num short"
         type="number"
@@ -216,8 +209,8 @@
         disabled={locked}
       />
     </label>
-    <label class="field" title="How long to wait for a response">
-      <span>Timeout (ms)</span>
+    <label class="field" title={t("conn.timeout.hint")}>
+      <span>{t("conn.timeout")}</span>
       <input
         class="input num short"
         type="number"

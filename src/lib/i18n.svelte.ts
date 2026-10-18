@@ -169,6 +169,11 @@ class I18n {
 
 export const i18n = new I18n();
 
+/** Like t(), for a key built at run time (checked by the tests, not by the type). */
+export function td(key: string, vars: Record<string, string | number> = {}) {
+  return translate(i18n.locale, key, vars);
+}
+
 /** The string for a key in the current language. */
 export function t(key: Key, vars: Record<string, string | number> = {}) {
   return translate(i18n.locale, key, vars);

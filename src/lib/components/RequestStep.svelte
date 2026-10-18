@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from "#lib/i18n.svelte.ts";
+  import { t, td } from "#lib/i18n.svelte.ts";
   import { FUNCTION_NAME } from "#lib/format.ts";
   import { fieldIn, slidePill } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
@@ -60,13 +60,13 @@
 <StepCard step={2} title={t("step.request")}>
   <div class="row">
     <label class="field">
-      <span>Device</span>
+      <span>{t("req.device")}</span>
       <IntInput
         value={bench.unitId}
         min={0}
         max={255}
         width="72px"
-        label="Device (unit ID)"
+        label={t("req.unitId")}
         disabled={locked}
         onchange={(n) => (bench.unitId = n)}
       />
@@ -74,18 +74,18 @@
     <button
       class="btn"
       title={bench.transport === "rtu"
-        ? "Find which unit IDs answer, or the serial settings of a device"
-        : "Find which unit IDs answer on this connection"}
+        ? t("req.find.serial")
+        : t("req.find.net")}
       disabled={locked}
-      onclick={() => (scanOpen = !scanOpen)}>Find…</button
+      onclick={() => (scanOpen = !scanOpen)}>{t("req.find")}</button
     >
 
     <div class="field">
-      <span>Source</span>
+      <span>{t("req.source")}</span>
       <div
         class="segmented"
         role="radiogroup"
-        aria-label="Source"
+        aria-label={t("req.source")}
         use:slidePill
       >
         <button
@@ -93,29 +93,29 @@
           aria-checked={bench.source === "manual"}
           class:on={bench.source === "manual"}
           disabled={locked}
-          onclick={() => setSource("manual")}>Manual request</button
+          onclick={() => setSource("manual")}>{t("req.manual")}</button
         >
         <button
           role="radio"
           aria-checked={bench.source === "map"}
           class:on={bench.source === "map"}
           disabled={locked}
-          onclick={() => setSource("map")}>Device map</button
+          onclick={() => setSource("map")}>{t("req.map")}</button
         >
       </div>
     </div>
 
     {#if bench.source === "manual"}
       <label in:fieldIn class="field">
-        <span>Command</span>
+        <span>{t("req.command")}</span>
         <Select
           bind:value={bench.fc}
           width="250px"
-          label="Command"
+          label={t("req.command")}
           disabled={locked}
-          options={Object.entries(FUNCTION_NAME).map(([code, name]) => ({
+          options={Object.keys(FUNCTION_NAME).map((code) => ({
             value: Number(code),
-            label: `${name} (${code.padStart(2, "0")})`,
+            label: `${td(`fc.${code}`)} (${code.padStart(2, "0")})`,
           }))}
           onchange={onFunction}
         />
@@ -123,12 +123,12 @@
       <label in:fieldIn class="field">
         <span
           >{bench.fc <= 2 || bench.fc === 5 || bench.fc === 15
-            ? "Address"
-            : "Register"}</span
+            ? t("req.address")
+            : t("req.register")}</span
         >
         <AddressInput
           value={bench.address}
-          label="Start address"
+          label={t("req.startAddress")}
           disabled={locked}
           onchange={(n, area) => {
             bench.address = n;
@@ -137,35 +137,31 @@
         />
       </label>
       <label in:fieldIn class="field">
-        <span>Quantity</span>
+        <span>{t("req.quantity")}</span>
         <IntInput
           value={bench.quantity}
           min={1}
           max={maxQuantity}
           width="80px"
-          label="Quantity"
+          label={t("req.quantity")}
           disabled={locked || single}
           onchange={(n) => bench.setQuantity(n)}
         />
       </label>
     {:else}
       <div in:fieldIn class="field">
-        <span>Map</span>
+        <span>{t("req.mapField")}</span>
         <MapPicker disabled={locked} />
       </div>
-      <label
-        in:fieldIn
-        class="field"
-        title="Read every value with another byte order"
-      >
-        <span>Byte order</span>
+      <label in:fieldIn class="field" title={t("req.byteOrder.hint")}>
+        <span>{t("req.byteOrder")}</span>
         <Select
           value={bench.orderOverride ?? ""}
-          label="Byte order"
+          label={t("req.byteOrder")}
           options={[
             {
               value: "",
-              label: `From map${bench.map ? ` (${bench.map.map.meta.byte_order ?? "ABCD"})` : ""}`,
+              label: `${t("req.fromMap")}${bench.map ? ` (${bench.map.map.meta.byte_order ?? "ABCD"})` : ""}`,
             },
             ...orders.map((o) => ({ value: o, label: o })),
           ]}
@@ -184,15 +180,12 @@
           checked={bench.loop}
           onchange={(e) => bench.setLoop(e.currentTarget.checked)}
           disabled={locked}
-        /> Loop command</label
+        />
+        {t("req.loop")}</label
       >
       {#if bench.loop}
-        <label
-          class="every"
-          in:fieldIn
-          title="Time from the start of one cycle to the start of the next. 0 repeats as soon as Delay allows. Can be changed while running."
-        >
-          every
+        <label class="every" in:fieldIn title={t("req.every.hint")}>
+          {t("req.every")}
           <input
             class="input num"
             type="number"
@@ -203,9 +196,9 @@
               bench.setLoopMs(Number(e.currentTarget.value));
               e.currentTarget.value = String(bench.loopMs);
             }}
-            aria-label="Time between loops, in milliseconds"
+            aria-label={t("req.every.label")}
           />
-          ms
+          {t("req.ms")}
         </label>
       {/if}
     </div>

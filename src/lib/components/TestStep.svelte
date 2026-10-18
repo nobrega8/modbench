@@ -53,11 +53,7 @@
   const noPort = $derived(bench.transport === "rtu" && bench.serialPort === "");
   const noMap = $derived(bench.source === "map" && bench.map === null);
   const blocked = $derived(
-    noPort
-      ? "Choose a serial port in step 1, or plug in the adapter and refresh."
-      : noMap
-        ? "Choose a device map in step 2."
-        : null,
+    noPort ? t("test.noPort") : noMap ? t("test.noMap") : null,
   );
 
   const where = $derived(bench.connectionText);
@@ -126,24 +122,25 @@
       {#if settings.readOnly}
         <button
           class="ro"
-          title="Writes are blocked. Click to change this in Settings."
-          onclick={() => (bench.page = "settings")}>Read-only</button
+          title={t("test.readOnly.hint")}
+          onclick={() => (bench.page = "settings")}>{t("test.readOnly")}</button
         >
       {/if}
       {#if bench.running && bench.link}
         <span class="live warn"
-          ><span class="dot"></span>Reconnecting · {where}</span
+          ><span class="dot"></span>{t("test.reconnecting", { where })}</span
         >
         <span
           class="sub"
           title={[bench.link.cause, bench.link.error]
             .filter(Boolean)
             .join("\n") || undefined}
-          >Connection lost{bench.link.cause ? ` (${bench.link.cause})` : ""}.
-          Attempt {bench.link.attempt} in {(bench.link.retry_ms / 1000).toFixed(
-            1,
-          )} s{bench.link.error
-            ? ` · last error: ${bench.link.error}`
+          >{t("test.lost", {
+            cause: bench.link.cause ? ` (${bench.link.cause})` : "",
+            attempt: bench.link.attempt,
+            seconds: (bench.link.retry_ms / 1000).toFixed(1),
+          })}{bench.link.error
+            ? t("test.lastError", { error: bench.link.error })
             : ""}</span
         >
       {:else if bench.running}
@@ -152,9 +149,10 @@
         >
         {#if bench.source === "map" && bench.lastCycle}
           <span class="sub"
-            >{bench.lastCycle.requests} requests per cycle · {bench.lastCycle.duration_ms.toFixed(
-              0,
-            )} ms</span
+            >{t("test.cycle", {
+              requests: bench.lastCycle.requests,
+              ms: bench.lastCycle.duration_ms.toFixed(0),
+            })}</span
           >
         {/if}
       {:else if blocked}
@@ -169,13 +167,13 @@
   </div>
 
   <div class="segmented tabs" role="tablist" use:slidePill>
-    {#each tabs as t (t.id)}
+    {#each tabs as tab (tab.id)}
       <button
         role="tab"
-        aria-selected={bench.tab === t.id}
-        class:on={bench.tab === t.id}
-        onclick={() => (bench.tab = t.id)}
-        ><Icon name={TAB_ICON[t.id]} size={14} />{t.label}</button
+        aria-selected={bench.tab === tab.id}
+        class:on={bench.tab === tab.id}
+        onclick={() => (bench.tab = tab.id)}
+        ><Icon name={TAB_ICON[tab.id]} size={14} />{tab.label}</button
       >
     {/each}
   </div>
@@ -188,7 +186,7 @@
           {#if bench.map}
             {#key bench.map.path}<MapTable open={bench.map} />{/key}
           {:else}
-            <p class="empty">Open a device map in step 2.</p>
+            <p class="empty">{t("test.openMap")}</p>
           {/if}
         {:else if bench.tab === "chart"}
           {#if bench.source === "manual"}
@@ -196,17 +194,16 @@
           {:else if bench.map}
             {#key bench.map.path}<MapChart open={bench.map} />{/key}
           {:else}
-            <p class="empty">
-              Open a device map in step 2 to chart its values.
-            </p>
+            <p class="empty">{t("test.openMapChart")}</p>
           {/if}
         {:else if bench.tab === "write"}
           {#if settings.readOnly}
             <p class="ro-note" role="status">
-              Read-only mode is on.
+              {t("test.readOnlyOn")}
               <button
                 class="btn small"
-                onclick={() => (bench.page = "settings")}>Settings</button
+                onclick={() => (bench.page = "settings")}
+                >{t("test.settings")}</button
               >
             </p>
           {/if}

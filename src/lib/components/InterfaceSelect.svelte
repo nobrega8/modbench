@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { api } from "#lib/api.ts";
   import { bench } from "#lib/state.svelte.ts";
   import type { LocalInterface } from "#lib/types.ts";
@@ -23,7 +24,7 @@
   });
 
   const options = $derived([
-    { value: "", label: "Automatic" },
+    { value: "", label: t("conn.auto") },
     ...list.map((i) => ({
       value: i.address,
       label: `${i.name} · ${i.address}`,
@@ -34,23 +35,20 @@
       ? [
           {
             value: bench.localAddress,
-            label: `${bench.localAddress} (not found)`,
+            label: t("conn.notFound", { address: bench.localAddress }),
           },
         ]
       : []),
   ]);
 </script>
 
-<label
-  class="field"
-  title="The network interface to send from. Automatic leaves it to the system's routing; choose one on a computer with several networks (Ethernet, Wi-Fi, VPN)."
->
-  <span>Send from</span>
+<label class="field" title={t("conn.interface.hint")}>
+  <span>{t("conn.sendFrom")}</span>
   <Select
     bind:value={bench.localAddress}
     {options}
     {disabled}
-    label="Network interface"
+    label={t("conn.networkInterface")}
     width="190px"
   />
 </label>

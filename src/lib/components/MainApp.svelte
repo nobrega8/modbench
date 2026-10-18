@@ -119,7 +119,7 @@
     <span class="brand" data-tauri-drag-region
       ><img src="/favicon.png" alt="" width="20" height="20" />Modbench</span
     >
-    <nav aria-label="Pages" use:slidePill>
+    <nav aria-label={t("nav.pages")} use:slidePill>
       {#each pages as p (p.id)}
         <button
           class:on={bench.page === p.id}
@@ -148,11 +148,11 @@
         <section class="map-error" role="alert">
           <header>
             <strong
-              >{fileName(bench.mapError.path)} has errors and was not opened.</strong
+              >{t("map.error", { file: fileName(bench.mapError.path) })}</strong
             >
-            Fix these lines in the file, then open it again.
+            {t("map.error.fix")}
             <button class="btn" onclick={() => (bench.mapError = null)}
-              >Dismiss</button
+              >{t("action.dismiss")}</button
             >
           </header>
           <ul>
