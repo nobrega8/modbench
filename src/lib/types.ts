@@ -347,6 +347,8 @@ export interface LibraryEntry {
   path: string;
   vendor: string;
   model: string;
+  /** Every model name or code the map applies to (`models`). */
+  models: string[];
   description: string | null;
   vendor_website: string | null;
   /** x_status of the map: "verified", "official" or "unofficial" (older maps say "unverified" for "official"). */
@@ -365,6 +367,8 @@ export interface OnlineEntry {
   path: string;
   vendor: string;
   model: string;
+  /** Every model name or code the map applies to (`models`). */
+  models: string[];
   description: string | null;
   vendor_website: string | null;
   /** x_status of the map: "verified", "official" or "unofficial" (older maps say "unverified" for "official"). */

@@ -20,6 +20,9 @@ pub struct OnlineEntry {
     pub path: String,
     pub vendor: String,
     pub model: String,
+    /// Every model name or code the map applies to; searched too.
+    #[serde(default)]
+    pub models: Vec<String>,
     pub description: Option<String>,
     pub vendor_website: Option<String>,
     /// `x_status` of the map: "verified", "official" or "unofficial" (older maps say "unverified" for "official").
@@ -386,6 +389,22 @@ mod tests {
         assert!(!is_library_path("examples/x/y.mbmap"));
         assert!(!is_library_path("maps/a/b.txt"));
         assert!(!is_library_path("https://evil.example/maps/a/b.mbmap"));
+    }
+
+    #[test]
+    fn index_entries_carry_their_models() {
+        let index: Index = serde_json::from_str(
+            r#"{"maps": [
+                {"path": "maps/a/b.mbmap.json", "vendor": "A", "model": "B", "description": null,
+                 "vendor_website": null, "registers": 1, "models": ["B", "B-MID"]},
+                {"path": "maps/a/c.mbmap.json", "vendor": "A", "model": "C", "description": null,
+                 "vendor_website": null, "registers": 1}
+            ]}"#,
+        )
+        .unwrap();
+        assert_eq!(index.maps[0].models, ["B", "B-MID"]);
+        // Older indexes have no `models`.
+        assert!(index.maps[1].models.is_empty());
     }
 
     #[test]

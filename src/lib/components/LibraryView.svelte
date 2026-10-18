@@ -2,6 +2,7 @@
   import { popIn, popOut } from "#lib/motion.ts";
   import { open } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
+  import { modelMatches } from "#lib/search.ts";
   import { bench } from "#lib/state.svelte.ts";
   import { MAP_EXTENSIONS, type LibraryEntry } from "#lib/types.ts";
   import { sim } from "#lib/simulator.svelte.ts";
@@ -57,7 +58,7 @@
       return (
         !q ||
         e.vendor.toLowerCase().includes(q) ||
-        e.model.toLowerCase().includes(q) ||
+        modelMatches(q, e.model, e.models) ||
         (e.description ?? "").toLowerCase().includes(q)
       );
     }),
