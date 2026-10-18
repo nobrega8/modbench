@@ -12,6 +12,9 @@ import ptBR from "./locales/pt-BR.json";
 import tr from "./locales/tr.json";
 import pl from "./locales/pl.json";
 import ru from "./locales/ru.json";
+import hi from "./locales/hi.json";
+import bn from "./locales/bn.json";
+import ta from "./locales/ta.json";
 import ja from "./locales/ja.json";
 import ko from "./locales/ko.json";
 import zhHans from "./locales/zh-Hans.json";
@@ -28,6 +31,9 @@ export type Locale =
   | "tr"
   | "pl"
   | "ru"
+  | "hi"
+  | "bn"
+  | "ta"
   | "ja"
   | "ko"
   | "zh-Hans"
@@ -47,6 +53,9 @@ export const CATALOGUES: Record<Locale, Catalogue> = {
   tr,
   pl,
   ru,
+  hi,
+  bn,
+  ta,
   ja,
   ko,
   "zh-Hans": zhHans,
@@ -65,6 +74,9 @@ export const LOCALES: { id: Locale; name: string }[] = [
   { id: "tr", name: "Türkçe" },
   { id: "pl", name: "Polski" },
   { id: "ru", name: "Русский" },
+  { id: "hi", name: "हिन्दी" },
+  { id: "bn", name: "বাংলা" },
+  { id: "ta", name: "தமிழ்" },
   { id: "ja", name: "日本語" },
   { id: "ko", name: "한국어" },
   { id: "zh-Hans", name: "简体中文" },
@@ -89,7 +101,22 @@ export function detectLocale(languages: readonly string[]): Locale {
     if (lang === "zh") {
       return /-(hant|tw|hk|mo)\b/.test(tag) ? "zh-Hant" : "zh-Hans";
     }
-    if (["es", "de", "fr", "it", "tr", "pl", "ru", "ja", "ko"].includes(lang))
+    if (
+      [
+        "es",
+        "de",
+        "fr",
+        "it",
+        "tr",
+        "pl",
+        "ru",
+        "hi",
+        "bn",
+        "ta",
+        "ja",
+        "ko",
+      ].includes(lang)
+    )
       return lang as Locale;
   }
   return "en";

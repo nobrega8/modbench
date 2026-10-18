@@ -64,6 +64,11 @@ describe("lookup", () => {
       "1 個のレジスタ",
     );
     expect(translate("de", "settings.theme.dark")).toBe("Dunkel");
+    expect(translate("hi", "count.registers", { count: 2 })).toBe("2 रजिस्टर");
+    expect(translate("bn", "count.registers", { count: 3 })).toBe(
+      "3টি রেজিস্টার",
+    );
+    expect(translate("ta", "count.registers", { count: 1 })).toBe("1 பதிவகம்");
     expect(translate("pt-PT", "no.such.key")).toBe("no.such.key");
   });
 });
@@ -79,6 +84,9 @@ describe("system language", () => {
     expect(detectLocale(["it", "tr", "pl", "ja", "ko"])).toBe("it");
     expect(detectLocale(["ja-JP"])).toBe("ja");
     expect(detectLocale(["ko-KR"])).toBe("ko");
+    expect(detectLocale(["hi-IN"])).toBe("hi");
+    expect(detectLocale(["bn-BD", "en"])).toBe("bn");
+    expect(detectLocale(["ta-LK"])).toBe("ta");
     expect(detectLocale(["zh-CN"])).toBe("zh-Hans");
     expect(detectLocale(["zh-Hans-SG"])).toBe("zh-Hans");
     expect(detectLocale(["zh-TW", "fr"])).toBe("zh-Hant");

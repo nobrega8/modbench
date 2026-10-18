@@ -586,3 +586,18 @@ input[type="checkbox"]:focus-visible {
     "Hiragino Sans CNS", "Microsoft JhengHei", "Noto Sans CJK TC",
     "Noto Sans TC", sans-serif;
 }
+:root:lang(hi) {
+  --ui:
+    "Inter", system-ui, -apple-system, "Segoe UI", "Kohinoor Devanagari",
+    "Devanagari Sangam MN", "Nirmala UI", "Noto Sans Devanagari", sans-serif;
+}
+:root:lang(bn) {
+  --ui:
+    "Inter", system-ui, -apple-system, "Segoe UI", "Kohinoor Bangla",
+    "Bangla Sangam MN", "Nirmala UI", "Noto Sans Bengali", sans-serif;
+}
+:root:lang(ta) {
+  --ui:
+    "Inter", system-ui, -apple-system, "Segoe UI", "Tamil Sangam MN",
+    "InaiMathi", "Nirmala UI", "Noto Sans Tamil", sans-serif;
+}
