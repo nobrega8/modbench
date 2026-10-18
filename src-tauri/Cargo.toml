@@ -1,6 +1,6 @@
 [package]
 name = "modbench"
-version = "0.3.2"
+version = "0.3.3"
 description = "Lightweight Modbus TCP/RTU client with device map (.mbmap) support"
 authors = ["nobrega8"]
 license = "GPL-3.0-or-later"
