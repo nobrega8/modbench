@@ -135,7 +135,7 @@
     <button
       class="btn accent"
       disabled={bench.running || bench.scanning || from > to}
-      title={bench.running ? "Stop the test on the Main page first" : undefined}
+      title={bench.running ? t("addressscantool.stop_the_test_on") : undefined}
       onclick={scan}>{t("scanpanel.scan")}</button
     >
   {/if}
@@ -154,8 +154,10 @@
     <div style:width="{progress * 100}%"></div>
   </div>
   <p class="dim mono">
-    At {addr(bench.addressProgress!.address)} · {bench.addressProgress!.found}
-    found so far
+    {t("addressscantool.at_address_found_found", {
+      address: addr(bench.addressProgress!.address),
+      found: bench.addressProgress!.found,
+    })}
   </p>
 {/if}
 
@@ -185,14 +187,21 @@
           )}
       />
       {#if last.stoppedAt !== null}
-        <span class="dim">Stopped at {addr(last.stoppedAt)}.</span>
+        <span class="dim"
+          >{t("addressscantool.stopped_at_address", {
+            address: addr(last.stoppedAt),
+          })}</span
+        >
       {/if}
     </div>
   {/if}
   {#if hits.length}
     <p>
-      {found} of {scanned.to - scanned.from + 1} addresses answered, in {hits.length}
-      {hits.length === 1 ? "range" : "ranges"}.
+      {t("addressscantool.found_of_total_addresses", {
+        found,
+        total: scanned.to - scanned.from + 1,
+        ranges: hits.length,
+      })}
     </p>
     <table class="data">
       <thead>

@@ -124,7 +124,7 @@
     const blob = await new Promise<Blob | null>((ok) =>
       canvas.toBlob(ok, "image/png"),
     );
-    if (!blob) throw new Error("The image could not be drawn.");
+    if (!blob) throw new Error(t("chartexport.the_image_could_not"));
     return new Uint8Array(await blob.arrayBuffer());
   }
 
@@ -145,7 +145,7 @@
       } finally {
         await picture.close().catch(() => {});
       }
-      note = { ok: true, text: "Copied." };
+      note = { ok: true, text: t("chartexport.copied") };
     } catch (e) {
       note = { ok: false, text: `Not copied: ${errorText(e)}` };
     }
@@ -164,7 +164,7 @@
       if (format === "svg") await api.saveText(path, shot.svg);
       else
         await api.saveBytes(path, await png(shot.svg, shot.width, shot.height));
-      note = { ok: true, text: "Saved." };
+      note = { ok: true, text: t("chartexport.saved") };
     } catch (e) {
       note = { ok: false, text: `Not saved: ${errorText(e)}` };
     }
@@ -172,14 +172,23 @@
 
   function menu(e: MouseEvent) {
     contextMenu.show(e, [
-      { label: "Copy image", action: () => copyImage(false) },
-      { label: "Copy image, light theme", action: () => copyImage(true) },
+      { label: t("chartexport.copy_image"), action: () => copyImage(false) },
+      {
+        label: t("chartexport.copy_image_light_theme"),
+        action: () => copyImage(true),
+      },
       null,
       { label: "PNG…", action: () => exportImage("png", false) },
       { label: "SVG…", action: () => exportImage("svg", false) },
       null,
-      { label: "PNG, light theme…", action: () => exportImage("png", true) },
-      { label: "SVG, light theme…", action: () => exportImage("svg", true) },
+      {
+        label: t("chartexport.png_light_theme"),
+        action: () => exportImage("png", true),
+      },
+      {
+        label: t("chartexport.svg_light_theme"),
+        action: () => exportImage("svg", true),
+      },
     ]);
   }
 </script>

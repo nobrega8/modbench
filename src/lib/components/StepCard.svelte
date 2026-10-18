@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import type { Snippet } from "svelte";
   import { smoothHeight } from "#lib/motion.ts";
 
@@ -15,7 +16,11 @@
   } = $props();
 </script>
 
-<section class="step" class:grow aria-label="Step {step}: {title}">
+<section
+  class="step"
+  class:grow
+  aria-label={t("stepcard.step_step_title", { step, title })}
+>
   <header class="rail">
     <span class="num">{step}</span>
     <span class="title">{title}</span>

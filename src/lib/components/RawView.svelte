@@ -47,34 +47,38 @@
   /** What a right-click on an exchange offers. */
   function exchangeMenu(x: Exchange): MenuEntry[] {
     return [
-      { label: "Copy data out", action: () => copy(bytes(x.out)) },
+      { label: t("rawview.copy_data_out"), action: () => copy(bytes(x.out)) },
       x.in.length > 0 && {
-        label: "Copy data in",
+        label: t("rawview.copy_data_in"),
         action: () => copy(bytes(x.in)),
       },
       {
-        label: "Copy both",
+        label: t("rawview.copy_both"),
         action: () =>
           copy(`TX ${bytes(x.out)}\nRX ${x.in.length ? bytes(x.in) : "—"}`),
       },
       null,
       {
-        label: "Decode here",
+        label: t("rawview.decode_here"),
         action: () => {
           decode = true;
           picked = x === last ? null : x;
         },
       },
       {
-        label: "Open request in Frame decoder",
+        label: t("rawview.open_request_in_frame"),
         action: () => decodeInTool(x.out, "request"),
       },
       x.in.length > 0 && {
-        label: "Open response in Frame decoder",
+        label: t("rawview.open_response_in_frame"),
         action: () => decodeInTool(x.in, "response"),
       },
       null,
-      { label: "Clear", danger: true, action: () => bench.clearRaw() },
+      {
+        label: t("chartview.clear"),
+        danger: true,
+        action: () => bench.clearRaw(),
+      },
     ];
   }
 
@@ -109,7 +113,7 @@
       >{last
         ? last.in.length
           ? bytes(last.in)
-          : "(no response yet)"
+          : t("rawview.no_response_yet")
         : "—"}</code
     >
   </div>
@@ -156,7 +160,7 @@
       class:picked={decode && shown === x}
       role="button"
       tabindex="-1"
-      title={decode ? "Decode this exchange" : undefined}
+      title={decode ? t("rawview.decode_this_exchange") : undefined}
       onclick={() => (picked = x === last ? null : x)}
       oncontextmenu={(e) => contextMenu.show(e, exchangeMenu(x))}
     >

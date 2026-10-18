@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { parseInteger } from "#lib/format.ts";
 
   let {
@@ -51,7 +52,9 @@
   spellcheck="false"
   aria-label={label}
   aria-invalid={invalid}
-  title={invalid ? `Enter ${min}–${max} (decimal, 0x… or …h)` : undefined}
+  title={invalid
+    ? t("intinput.enter_min_max_decimal", { min, max })
+    : undefined}
 />
 
 <style>

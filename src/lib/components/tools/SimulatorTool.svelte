@@ -49,14 +49,14 @@
 
   let generators: SimGenerators | undefined = $state();
 
-  const kinds: { value: SimKind; label: string }[] = [
+  const kinds: { value: SimKind; label: string }[] = $derived([
     { value: "tcp", label: "Modbus TCP" },
     { value: "rtuovertcp", label: "RTU over TCP" },
     { value: "udp", label: "Modbus UDP" },
     { value: "rtuoverudp", label: "RTU over UDP" },
-    { value: "rtu", label: "Serial RTU" },
-    { value: "ascii", label: "Serial ASCII" },
-  ];
+    { value: "rtu", label: t("simulatortool.serial_rtu") },
+    { value: "ascii", label: t("simulatortool.serial_ascii") },
+  ]);
   const baudrates = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
   const serial = $derived(sim.kind === "rtu" || sim.kind === "ascii");
   const stopped = $derived(sim.running === null);
@@ -85,8 +85,14 @@
 
   /** A device's tab: its unit ID and what it is shaped after. */
   function deviceLabel(d: (typeof sim.devices)[number]) {
-    const unit = d.unit === null ? "All units" : `Unit ${d.unit}`;
-    return `${unit} · ${deviceName(d) ?? "empty"}`;
+    const unit =
+      d.unit === null
+        ? t("simulatortool.all_units")
+        : t("mapexplorer.unit_unit", { unit: d.unit });
+    return t("simulatortool.unit_name", {
+      unit: unit,
+      name: deviceName(d) ?? t("simulatortool.empty"),
+    });
   }
 
   /** Maps to shape the device after: those open on Main, then the library. */
@@ -98,10 +104,12 @@
    * then any file. The one loaded now is always listed. */
   const sources = $derived.by(() => {
     const list = [
-      { value: "", label: "Empty device" },
+      { value: "", label: t("simulatortool.empty_device") },
       ...bench.maps.map((m) => ({
         value: m.path,
-        label: `${m.map.meta.vendor} ${m.map.meta.model} · open`,
+        label: t("simulatortool.name_open", {
+          name: `${m.map.meta.vendor} ${m.map.meta.model}`,
+        }),
       })),
       ...bench.library
         .filter((e) => !e.error && !bench.maps.some((m) => m.path === e.path))
@@ -109,7 +117,7 @@
     ];
     if (sim.source && !list.some((o) => o.value === sim.source))
       list.push({ value: sim.source, label: sim.loaded ?? sim.source });
-    list.push({ value: OPEN_FILE, label: "Open a map file…" });
+    list.push({ value: OPEN_FILE, label: t("simulatortool.open_a_map_file") });
     return list;
   });
 
@@ -119,7 +127,7 @@
       picks++;
       const picked = await openDialog({
         multiple: false,
-        filters: [{ name: "Device map", extensions: MAP_EXTENSIONS }],
+        filters: [{ name: t("tab.map"), extensions: MAP_EXTENSIONS }],
       });
       if (typeof picked === "string") await sim.pick(picked);
       return;
@@ -136,12 +144,12 @@
 
   const PER_ROW = 10;
   const SHOWN = 100;
-  const areas: { id: Area; label: string }[] = [
-    { id: "holding", label: "Holding registers" },
-    { id: "input", label: "Input registers" },
-    { id: "coil", label: "Coils" },
-    { id: "discrete", label: "Discrete inputs" },
-  ];
+  const areas: { id: Area; label: string }[] = $derived([
+    { id: "holding", label: t("simulatortool.holding_registers") },
+    { id: "input", label: t("simulatortool.input_registers") },
+    { id: "coil", label: t("simulatortool.coils") },
+    { id: "discrete", label: t("simulatortool.discrete_inputs") },
+  ]);
 
   let view = $state.raw<SimView | null>(null);
   let editing = $state<number | null>(null);
@@ -221,21 +229,32 @@
     const text = typeof v === "boolean" ? (v ? "1" : "0") : String(v);
     return [
       typeof v === "boolean"
-        ? { label: v ? "Switch off" : "Switch on", action: () => edit(offset) }
-        : { label: "Change value…", action: () => edit(offset) },
+        ? {
+            label: v
+              ? t("simulatortool.switch_off")
+              : t("simulatortool.switch_on"),
+            action: () => edit(offset),
+          }
+        : {
+            label: t("simulatortool.change_value"),
+            action: () => edit(offset),
+          },
       typeof v === "number" && {
-        label: "Set to 0",
+        label: t("simulatortool.set_to_0"),
         disabled: v === 0,
         action: () => write(offset, 0),
       },
       null,
-      { label: "Copy value", action: () => copy(text) },
+      { label: t("maptable.copy_value"), action: () => copy(text) },
       typeof v === "number" && {
-        label: "Copy value",
-        hint: "hex",
+        label: t("maptable.copy_value"),
+        hint: t("registergrid.hex2"),
         action: () => copy(`0x${hex(v)}`),
       },
-      { label: "Copy address", action: () => copy(addr(first + offset)) },
+      {
+        label: t("maptable.copy_address"),
+        action: () => copy(addr(first + offset)),
+      },
     ];
   }
 
@@ -249,7 +268,7 @@
     if (editing === null) return;
     const n = parseInteger(draft);
     if (n === null || n < -32768 || n > 65535) {
-      problem = "Type a whole number from −32768 to 65535, or hex like 0x1F.";
+      problem = t("simulatortool.type_a_whole_number");
       return;
     }
     write(editing, n);
@@ -257,7 +276,7 @@
   }
 
   const setupFilter = [
-    { name: "Simulator setup", extensions: [SETUP_EXTENSION] },
+    { name: t("simulatortool.simulator_setup"), extensions: [SETUP_EXTENSION] },
   ];
   async function saveSetup() {
     sim.setupNote = null;
@@ -268,7 +287,7 @@
     if (!path) return;
     try {
       await api.saveText(path, sim.setupText());
-      sim.setupNote = { ok: true, text: "Setup saved." };
+      sim.setupNote = { ok: true, text: t("simulatortool.setup_saved") };
     } catch (e) {
       sim.setupNote = { ok: false, text: `Not saved: ${errorText(e)}` };
     }
@@ -309,9 +328,14 @@
   <header class="tool-head">
     <h1>{t("tools.simulator")}</h1>
     <p>
-      The simulator is open in its own window{sim.running !== null
-        ? `, listening on ${whereText(sim.running)}`
-        : ""}.
+      {t("simulatortool.the_simulator_is_open", {
+        listening:
+          sim.running !== null
+            ? t("simulatortool.listening_on_where", {
+                where: whereText(sim.running),
+              })
+            : "",
+      })}
     </p>
   </header>
   <div class="row">
@@ -421,8 +445,8 @@
           disabled={!stopped}
           label={t("conn.dataBits")}
           options={[
-            { value: 8, label: "8 bits" },
-            { value: 7, label: "7 bits" },
+            { value: 8, label: t("conn.bits8") },
+            { value: 7, label: t("conn.bits7") },
           ]}
         />
       </label>
@@ -433,9 +457,9 @@
           disabled={!stopped}
           label={t("conn.parity")}
           options={[
-            { value: "N", label: "None" },
-            { value: "E", label: "Even" },
-            { value: "O", label: "Odd" },
+            { value: "N", label: t("conn.parity.none") },
+            { value: "E", label: t("conn.parity.even") },
+            { value: "O", label: t("conn.parity.odd") },
           ]}
         />
       </label>
@@ -446,8 +470,8 @@
           disabled={!stopped}
           label={t("conn.stopBits")}
           options={[
-            { value: 1, label: "1 stop bit" },
-            { value: 2, label: "2 stop bits" },
+            { value: 1, label: t("conn.stop1") },
+            { value: 2, label: t("conn.stop2") },
           ]}
         />
       </label>
@@ -490,7 +514,9 @@
     <span class="status" aria-live="polite">
       {#if sim.running !== null}
         <span class="live"
-          ><span class="dot"></span>Listening on {whereText(sim.running)}</span
+          ><span class="dot"></span>{t("simulatortool.listening_on_where2", {
+            where: whereText(sim.running),
+          })}</span
         >
         {#if overNetwork(sim.running)}
           <button class="btn ghost" onclick={useInMain}
@@ -649,7 +675,9 @@
       <AddressFormat />
     </div>
     <p class="dim hint">
-      {bits ? "Click a bit to switch it." : "Click a value to change it."}
+      {bits
+        ? t("simulatortool.click_a_bit_to")
+        : t("simulatortool.click_a_value_to")}
     </p>
     {#if problem}<p class="bad">{problem}</p>{/if}
 
@@ -674,7 +702,9 @@
                   if (e.key === "Escape") editing = null;
                 }}
                 onblur={commit}
-                aria-label="Value at {addr(first + i)}"
+                aria-label={t("simulatortool.value_at_address", {
+                  address: addr(first + i),
+                })}
               />
             {:else}
               <button
@@ -682,11 +712,7 @@
                 class:off={!defined}
                 class:on={v === true}
                 class:gen={driven.has(first + i)}
-                title="{addr(first + i)}{defined
-                  ? ''
-                  : ' · not in the map'}{typeof v === 'number'
-                  ? ` · 0x${hex(v)}`
-                  : ''}{driven.has(first + i) ? ' · set by a generator' : ''}"
+                title={`${addr(first + i)}${defined ? "" : t("simulatortool.not_in_the_map")}${typeof v === "number" ? ` · 0x${hex(v)}` : ""}${driven.has(first + i) ? t("simulatortool.set_by_a_generator") : ""}`}
                 onclick={() => edit(i)}
                 oncontextmenu={(e) => contextMenu.show(e, cellMenu(i))}
                 >{typeof v === "boolean" ? (v ? "1" : "0") : v}</button
@@ -720,15 +746,18 @@
                 <tr
                   oncontextmenu={(ev) =>
                     contextMenu.show(ev, [
-                      { label: "Copy line", action: () => copy(eventLine(e)) },
                       {
-                        label: "Copy all",
+                        label: t("logview.copy_line"),
+                        action: () => copy(eventLine(e)),
+                      },
+                      {
+                        label: t("logview.copy_all"),
                         action: () =>
                           copy([...list].reverse().map(eventLine).join("\n")),
                       },
                       null,
                       {
-                        label: "Clear activity",
+                        label: t("simulatortool.clear_activity"),
                         danger: true,
                         action: () => sim.clearEvents(),
                       },
@@ -768,18 +797,18 @@
     </div>
     <div class="panes">
       {@render log(
-        "Reads",
+        t("simulatortool.reads"),
         reads,
         sim.reads.length,
         sim.running === null
-          ? "Start the simulator, then connect to it from the Main page or another program."
-          : "Waiting for a client…",
+          ? t("simulatortool.start_the_simulator_then")
+          : t("simulatortool.waiting_for_a_client"),
       )}
       {@render log(
-        "Writes",
+        t("simulatortool.writes"),
         writes,
         sim.writes.length,
-        "No client has written anything yet.",
+        t("simulatortool.no_client_has_written"),
       )}
     </div>
   </section>

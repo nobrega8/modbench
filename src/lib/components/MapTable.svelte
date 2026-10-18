@@ -194,9 +194,12 @@
           settings.csvSeparator,
         ),
       );
-      exportNote = { ok: true, text: "Saved." };
+      exportNote = { ok: true, text: t("maptable.saved") };
     } catch (e) {
-      exportNote = { ok: false, text: `Not saved: ${errorText(e)}` };
+      exportNote = {
+        ok: false,
+        text: t("maptable.not_saved_error", { error: errorText(e) }),
+      };
     }
   }
 
@@ -265,56 +268,60 @@
         : null;
     return [
       reg.access !== "R" && {
-        label: "Write…",
+        label: t("maptable.write"),
         disabled: settings.readOnly,
-        hint: settings.readOnly ? "read-only" : undefined,
+        hint: settings.readOnly ? t("maptable.read_only") : undefined,
         action: () => edit(index),
       },
       readable && {
-        label: bench.skipped.has(index) ? "Read it" : "Stop reading it",
+        label: bench.skipped.has(index)
+          ? t("maptable.read_it")
+          : t("maptable.stop_reading_it"),
         action: () => bench.toggleRead(index),
       },
       readable &&
         reg.type !== "string" &&
         (charted
           ? {
-              label: "Remove from chart",
+              label: t("maptable.remove_from_chart"),
               action: () => bench.removeFromChart(index),
             }
           : {
-              label: "Add to chart",
+              label: t("maptable.add_to_chart"),
               disabled: bench.chartSeries.length >= MAX_SERIES,
               hint:
                 bench.chartSeries.length >= MAX_SERIES
-                  ? `${MAX_SERIES} at most`
+                  ? t("maptable.max_at_most", { max: MAX_SERIES })
                   : undefined,
               action: () => bench.addToChart(index),
             }),
       readable &&
         reg.type !== "string" && {
-          label: alarms.has(index) ? "Change alarm…" : "Set alarm…",
+          label: alarms.has(index)
+            ? t("maptable.change_alarm")
+            : t("maptable.set_alarm"),
           action: () => alarmFor(reg),
         },
       null,
       shown !== null && {
-        label: "Copy value",
+        label: t("maptable.copy_value"),
         action: () => copy(reg.unit ? `${shown} ${reg.unit}` : shown),
       },
       r?.raw !== undefined &&
         r?.raw !== null &&
         !r.error && {
-          label: "Copy raw value",
+          label: t("maptable.copy_raw_value"),
           action: () => copy(formatRaw(r.raw ?? null)),
         },
-      { label: "Copy name", action: () => copy(reg.name) },
+      { label: t("maptable.copy_name"), action: () => copy(reg.name) },
       {
-        label: "Copy address",
+        label: t("maptable.copy_address"),
         action: () =>
           copy(formatAddress(reg.address, settings.addressFormat, reg.area)),
       },
       null,
       isCustom(reg) && {
-        label: "Remove register",
+        label: t("maptable.remove_register"),
         danger: true,
         action: () => bench.removeCustomRegister(index),
       },
@@ -333,14 +340,30 @@
       note = { index, ok: false, text: outside };
       return;
     }
-    if (!(await bench.confirmWrite(`Write ${text} to ${reg.name}?`))) return;
+    if (
+      !(await bench.confirmWrite(
+        t("maptable.write_value_to_name", { value: text, name: reg.name }),
+      ))
+    )
+      return;
     busy = true;
     try {
       await bench.writeMapValue(index, parsed.value);
-      note = { index, ok: true, text: `Wrote ${text} to ${reg.name}.` };
+      note = {
+        index,
+        ok: true,
+        text: t("maptable.wrote_value_to_name", {
+          value: text,
+          name: reg.name,
+        }),
+      };
       editing = null;
     } catch (e) {
-      note = { index, ok: false, text: `Not written: ${errorText(e)}` };
+      note = {
+        index,
+        ok: false,
+        text: t("maptable.not_written_error", { error: errorText(e) }),
+      };
     } finally {
       busy = false;
     }
@@ -354,9 +377,10 @@
     >
     {#if meta.revision}<span
         class="rev"
-        title="Revision {meta.revision} of this map{meta.revised
-          ? `, ${meta.revised}`
-          : ''}">rev {meta.revision}</span
+        title={t("maptable.revision_revision_of_this", {
+          revision: meta.revision,
+          date: meta.revised ? `, ${meta.revised}` : "",
+        })}>{t("maptable.rev_revision", { revision: meta.revision })}</span
       >{/if}
     {#if meta.description}<span class="desc" title={meta.description}
         >{meta.description}</span
@@ -377,9 +401,12 @@
     <span
       class="refs ok"
       title={[
-        identity.model.found && `Model ${identity.model.found}`,
-        fwVersion && `firmware ${versionText(fwVersion)}`,
-        identity.serial && `serial number ${identity.serial}`,
+        identity.model.found &&
+          t("maptable.model_model", { model: identity.model.found }),
+        fwVersion &&
+          t("maptable.firmware_version", { version: versionText(fwVersion) }),
+        identity.serial &&
+          t("maptable.serial_number_serial", { serial: identity.serial }),
       ]
         .filter(Boolean)
         .join(", ")}>{t("maptable.device_recognised")}</span
@@ -387,8 +414,8 @@
   {:else if mapRange && !fwVersion}
     <span
       class="refs"
-      title="This map is for firmware {mapRange}. The device's firmware is not known, so it was not checked."
-      >Firmware {mapRange}</span
+      title={t("maptable.this_map_is_for", { range: mapRange })}
+      >{t("maptable.firmware_range", { range: mapRange })}</span
     >
   {/if}
   {#if refs.total}
@@ -396,26 +423,36 @@
       class="refs"
       class:bad={refs.mismatch > 0 || refs.failed > 0}
       title={t("maptable.registers_with_a_known")}
-      >Reference {refs.match}/{refs.total}{#if refs.mismatch}
-        · {refs.mismatch} differ{/if}{#if refs.failed}
-        · {refs.failed} failed{/if}</span
+      >{t("maptable.reference_match_total", {
+        match: refs.match,
+        total: refs.total,
+      })}{#if refs.mismatch}
+        · {t("maptable.count_differ", {
+          count: refs.mismatch,
+        })}{/if}{#if refs.failed}
+        · {t("maptable.count_failed", { count: refs.failed })}{/if}</span
     >
   {/if}
   {#if alarms.size}
     <button
       class="refs alarms"
       class:bad={inAlarm.size > 0}
-      title="Alarm limits set on {alarms.size} registers. Click to change them."
+      title={t("maptable.alarm_limits_set_on", { count: alarms.size })}
       onclick={() => {
         bench.tool = "alarms";
         bench.page = "tools";
       }}
       >{inAlarm.size
-        ? `${inAlarm.size} in alarm`
-        : `Alarms ${alarms.size} · OK`}</button
+        ? t("maptable.count_in_alarm", { count: inAlarm.size })
+        : t("maptable.alarms_count_ok", { count: alarms.size })}</button
     >
   {/if}
-  <span class="count">Reading {readCount} of {open.map.registers.length}</span>
+  <span class="count"
+    >{t("maptable.reading_read_of_total", {
+      read: readCount,
+      total: open.map.registers.length,
+    })}</span
+  >
   <button
     class="btn small"
     disabled={readCount === open.map.registers.length}
@@ -436,11 +473,13 @@
     class="btn small"
     class:rec={recording}
     title={recording
-      ? `Recording to ${recording.path}. Click to stop.`
-      : "Add one row per reading cycle to a CSV file, with a column for each register that is read now"}
+      ? t("maptable.recording_to_path_click", { path: recording.path })
+      : t("maptable.add_one_row_per")}
     disabled={!recording && readCount === 0}
     onclick={toggleRecording}
-    >{recording ? `Stop recording (${recording.rows})` : "Record…"}</button
+    >{recording
+      ? t("maptable.stop_recording_rows", { rows: recording.rows })
+      : t("maptable.record")}</button
   >
   <SnapshotBar
     kind="map"
@@ -451,7 +490,9 @@
       >{exportNote.text}</span
     >{/if}
   {#if bench.recordError}<span class="bad note" title={bench.recordError}
-      >Recording stopped: {bench.recordError}</span
+      >{t("maptable.recording_stopped_error", {
+        error: bench.recordError,
+      })}</span
     >{/if}
   <input
     class="input search"
@@ -477,13 +518,16 @@
   <div class="mismatch" role="alert">
     <strong>{t("maptable.the_connected_device_does")}</strong>
     {#if identity.model.status === "mismatch"}<span
-        >The map is for {modelNames}; the device reports {identity.model
-          .found}.</span
+        >{t("maptable.the_map_is_for", {
+          map: modelNames,
+          found: identity.model.found ?? "",
+        })}</span
       >{/if}
     {#if identity.firmware.status === "mismatch" && fwVersion}<span
-        >The map is for firmware {mapRange}; the device reports {versionText(
-          fwVersion,
-        )}.</span
+        >{t("maptable.the_map_is_for2", {
+          map: mapRange ?? "",
+          found: versionText(fwVersion),
+        })}</span
       >{/if}
     <span class="dim">{t("maptable.values_may_be_wrong")}</span>
   </div>
@@ -493,7 +537,9 @@
   <div class="deprecated">
     <span>{t("maptable.this_map_uses_format")}</span>
     <button class="btn" disabled={converting} onclick={convert}
-      >{converting ? "Converting…" : "Convert to version 2"}</button
+      >{converting
+        ? t("maptable.converting")
+        : t("maptable.convert_to_version_2")}</button
     >
     {#if convertError}<span class="error">{convertError}</span>{/if}
   </div>
@@ -502,8 +548,9 @@
 {#if open.warnings.length}
   <details class="warnings">
     <summary
-      >{open.warnings.length} warning{open.warnings.length === 1 ? "" : "s"} in the
-      map file</summary
+      >{t("maptable.warnings_in_the_map", {
+        count: open.warnings.length,
+      })}</summary
     >
     <ul>
       {#each open.warnings as w, k (k)}
@@ -527,9 +574,14 @@
         <th class="val">{t("maptable.value")}</th>
         {#if snap}<th
             class="val"
-            title="The value in the snapshot {snap.label}{bench.compareWith
-              ? `, compared with ${bench.compareWith.label}`
-              : ', compared with the live value'}">{t("maptable.snapshot")}</th
+            title={t("maptable.the_value_in_the", {
+              label: snap.label,
+              compared: bench.compareWith
+                ? t("maptable.compared_with_label", {
+                    label: bench.compareWith.label,
+                  })
+                : t("maptable.compared_with_the_live"),
+            })}>{t("maptable.snapshot")}</th
           >{/if}
         <th>{t("computedform.unit")}</th>
         <th>{t("maptable.raw")}</th>
@@ -559,8 +611,10 @@
                 class="switch"
                 role="switch"
                 checked={!off}
-                aria-label="Read {reg.name}"
-                title={off ? "Not read. Switch on to read it." : "Read"}
+                aria-label={t("maptable.read_name", { name: reg.name })}
+                title={off
+                  ? t("maptable.not_read_switch_on")
+                  : t("maptable.read")}
                 onchange={() => bench.toggleRead(index)}
               />
             {/if}
@@ -568,8 +622,16 @@
           <td
             class="addr mono"
             title={formulaOf(reg) !== null
-              ? "Computed on this computer, not read from the device"
-              : `${AREA_NAME[reg.area]} ${reg.address} on the wire${base ? ` (${reg.address + base} in the manual)` : ""}`}
+              ? t("maptable.computed_on_this_computer")
+              : t("maptable.area_address_on_the", {
+                  area: AREA_NAME[reg.area],
+                  address: reg.address,
+                  manual: base
+                    ? t("maptable.address_in_the_manual", {
+                        address: reg.address + base,
+                      })
+                    : "",
+                })}
             >{#if formulaOf(reg) !== null}<span class="area"
                 >{t("maptable.calc")}</span
               >{:else}<span class="area">{AREA_TAG[reg.area]}</span
@@ -598,17 +660,22 @@
                 class:ok={r?.reference === "match"}
                 class:bad={r?.reference === "mismatch"}
                 title={r?.reference === "match"
-                  ? `Matches the reference value ${reg.reference}`
+                  ? t("maptable.matches_the_reference_value", {
+                      value: reg.reference,
+                    })
                   : r?.reference === "mismatch"
-                    ? `Differs from the reference value ${reg.reference}`
-                    : `Reference value ${reg.reference}`}
-                >{t("maptable.ref")}</span
+                    ? t("maptable.differs_from_the_reference", {
+                        value: reg.reference,
+                      })
+                    : t("maptable.reference_value_value", {
+                        value: reg.reference,
+                      })}>{t("maptable.ref")}</span
               >{/if}</td
           >
           <td
             class="type mono"
             title={reg.scale_factor
-              ? `Scaled by 10 to the power of ${reg.scale_factor}`
+              ? t("maptable.scaled_by_10_to", { name: reg.scale_factor })
               : undefined}>{typeLabel(reg)}</td
           >
           <td
@@ -623,8 +690,9 @@
                 >{t("maptable.write_only")}</span
               >{:else if r?.sentinel}<span
                 class="sentinel"
-                title="The device returned a reserved value: {r.sentinel}"
-                >{r.sentinel}</span
+                title={t("maptable.the_device_returned_a", {
+                  value: r.sentinel,
+                })}>{r.sentinel}</span
               >{:else}{shown}{/if}
           </td>
           {#if snap}
@@ -692,14 +760,14 @@
                 {:else if reg.enum.length && !custom}
                   <Select
                     bind:value={draft}
-                    label="Value for {reg.name}"
+                    label={t("maptable.value_for_name", { name: reg.name })}
                     placeholder={t("maptable.choose")}
                     options={[
                       ...reg.enum.map(([v, l]) => ({
                         value: l,
                         label: `${l} (${v})`,
                       })),
-                      { value: CUSTOM, label: "Custom value…" },
+                      { value: CUSTOM, label: t("maptable.custom_value") },
                     ]}
                     onchange={(v) => {
                       if (v !== CUSTOM) return;
@@ -757,8 +825,8 @@
         <tr>
           <td colspan={snap ? 9 : 8} class="empty"
             >{open.map.registers.length
-              ? "No registers match this search."
-              : "This map has no registers."}</td
+              ? t("maptable.no_registers_match_this")
+              : t("maptable.this_map_has_no")}</td
           >
         </tr>
       {/each}

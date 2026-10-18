@@ -104,22 +104,28 @@
     <h2 class="key">{t("statstool.suggested_timeout")}</h2>
     {#if suggested === null}
       <p class="dim note">
-        Shown after {SUGGEST_AFTER} answers ({times.count} so far).
+        {t("statstool.shown_after_after_answers", {
+          after: SUGGEST_AFTER,
+          count: times.count,
+        })}
       </p>
     {:else}
       <div class="row suggest">
         <span class="mono"><strong>{suggested}</strong> ms</span>
         <span class="dim"
-          >4 × the slowest answer ({ms(times.max)} ms), at least {TIMEOUT_FLOOR_MS}
-          ms. Step 1 uses {bench.timeoutMs} ms.</span
+          >{t("statstool.4_the_slowest_answer", {
+            slowest: ms(times.max),
+            floor: TIMEOUT_FLOOR_MS,
+            current: bench.timeoutMs,
+          })}</span
         >
         <span class="spacer"></span>
         <button
           class="btn"
           disabled={bench.running || suggested === bench.timeoutMs}
           title={bench.running
-            ? "Stop the test to change step 1."
-            : "Put it in step 1's Timeout field."}
+            ? t("time.locked")
+            : t("statstool.put_it_in_step")}
           onclick={() => (bench.timeoutMs = suggested)}
           >{t("statstool.use_in_step_1")}</button
         >

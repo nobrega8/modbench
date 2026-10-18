@@ -178,7 +178,9 @@
     const path = await openDialog({
       multiple: false,
       directory: false,
-      filters: [{ name: "Modbus map", extensions: MAP_EXTENSIONS }],
+      filters: [
+        { name: t("mappicker.modbus_map"), extensions: MAP_EXTENSIONS },
+      ],
     });
     if (typeof path !== "string") return;
     failure = null;
@@ -246,12 +248,14 @@
       >
       <span class="sub">
         {#if it.error}
-          <span class="bad">Has errors: {it.error}</span>
+          <span class="bad"
+            >{t("libraryview.has_errors_error", { error: it.error })}</span
+          >
         {:else}
           {[
             showVendor ? it.vendor : it.description,
             it.warnings
-              ? `${it.warnings} warning${it.warnings === 1 ? "" : "s"}`
+              ? t("libraryview.warnings_count", { count: it.warnings })
               : "",
           ]
             .filter(Boolean)
@@ -294,10 +298,12 @@
           /></span
         >
         <span class="sub"
-          >{current.map.meta.vendor} · {current.map.registers.length} registers{#if current.warnings.length}
-            · {current.warnings.length} warning{current.warnings.length === 1
-              ? ""
-              : "s"}{/if}</span
+          >{current.map.meta.vendor} · {t("mappicker.registers_count", {
+            count: current.map.registers.length,
+          })}{#if current.warnings.length}
+            · {t("libraryview.warnings_count", {
+              count: current.warnings.length,
+            })}{/if}</span
         >
       </span>
     {:else}
@@ -313,12 +319,16 @@
 
   {#if failure}
     <p class="problem" role="alert">
-      Could not open {failure.name}: {failure.text}
+      {t("mappicker.could_not_open_name", {
+        name: failure.name,
+        text: failure.text,
+      })}
     </p>
   {:else if bench.mapError}
     <p class="problem" role="alert">
-      {fileName(bench.mapError.path)} has errors and was not opened. The lines to
-      fix are listed below.
+      {t("mappicker.file_has_errors_and", {
+        file: fileName(bench.mapError.path),
+      })}
     </p>
   {/if}
 
@@ -355,10 +365,9 @@
         {#if !shownOpen.length && !groups.length}
           <p class="note">
             {#if query.trim()}
-              No map matches “{query.trim()}”.
+              {t("mappicker.no_map_matches_query", { query: query.trim() })}
             {:else}
-              No maps yet. Open a <span class="mono">.mbmap</span> file or add maps
-              from the online library.
+              {t("mappicker.no_maps_yet_open")}
             {/if}
           </p>
         {/if}

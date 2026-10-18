@@ -26,13 +26,13 @@
   import { Markers } from "#lib/markers.svelte.ts";
 
   const speeds = [1, 2, 4, 8, 16, 60];
-  const windows = [
-    { ms: 60_000, label: "1 minute" },
-    { ms: 5 * 60_000, label: "5 minutes" },
-    { ms: 15 * 60_000, label: "15 minutes" },
-    { ms: 60 * 60_000, label: "1 hour" },
-    { ms: 0, label: "Everything" },
-  ];
+  const windows = $derived([
+    { ms: 60_000, label: t("trendplayertool.1_minute") },
+    { ms: 5 * 60_000, label: t("trendplayertool.5_minutes") },
+    { ms: 15 * 60_000, label: t("trendplayertool.15_minutes") },
+    { ms: 60 * 60_000, label: t("trendplayertool.1_hour") },
+    { ms: 0, label: t("chartview.everything") },
+  ]);
 
   let playing = $state(false);
   let problem = $state<string | null>(null);
@@ -151,9 +151,8 @@
   >
   {#if recording}
     <span class="dim"
-      >{fileName} · {recording.rows} rows · {duration(
-        recording.end - recording.start,
-      )}</span
+      >{fileName} · {t("trendplayertool.rows_count", { count: recording.rows })} ·
+      {duration(recording.end - recording.start)}</span
     >
   {/if}
 </div>

@@ -18,12 +18,12 @@
 
   let { open, onclose }: { open: OpenMap; onclose: () => void } = $props();
 
-  const AREAS: { value: Area; label: string }[] = [
-    { value: "holding", label: "Holding register" },
-    { value: "input", label: "Input register" },
-    { value: "coil", label: "Coil" },
-    { value: "discrete", label: "Discrete input" },
-  ];
+  const AREAS: { value: Area; label: string }[] = $derived([
+    { value: "holding", label: t("customregisterform.holding_register") },
+    { value: "input", label: t("customregisterform.input_register") },
+    { value: "coil", label: t("customregisterform.coil") },
+    { value: "discrete", label: t("customregisterform.discrete_input") },
+  ]);
   const TYPES: DataType[] = [
     "uint16",
     "int16",
@@ -193,8 +193,8 @@
         <Select
           bind:value={access}
           options={[
-            { value: "R", label: "Read" },
-            { value: "RW", label: "Read and write" },
+            { value: "R", label: t("maptable.read") },
+            { value: "RW", label: t("customregisterform.read_and_write") },
           ]}
           label={t("customregisterform.access")}
           width="150px"

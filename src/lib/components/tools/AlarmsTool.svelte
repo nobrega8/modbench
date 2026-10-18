@@ -116,7 +116,9 @@
               {#if reg.type === "bool"}
                 <Select
                   value={alarm.when ? 1 : 0}
-                  label="Alarm state of {reg.name}"
+                  label={t("alarmstool.alarm_state_of_name", {
+                    name: reg.name,
+                  })}
                   options={[
                     { value: 1, label: "ON" },
                     { value: 0, label: "OFF" },
@@ -130,7 +132,9 @@
                     class="input num"
                     value={alarm.low ?? ""}
                     placeholder="—"
-                    aria-label="Low limit of {reg.name}"
+                    aria-label={t("alarmstool.low_limit_of_name", {
+                      name: reg.name,
+                    })}
                     onchange={(e) => setLimit(alarm, "low", e)}
                   />
                   <span class="dim">{t("alarmstool.or_above")}</span>
@@ -138,7 +142,9 @@
                     class="input num"
                     value={alarm.high ?? ""}
                     placeholder="—"
-                    aria-label="High limit of {reg.name}"
+                    aria-label={t("alarmstool.high_limit_of_name", {
+                      name: reg.name,
+                    })}
                     onchange={(e) => setLimit(alarm, "high", e)}
                   />
                   <span class="dim">{reg.unit}</span>
@@ -148,7 +154,9 @@
             <td class="act">
               <button
                 class="btn ghost"
-                aria-label="Remove the alarm on {reg.name}"
+                aria-label={t("alarmstool.remove_the_alarm_on", {
+                  name: reg.name,
+                })}
                 onclick={() => remove(alarm)}>{t("maptable.remove")}</button
               >
             </td>

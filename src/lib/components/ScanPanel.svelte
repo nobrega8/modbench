@@ -59,8 +59,11 @@
     {/if}
     <span class="dim"
       >{serial
-        ? `Tries each baud rate, parity and stop bits on ${bench.serialPort || "the serial port"} and asks for one register.`
-        : "Asks each unit ID for one holding register."} Reads only; nothing is written.</span
+        ? t("scanpanel.tries_each_baud_rate", {
+            port: bench.serialPort || t("scanpanel.the_serial_port"),
+          })
+        : t("scanpanel.asks_each_unit_id")}
+      {t("scanpanel.reads_only_nothing_is")}</span
     >
     <button class="btn" onclick={onclose} disabled={busy}
       >{t("mapexplorer.close")}</button
@@ -111,7 +114,9 @@
         <button class="btn" onclick={() => bench.cancelScan()}
           >{t("test.stop")}</button
         >
-        <span class="dim mono">Unit {bench.scanUnit}…</span>
+        <span class="dim mono"
+          >{t("scanpanel.unit_unit", { unit: bench.scanUnit ?? "" })}</span
+        >
       {:else}
         <button
           class="btn accent"
@@ -156,13 +161,17 @@
         <ul class="hits">
           {#each bench.scanHits as hit (hit.unit)}
             <li>
-              <span class="mono unit">Unit {hit.unit}</span>
+              <span class="mono unit"
+                >{t("mapexplorer.unit_unit", { unit: hit.unit })}</span
+              >
               <span class="dim">{hit.response}</span>
               <button
                 class="btn"
                 disabled={bench.unitId === hit.unit}
                 onclick={() => use(hit.unit)}
-                >{bench.unitId === hit.unit ? "In use" : "Use"}</button
+                >{bench.unitId === hit.unit
+                  ? t("serialscan.in_use")
+                  : t("libraryview.use")}</button
               >
             </li>
           {/each}

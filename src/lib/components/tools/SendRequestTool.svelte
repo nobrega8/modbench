@@ -66,13 +66,12 @@
     try {
       if (mode === "raw") {
         const bytes = parseHex(rawHex);
-        if (!bytes?.length)
-          return "Type the bytes in hex, e.g. 00 01 00 00 00 06 01 03 00 00 00 0A";
+        if (!bytes?.length) return t("sendrequesttool.type_the_bytes_in");
         return { fc: -1, data: bytes };
       }
       if (fc === OTHER) {
         const data = otherHex.trim() ? parseHex(otherHex) : [];
-        if (data === null) return "Data: hex bytes, e.g. 00 01";
+        if (data === null) return t("sendrequesttool.data_hex_bytes_e");
         return { fc: otherFc, data };
       }
       return { fc, data: buildData(spec!, valuesFor(spec!.fc)) };
@@ -110,17 +109,18 @@
     error = null;
     if (writes(r, raw, bc)) {
       if (settings.readOnly) {
-        error =
-          "Read-only mode is on: this request may write, so it is not sent.";
+        error = t("sendrequesttool.read_only_mode_is");
         return false;
       }
       if (
         settings.confirmWrites &&
         !(await ask(
           raw
-            ? `Send ${r.data.length} raw bytes to the device?`
-            : `Send function ${r.fc}, which may change the device?`,
-          { title: "Send request", kind: "warning" },
+            ? t("sendrequesttool.send_count_raw_bytes", {
+                count: r.data.length,
+              })
+            : t("sendrequesttool.send_function_fc_which", { fc: r.fc }),
+          { title: t("tools.request"), kind: "warning" },
         ))
       )
         return false;
@@ -132,7 +132,9 @@
         answer = {
           out: r.data,
           in: back,
-          note: back.length ? undefined : `No answer within ${waitMs} ms.`,
+          note: back.length
+            ? undefined
+            : t("sendrequesttool.no_answer_within_ms", { ms: waitMs }),
         };
       } else {
         const ex = await bench.sendPdu(r.fc, r.data, bc);
@@ -140,11 +142,9 @@
           ? {
               out: ex.out,
               in: ex.in,
-              note: bc
-                ? "Sent to every device (unit 0): devices do not answer a broadcast."
-                : undefined,
+              note: bc ? t("sendrequesttool.sent_to_every_device") : undefined,
             }
-          : { out: [], in: [], note: "Sent." };
+          : { out: [], in: [], note: t("sendrequesttool.sent2") };
       }
       return true;
     } catch (e) {
@@ -212,7 +212,10 @@
 <header class="tool-head">
   <h1>{t("tools.request")}</h1>
   <p>
-    Any function code or raw bytes · {bench.connectionText}, unit {bench.unitId}.
+    {t("sendrequesttool.any_function_code_or", {
+      where: bench.connectionText,
+      unit: bench.unitId,
+    })}
   </p>
 </header>
 
@@ -248,7 +251,7 @@
             value: f.fc,
             label: `${String(f.fc).padStart(2, "0")} ${f.name}`,
           })),
-          { value: OTHER, label: "Other function code…" },
+          { value: OTHER, label: t("sendrequesttool.other_function_code") },
         ]}
       />
     </label>
@@ -352,8 +355,9 @@
   <button
     class="btn accent"
     disabled={busy || bench.running || typeof built === "string"}
-    title={bench.running ? "Stop the test on the Main page first" : undefined}
-    onclick={sendNow}>{busy ? "Sending…" : "Send"}</button
+    title={bench.running ? t("addressscantool.stop_the_test_on") : undefined}
+    onclick={sendNow}
+    >{busy ? t("sendrequesttool.sending") : t("sendrequesttool.send")}</button
   >
 </div>
 

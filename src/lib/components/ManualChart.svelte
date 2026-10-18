@@ -4,6 +4,7 @@
   order…), plotted while the loop runs.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { formatAddress } from "#lib/format.ts";
   import {
     chartType,
@@ -70,13 +71,13 @@
 <ChartView
   {groups}
   {options}
-  addLabel="Add an address to the chart"
+  addLabel={t("manualchart.add_an_address_to")}
   count={bench.manualSeries.length}
   empty={read
-    ? `Add up to ${MAX_SERIES} addresses of the read, here or with a right-click on the Read registers grid. They are read as the grid shows them (Show as, Byte order), and recorded while the loop runs.`
-    : "Read some registers first: choose a read command in step 2 and press Start."}
+    ? t("manualchart.add_up_to_max", { max: MAX_SERIES })
+    : t("manualchart.read_some_registers_first")}
   note={type === null && read
-    ? "ASCII cannot be charted: choose another Show as in the grid"
+    ? t("manualchart.ascii_cannot_be_charted")
     : undefined}
   onadd={(i) => {
     const s = candidates[i];

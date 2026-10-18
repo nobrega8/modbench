@@ -36,11 +36,17 @@
 {:else}
   <p class="note">
     {bits
-      ? "Tick the coils to switch on."
-      : "Values are sent as 16-bit words: decimal, negative, 0x… or …h."}
-    Press Start to write {bench.writeValues.length}
-    {bits ? "coil" : "register"}{bench.writeValues.length === 1 ? "" : "s"} from address
-    {bench.address}.
+      ? t("writegrid.tick_the_coils_to")
+      : t("writegrid.values_are_sent_as")}
+    {bits
+      ? t("writegrid.press_start_to_write", {
+          count: bench.writeValues.length,
+          address: bench.address,
+        })
+      : t("writegrid.press_start_to_write2", {
+          count: bench.writeValues.length,
+          address: bench.address,
+        })}
   </p>
 {/if}
 
@@ -54,7 +60,12 @@
       >
       {#each row as { i, v } (i)}
         {#if bits}
-          <label class="cell bit" title="Address {bench.address + i}">
+          <label
+            class="cell bit"
+            title={t("writegrid.address_address", {
+              address: bench.address + i,
+            })}
+          >
             <input
               type="checkbox"
               checked={v !== 0}
@@ -71,8 +82,13 @@
             value={String(v)}
             disabled={bench.running}
             spellcheck="false"
-            aria-label="Value for address {bench.address + i}"
-            title="Address {bench.address + i} · {hex(v & 0xffff)}h"
+            aria-label={t("writegrid.value_for_address_address", {
+              address: bench.address + i,
+            })}
+            title={t("writegrid.address_address_hex_h", {
+              address: bench.address + i,
+              hex: hex(v & 0xffff),
+            })}
             onchange={(e) => setWord(i, e.currentTarget.value)}
           />
         {/if}

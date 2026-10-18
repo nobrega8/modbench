@@ -21,17 +21,17 @@
   } from "#lib/manual-chart.ts";
   import { MAX_SERIES } from "#lib/trend.ts";
 
-  const formats: { id: Format; label: string }[] = [
-    { id: "unsigned", label: "Unsigned" },
-    { id: "signed", label: "Signed" },
-    { id: "hex", label: "Hexadecimal" },
-    { id: "binary", label: "Binary" },
+  const formats: { id: Format; label: string }[] = $derived([
+    { id: "unsigned", label: t("datadecodertool.unsigned") },
+    { id: "signed", label: t("datadecodertool.signed") },
+    { id: "hex", label: t("registergrid.hexadecimal") },
+    { id: "binary", label: t("datadecodertool.binary") },
     { id: "ascii", label: "ASCII" },
-    { id: "int32", label: "32-bit signed" },
-    { id: "uint32", label: "32-bit unsigned" },
-    { id: "float32", label: "32-bit float" },
-    { id: "bits", label: "Bits" },
-  ];
+    { id: "int32", label: t("registergrid.32_bit_signed") },
+    { id: "uint32", label: t("registergrid.32_bit_unsigned") },
+    { id: "float32", label: t("registergrid.32_bit_float") },
+    { id: "bits", label: t("registergrid.bits") },
+  ]);
   const orders: ByteOrder[] = ["ABCD", "CDAB", "BADC", "DCBA"];
   const PER_ROW = 10;
 
@@ -263,20 +263,22 @@
       series &&
         (charted
           ? {
-              label: "Remove from chart",
+              label: t("registergrid.remove_from_chart"),
               action: () => bench.removeManualFromChart(charted.slot),
             }
           : {
-              label: "Add to chart",
+              label: t("registergrid.add_to_chart"),
               disabled: full,
-              hint: full ? `${MAX_SERIES} at most` : undefined,
+              hint: full
+                ? t("registergrid.max_at_most", { max: MAX_SERIES })
+                : undefined,
               action: () => bench.addManualToChart(series),
             }),
       null,
-      { label: "Copy value", action: () => copy(c.text) },
-      { label: "Copy address", action: () => copy(addr(at)) },
+      { label: t("registergrid.copy_value"), action: () => copy(c.text) },
+      { label: t("registergrid.copy_address"), action: () => copy(addr(at)) },
       {
-        label: "Copy all values",
+        label: t("registergrid.copy_all_values"),
         hint: "address, value",
         action: () =>
           copy(
@@ -287,12 +289,12 @@
       },
       null,
       writable && {
-        label: "Write here…",
+        label: t("registergrid.write_here"),
         disabled: settings.readOnly,
         action: () => writeFrom(at, raw),
       },
       writable && {
-        label: "Write all…",
+        label: t("registergrid.write_all"),
         disabled: settings.readOnly,
         action: () => bench.copyReadToWrite(),
       },
@@ -400,9 +402,8 @@
     >
     {#if selectedCell}
       <span class="picked" aria-live="polite"
-        >Selected: <strong class="mono"
-          >{addr(read.address + selectedCell.offset)}</strong
-        >
+        >{t("registergrid.selected")}
+        <strong class="mono">{addr(read.address + selectedCell.offset)}</strong>
         = <strong class="mono">{selectedCell.text}</strong></span
       >
     {/if}
@@ -413,10 +414,10 @@
   {@const r = read}
   <p class="bit-hint">
     {writable
-      ? "Click a bit to switch it: the register is read, the bit changed and the register written back."
+      ? t("registergrid.click_a_bit_to")
       : read.area === "holding"
-        ? "Read-only mode is on: bits cannot be switched."
-        : "Input registers cannot be written."}
+        ? t("registergrid.read_only_mode_is")
+        : t("registergrid.input_registers_cannot_be")}
     {#if bitError}<span class="bad">{bitError}</span>{/if}
   </p>
   <div class="grid-wrap">
@@ -435,10 +436,16 @@
             class:nibble={bit % 4 === 0 && bit > 0}
             class:busy={writing === `${r.address + i}:${bit}`}
             disabled={!writable || writing !== null}
-            title="Bit {bit} of {addr(r.address + i)}: {on ? 1 : 0}"
-            aria-label="Bit {bit} of address {addr(r.address + i)}, {on
-              ? 'on'
-              : 'off'}"
+            title={t("registergrid.bit_bit_of_address2", {
+              bit,
+              address: addr(r.address + i),
+              value: on ? 1 : 0,
+            })}
+            aria-label={t("registergrid.bit_bit_of_address", {
+              bit,
+              address: addr(r.address + i),
+              state: on ? t("registergrid.on") : t("registergrid.off"),
+            })}
             onclick={() => flip(r.address + i, bit, !on)}>{on ? 1 : 0}</button
           >
         {/each}
@@ -448,14 +455,18 @@
           tabindex="-1"
           oncontextmenu={(e) =>
             contextMenu.show(e, [
-              { label: "Copy value", hint: "hex", action: () => copy(hex(w)) },
               {
-                label: "Copy value",
-                hint: "decimal",
+                label: t("registergrid.copy_value"),
+                hint: t("registergrid.hex2"),
+                action: () => copy(hex(w)),
+              },
+              {
+                label: t("registergrid.copy_value"),
+                hint: t("registergrid.decimal"),
                 action: () => copy(String(w)),
               },
               {
-                label: "Copy address",
+                label: t("registergrid.copy_address"),
                 action: () => copy(addr(r.address + i)),
               },
             ])}>{hex(w)}</span
@@ -546,9 +557,12 @@
               selected = c.offset;
               contextMenu.show(e, cellMenu(c));
             }}
-            title="Address {addr(r.address + c.offset)}{different.has(c.offset)
-              ? ` · snapshot: ${snapCellText(c)}`
-              : ''}">{c.text}</span
+            title={t("registergrid.address_address_snapshot", {
+              address: addr(r.address + c.offset),
+              snapshot: different.has(c.offset)
+                ? t("registergrid.snapshot_text", { text: snapCellText(c) })
+                : "",
+            })}>{c.text}</span
           >
         {/each}
         {#if row.length * row[0].span < PER_ROW}

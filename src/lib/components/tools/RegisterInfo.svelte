@@ -56,7 +56,10 @@
       <dt>{t("registerinfo.reference")}</dt>
       <dd>
         {reference !== null && reference !== Number(r.reference)
-          ? `${Number(reference.toPrecision(6))}${unit} (raw ${r.reference})`
+          ? t("registerinfo.value_raw_raw", {
+              value: `${Number(reference.toPrecision(6))}${unit}`,
+              raw: r.reference,
+            })
           : `${r.reference}${unit}`}
       </dd>
     {/if}

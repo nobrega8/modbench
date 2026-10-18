@@ -75,8 +75,8 @@
 {#if !words}
   <p class="bad">
     {decimal
-      ? "Registers 0–65535 (or −32768–32767), separated by spaces."
-      : "Hex, four digits per register, e.g. 4148 0000."}
+      ? t("datadecodertool.registers_0_65535_or")
+      : t("datadecodertool.hex_four_digits_per")}
   </p>
 {:else}
   <table class="data">

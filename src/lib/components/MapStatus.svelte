@@ -3,13 +3,14 @@
   a status or with one this version does not know.
 -->
 <script lang="ts" module>
-  const STATUS = {
-    verified: "Verified: tested on a real device.",
-    official:
-      "Official: written from an official source (the manufacturer's manual or protocol document), not tested on a device.",
-    unofficial:
-      "Unofficial: copied from an unofficial source (another catalogue, a forum, a third-party integration), not tested.",
-  } as const;
+  import { t } from "#lib/i18n.svelte.ts";
+  const STATUS_KEYS = ["verified", "official", "unofficial"] as const;
+  const statusText = (s: (typeof STATUS_KEYS)[number]) =>
+    ({
+      verified: t("mapstatus.verified_tested_on_a"),
+      official: t("mapstatus.official_written_from_an"),
+      unofficial: t("mapstatus.unofficial_copied_from_an"),
+    })[s];
 
   /** The x_status of a map, with "unverified" (the older name of
       "official") read as "official". */
@@ -26,7 +27,9 @@
 
   const known = $derived.by(() => {
     const s = mapStatus(status);
-    return s && Object.hasOwn(STATUS, s) ? (s as keyof typeof STATUS) : null;
+    return s && (STATUS_KEYS as readonly string[]).includes(s)
+      ? (s as (typeof STATUS_KEYS)[number])
+      : null;
   });
 </script>
 
@@ -34,8 +37,8 @@
   <span
     class="status {known}"
     role="img"
-    aria-label={STATUS[known]}
-    title={STATUS[known]}><Icon name={known} {size} /></span
+    aria-label={statusText(known)}
+    title={statusText(known)}><Icon name={known} {size} /></span
   >
 {/if}
 

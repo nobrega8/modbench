@@ -80,7 +80,7 @@
     if (!entries.length) {
       tplNote = {
         ok: false,
-        text: "Read the device first: there are no values to save yet.",
+        text: t("mapwritelist.read_the_device_first"),
       };
       return;
     }
@@ -88,14 +88,16 @@
     const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
     const path = await save({
       defaultPath: `${model.replace(/[^\w.-]+/g, "_")}-${stamp}.mbtpl`,
-      filters: [{ name: "Modbench template", extensions: ["mbtpl"] }],
+      filters: [
+        { name: t("mapwritelist.modbench_template"), extensions: ["mbtpl"] },
+      ],
     });
     if (!path) return;
     try {
       await api.saveText(path, serialize(`${vendor} ${model}`.trim(), entries));
       tplNote = {
         ok: true,
-        text: `Saved ${entries.length} value${entries.length === 1 ? "" : "s"}.`,
+        text: t("mapwritelist.values_saved_count", { count: entries.length }),
       };
     } catch (e) {
       tplNote = { ok: false, text: errorText(e) };
@@ -108,7 +110,12 @@
     const picked = await openDialog({
       multiple: false,
       directory: false,
-      filters: [{ name: "Modbench template", extensions: ["mbtpl", "txt"] }],
+      filters: [
+        {
+          name: t("mapwritelist.modbench_template"),
+          extensions: ["mbtpl", "txt"],
+        },
+      ],
     });
     if (!picked || Array.isArray(picked)) return;
     try {
@@ -123,7 +130,11 @@
     if (!tpl || !todo.length || applying) return;
     const n = todo.length;
     const ok = await bench.confirmWrite(
-      `Write ${n} value${n === 1 ? "" : "s"} from ${tpl.name} to ${open.map.meta.model}?`,
+      t("mapwritelist.write_count_values_from", {
+        count: n,
+        template: tpl.name,
+        model: open.map.meta.model,
+      }),
     );
     if (!ok) return;
     applying = true;
@@ -143,9 +154,17 @@
       tplNote = failed.length
         ? {
             ok: false,
-            text: `Wrote ${results.length - failed.length} of ${results.length}. ${open.map.registers[failed[0].index].name}: ${failed[0].error}`,
+            text: t("mapwritelist.wrote_done_of_total", {
+              done: results.length - failed.length,
+              total: results.length,
+              name: open.map.registers[failed[0].index].name,
+              error: failed[0].error ?? "",
+            }),
           }
-        : { ok: true, text: `Wrote ${results.length}.` };
+        : {
+            ok: true,
+            text: t("mapwritelist.wrote_total", { total: results.length }),
+          };
     } finally {
       applying = false;
     }
@@ -156,7 +175,7 @@
     const items = undo;
     if (
       !(await bench.confirmWrite(
-        `Put back ${items.length} value${items.length === 1 ? "" : "s"} the device held before the template?`,
+        t("mapwritelist.put_back_count_values", { count: items.length }),
       ))
     )
       return;
@@ -167,9 +186,16 @@
       tplNote = failed.length
         ? {
             ok: false,
-            text: `Restored ${results.length - failed.length} of ${results.length}. ${failed[0].error}`,
+            text: t("mapwritelist.restored_done_of_total", {
+              done: results.length - failed.length,
+              total: results.length,
+              error: failed[0].error ?? "",
+            }),
           }
-        : { ok: true, text: `Restored ${results.length}.` };
+        : {
+            ok: true,
+            text: t("mapwritelist.restored_total", { total: results.length }),
+          };
       undo = null;
     } finally {
       applying = false;
@@ -194,11 +220,19 @@
       notes[index] = { ok: false, text: outside };
       return;
     }
-    if (!(await bench.confirmWrite(`Write ${text} to ${reg.name}?`))) return;
+    if (
+      !(await bench.confirmWrite(
+        t("mapwritelist.write_value_to_name", { value: text, name: reg.name }),
+      ))
+    )
+      return;
     busy = index;
     try {
       await bench.writeMapValue(index, parsed.value);
-      notes[index] = { ok: true, text: `Wrote ${text}` };
+      notes[index] = {
+        ok: true,
+        text: t("mapwritelist.wrote_value", { value: text }),
+      };
     } catch (e) {
       notes[index] = { ok: false, text: errorText(e) };
     } finally {
@@ -209,8 +243,10 @@
 
 <div class="toolbar">
   <span class="count"
-    >{total} writable register{total === 1 ? "" : "s"} in {open.map.meta
-      .model}</span
+    >{t("mapwritelist.writable_registers_in_model", {
+      model: open.map.meta.model,
+      count: total,
+    })}</span
   >
   <span class="spacer"></span>
   <button
@@ -255,25 +291,34 @@
       >
     </div>
     <p class="tpl-sum">
-      {tplPlan.writes.length} value{tplPlan.writes.length === 1 ? "" : "s"}
-      match this map{#if unchanged}, {unchanged} already on the device{/if}{#if tplPlan.unmatched.length},
-        {tplPlan.unmatched.length} not in the map{/if}{#if tpl.parsed.errors.length},
-        {tpl.parsed.errors.length} unreadable line{tpl.parsed.errors.length ===
-        1
-          ? ""
-          : "s"}{/if}.
+      {t("mapwritelist.count_values_match_this", {
+        count: tplPlan.writes.length,
+      })}{#if unchanged}, {t("mapwritelist.count_already_on_the", {
+          count: unchanged,
+        })}{/if}{#if tplPlan.unmatched.length}, {t(
+          "mapwritelist.count_not_in_the",
+          { count: tplPlan.unmatched.length },
+        )}{/if}{#if tpl.parsed.errors.length}, {t(
+          "mapwritelist.count_unreadable_lines",
+          { count: tpl.parsed.errors.length },
+        )}{/if}.
     </p>
     {#if tpl.parsed.errors.length}
       <ul class="tpl-list bad">
         {#each tpl.parsed.errors.slice(0, 5) as e (e.line)}
-          <li>Line {e.line}: {e.message}</li>
+          <li>
+            {t("mapwritelist.line_line_message", {
+              line: e.line,
+              message: e.message,
+            })}
+          </li>
         {/each}
       </ul>
     {/if}
     {#if refused.length}
       <ul class="tpl-list bad">
         {#each refused.slice(0, 5) as w, i (i)}
-          <li>{w.problem} Skipped.</li>
+          <li>{w.problem} {t("mapwritelist.skipped")}</li>
         {/each}
       </ul>
     {/if}
@@ -301,8 +346,10 @@
         disabled={applying || !todo.length}
         onclick={applyTemplate}
         >{applying
-          ? "Writing…"
-          : `Write ${todo.length} value${todo.length === 1 ? "" : "s"}`}</button
+          ? t("mapwritelist.writing")
+          : t("mapwritelist.write_count_values", {
+              count: todo.length,
+            })}</button
       >
     </div>
   </div>
@@ -362,14 +409,14 @@
                 <Select
                   bind:value={drafts[index]}
                   width="260px"
-                  label="Value for {reg.name}"
+                  label={t("mapwritelist.value_for_name", { name: reg.name })}
                   placeholder={t("maptable.choose")}
                   options={[
                     ...reg.enum.map(([v, l]) => ({
                       value: l,
                       label: `${l} (${v})`,
                     })),
-                    { value: CUSTOM, label: "Custom value…" },
+                    { value: CUSTOM, label: t("mapwritelist.custom_value") },
                   ]}
                   onchange={(v) => {
                     if (v !== CUSTOM) return;
@@ -388,12 +435,14 @@
                   bind:value={drafts[index]}
                   spellcheck="false"
                   placeholder={reg.type === "string"
-                    ? "Text"
-                    : (limitHint(reg) ?? "Value")}
+                    ? t("mapwritelist.text")
+                    : (limitHint(reg) ?? t("maptable.value"))}
                   title={limitHint(reg)
                     ? `Accepted range: ${limitHint(reg)}${reg.unit ? " " + reg.unit : ""}`
                     : undefined}
-                  aria-label="Value for {reg.name}"
+                  aria-label={t("mapwritelist.value_for_name", {
+                    name: reg.name,
+                  })}
                 />
                 <span class="dim unit">{reg.unit}</span>
                 <button
@@ -426,8 +475,8 @@
         <tr>
           <td colspan="4" class="empty">
             {total
-              ? "No writable registers match this search."
-              : "This map has no writable registers."}
+              ? t("mapwritelist.no_writable_registers_match")
+              : t("mapwritelist.this_map_has_no")}
           </td>
         </tr>
       {/each}

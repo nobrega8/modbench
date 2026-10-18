@@ -40,5 +40,5 @@
 {#if error}
   <span class="bad" role="alert">{error}</span>
 {:else if saved}
-  <span class="dim">Saved {saved}</span>
+  <span class="dim">{t("exportcsv.saved_name", { name: saved })}</span>
 {/if}

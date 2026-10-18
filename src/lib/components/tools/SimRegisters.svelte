@@ -198,7 +198,7 @@
                   if (e.key === "Escape") editing = null;
                 }}
                 onblur={commit}
-                aria-label="Value of {r.name}"
+                aria-label={t("simregisters.value_of_name", { name: r.name })}
               />
             {:else}
               <button
@@ -217,7 +217,7 @@
             <button
               class="btn ghost small"
               title={t("simregisters.details_and_generator")}
-              aria-label="Details of {r.name}"
+              aria-label={t("simregisters.details_of_name", { name: r.name })}
               onclick={(e) => openMenu(e, i)}><Icon name="more" /></button
             >
           </td>
@@ -251,7 +251,9 @@
           class="btn accent small"
           role="menuitem"
           onclick={() => generate(menu!.i)}
-          >{gen === undefined ? "Add generator…" : "Edit generator…"}</button
+          >{gen === undefined
+            ? t("simregisters.add_generator")
+            : t("simregisters.edit_generator")}</button
         >
       {/if}
       {#if r.type !== "string" && values[menu.i] !== null}

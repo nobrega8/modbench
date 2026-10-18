@@ -81,14 +81,14 @@
         ? {
             ok: false,
             text:
-              `${added} added. Not added: ` +
+              t("libraryview.added_added_not_added", { added }) +
               failed
                 .map((r) => `${r.source.split(/[\\/]/).pop()} (${r.error})`)
                 .join("; "),
           }
         : {
             ok: true,
-            text: `${added} map${added === 1 ? "" : "s"} added to the library.`,
+            text: t("libraryview.added_to_the_library", { added }),
           };
     } catch (e) {
       message = { ok: false, text: errorText(e) };
@@ -102,7 +102,9 @@
     const picked = await open({
       multiple: true,
       directory: false,
-      filters: [{ name: "Modbus map", extensions: MAP_EXTENSIONS }],
+      filters: [
+        { name: t("libraryview.modbus_map"), extensions: MAP_EXTENSIONS },
+      ],
     });
     if (!picked) return;
     await importPaths(Array.isArray(picked) ? picked : [picked]);
@@ -113,7 +115,7 @@
     try {
       await api.libraryDelete(path);
       await bench.refreshLibrary();
-      message = { ok: true, text: "Map deleted from the library." };
+      message = { ok: true, text: t("libraryview.map_deleted_from_the") };
     } catch (e) {
       message = { ok: false, text: errorText(e) };
     }
@@ -125,7 +127,7 @@
       await api.libraryEdit(path);
       message = {
         ok: true,
-        text: "Opened in the text editor. Changes show here when you come back.",
+        text: t("libraryview.opened_in_the_text"),
       };
     } catch (e) {
       message = { ok: false, text: errorText(e) };
@@ -165,39 +167,39 @@
   function rowMenu(e: LibraryEntry): MenuEntry[] {
     return [
       {
-        label: "Use",
+        label: t("libraryview.use"),
         disabled: !!e.error || bench.running,
-        hint: bench.running ? "stop first" : undefined,
+        hint: bench.running ? t("libraryview.stop_first") : undefined,
         action: () => use(e.path),
       },
-      { label: "Explore", action: () => (exploring = e.path) },
+      { label: t("libraryview.explore"), action: () => (exploring = e.path) },
       {
-        label: "Edit…",
+        label: t("libraryview.edit2"),
         action: () => (confirm = { path: e.path, kind: "edit" }),
       },
       {
-        label: "Duplicate",
+        label: t("libraryview.duplicate"),
         disabled: !!e.error,
         action: () => duplicate(e),
       },
       {
-        label: "Simulate this device",
+        label: t("libraryview.simulate_this_device"),
         disabled: !!e.error,
         action: () => simulate(e.path),
       },
       null,
       {
-        label: "Copy name",
+        label: t("libraryview.copy_name"),
         action: () => copy(`${e.vendor} ${e.model}`),
       },
-      { label: "Copy file path", action: () => copy(e.path) },
+      { label: t("libraryview.copy_file_path"), action: () => copy(e.path) },
       {
-        label: "Open the library folder",
+        label: t("libraryview.open_the_library_folder"),
         action: () => api.libraryOpenFolder().catch(() => {}),
       },
       null,
       {
-        label: "Delete…",
+        label: t("libraryview.delete2"),
         danger: true,
         action: () => (confirm = { path: e.path, kind: "delete" }),
       },
@@ -323,11 +325,15 @@
           <td class="model">{e.model}</td>
           <td class="desc">
             {#if e.error}
-              <span class="bad" title={e.error}>Has errors: {e.error}</span>
+              <span class="bad" title={e.error}
+                >{t("libraryview.has_errors_error", { error: e.error })}</span
+              >
             {:else}
               {e.description ?? ""}
               {#if e.warnings}<span class="warn"
-                  >{e.warnings} warning{e.warnings === 1 ? "" : "s"}</span
+                  >{t("libraryview.warnings_count", {
+                    count: e.warnings,
+                  })}</span
                 >{/if}
             {/if}
           </td>
@@ -336,8 +342,8 @@
             {#if confirm?.path === e.path}
               <span class="ask"
                 >{confirm.kind === "delete"
-                  ? "Delete this map?"
-                  : "Edits the library's copy of this map."}</span
+                  ? t("libraryview.delete_this_map")
+                  : t("libraryview.edits_the_library_s")}</span
               >
               {#if confirm.kind === "delete"}
                 <button class="btn small danger" onclick={() => remove(e.path)}
@@ -355,13 +361,15 @@
               <button
                 class="btn small accent"
                 disabled={!!e.error || bench.running}
-                title={bench.running ? "Stop the test first" : undefined}
+                title={bench.running
+                  ? t("libraryview.stop_the_test_first")
+                  : undefined}
                 onclick={() => use(e.path)}>{t("libraryview.use")}</button
               >
               <button
                 class="btn small icon ghost"
                 title={t("libraryview.explore")}
-                aria-label="Explore {e.model}"
+                aria-label={t("libraryview.explore_model", { model: e.model })}
                 disabled={!!e.error}
                 onclick={() => (exploring = e.path)}
                 ><Icon name="explore" /></button
@@ -369,21 +377,23 @@
               <button
                 class="btn small icon ghost"
                 title={t("libraryview.edit")}
-                aria-label="Edit {e.model}"
+                aria-label={t("libraryview.edit_model", { model: e.model })}
                 onclick={() => (confirm = { path: e.path, kind: "edit" })}
                 ><Icon name="edit" /></button
               >
               <button
                 class="btn small icon ghost"
                 title={t("libraryview.duplicate")}
-                aria-label="Duplicate {e.model}"
+                aria-label={t("libraryview.duplicate_model", {
+                  model: e.model,
+                })}
                 disabled={!!e.error}
                 onclick={() => duplicate(e)}><Icon name="duplicate" /></button
               >
               <button
                 class="btn small icon ghost del"
                 title={t("libraryview.delete")}
-                aria-label="Delete {e.model}"
+                aria-label={t("libraryview.delete_model", { model: e.model })}
                 onclick={() => (confirm = { path: e.path, kind: "delete" })}
                 ><Icon name="trash" /></button
               >
@@ -394,9 +404,9 @@
         <tr>
           <td colspan="7" class="empty">
             {#if bench.library.length}
-              No maps match “{search}”.
+              {t("libraryview.no_maps_match_search", { search })}
             {:else}
-              No maps yet. Import some to use them in step 2.
+              {t("libraryview.no_maps_yet_import")}
             {/if}
           </td>
         </tr>

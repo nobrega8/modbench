@@ -141,7 +141,11 @@
           <p class="version">
             {t("settingsview.version")} <span class="mono">{version}</span>
             {#if updates.available}
-              · <strong>{updates.available.version} is available</strong>
+              · <strong
+                >{t("settingsview.version_is_available", {
+                  version: updates.available.version,
+                })}</strong
+              >
             {:else if updates.message}
               · {updates.message}
             {/if}
@@ -153,13 +157,15 @@
             <button
               class="btn primary"
               onclick={() => run(() => api.openLink("repo"))}
-              >View on GitHub {@render external()}</button
+              >{t("settingsview.view_on_github")} {@render external()}</button
             >
             <button
               class="btn"
               disabled={updates.checking}
               onclick={() => updates.check(false)}
-              >{updates.checking ? "Checking…" : "Check for updates"}</button
+              >{updates.checking
+                ? t("settingsview.checking")
+                : t("settingsview.check_for_updates")}</button
             >
           </div>
         </section>
@@ -174,7 +180,7 @@
             <button
               class="btn"
               onclick={() => run(() => api.openLink("manual"))}
-              >Open {@render external()}</button
+              >{t("mappicker.open")} {@render external()}</button
             >
           </div>
           <div class="setting">
@@ -185,7 +191,7 @@
             <button
               class="btn"
               onclick={() => run(() => api.openLink("releases"))}
-              >Open {@render external()}</button
+              >{t("mappicker.open")} {@render external()}</button
             >
           </div>
           <div class="setting">
@@ -198,7 +204,7 @@
             <button
               class="btn"
               onclick={() => run(() => api.openLink("issues"))}
-              >Report {@render external()}</button
+              >{t("settingsview.report")} {@render external()}</button
             >
           </div>
         </div>
@@ -211,7 +217,7 @@
               <span class="hint">{t("settingsview.gpl_3_0_on")}</span>
             </div>
             <button class="btn" onclick={() => run(() => api.openLink("repo"))}
-              >Source code {@render external()}</button
+              >{t("settingsview.source_code")} {@render external()}</button
             >
           </div>
           <div class="setting">
@@ -389,8 +395,10 @@
               >
               <span class="hint"
                 >{forgotten === null
-                  ? "Every device goes back to reading all registers."
-                  : `Forgot ${forgotten} device${forgotten === 1 ? "" : "s"}.`}</span
+                  ? t("settingsview.every_device_goes_back")
+                  : t("settingsview.devices_forgotten_count", {
+                      count: forgotten,
+                    })}</span
               >
             </div>
             <button class="btn" onclick={forgetDevices}
@@ -543,7 +551,9 @@
                 class="btn"
                 onclick={copyFolder}
                 disabled={!bench.libraryFolder}
-                >{copied ? "Copied" : "Copy path"}</button
+                >{copied
+                  ? t("settingsview.copied")
+                  : t("settingsview.copy_path")}</button
               >
               <button
                 class="btn"
@@ -555,20 +565,18 @@
           <div class="setting">
             <div class="text">
               <span class="name">{t("settingsview.shared_maps")}</span>
-              <span class="hint"
-                >The <span class="mono">.mbmap</span> format and shared maps.</span
-              >
+              <span class="hint">{t("settingsview.the_map_format_and")}</span>
             </div>
             <div class="buttons">
               <button
                 class="btn"
                 onclick={() => run(() => api.openLink("spec"))}
-                >Format {@render external()}</button
+                >{t("settingsview.format")} {@render external()}</button
               >
               <button
                 class="btn"
                 onclick={() => run(() => api.openLink("library"))}
-                >Repository {@render external()}</button
+                >{t("settingsview.repository")} {@render external()}</button
               >
             </div>
           </div>
@@ -584,9 +592,12 @@
                 >{t("settingsview.check_for_updates_when")}</span
               >
               <span class="hint"
-                >{#if updates.viaApt}Installed with apt: updates install with
-                  <span class="mono">{APT_UPGRADE}</span>{:else}You choose when
-                  to install.{/if}</span
+                >{#if updates.viaApt}{t(
+                    "settingsview.installed_with_apt_updates",
+                  )}
+                  <span class="mono">{APT_UPGRADE}</span>{:else}{t(
+                    "settingsview.you_choose_when_to",
+                  )}{/if}</span
               >
             </div>
             <input

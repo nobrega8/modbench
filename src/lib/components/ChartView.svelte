@@ -39,13 +39,13 @@
     onclear: () => void;
   } = $props();
 
-  const windows = [
-    { ms: 60_000, label: "Last minute" },
-    { ms: 5 * 60_000, label: "Last 5 minutes" },
-    { ms: 15 * 60_000, label: "Last 15 minutes" },
-    { ms: 60 * 60_000, label: "Last hour" },
-    { ms: 0, label: "Everything" },
-  ];
+  const windows = $derived([
+    { ms: 60_000, label: t("chartview.last_minute") },
+    { ms: 5 * 60_000, label: t("chartview.last_5_minutes") },
+    { ms: 15 * 60_000, label: t("chartview.last_15_minutes") },
+    { ms: 60 * 60_000, label: t("chartview.last_hour") },
+    { ms: 0, label: t("chartview.everything") },
+  ]);
   let windowMs = $state(5 * 60_000);
   /** The add menu; it goes back to its prompt after a pick. */
   let pick = $state(-1);
@@ -112,8 +112,8 @@
 {:else if !span}
   <p class="empty">
     {bench.running
-      ? "Waiting for the first values…"
-      : "Press Start to record values."}
+      ? t("chartview.waiting_for_the_first")
+      : t("chartview.press_start_to_record")}
   </p>
 {:else}
   <div class="charts" bind:this={charts}>

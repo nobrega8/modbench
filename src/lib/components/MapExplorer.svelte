@@ -43,7 +43,7 @@
       else
         problem =
           parsed.diagnostics.find((d) => d.severity === "error")?.message ??
-          "The map cannot be read.";
+          t("mapexplorer.the_map_cannot_be");
     } catch (e) {
       problem = errorText(e);
     }
@@ -59,8 +59,10 @@
         : null;
     return [
       m.protocol?.toUpperCase().replace("+", " + "),
-      m.unit_id !== null ? `Unit ${m.unit_id}` : null,
-      m.port !== null ? `Port ${m.port}` : null,
+      m.unit_id !== null
+        ? t("mapexplorer.unit_unit", { unit: m.unit_id })
+        : null,
+      m.port !== null ? t("mapexplorer.port_port", { port: m.port }) : null,
       serial,
       m.byte_order,
       m.firmware ? `FW ${m.firmware}` : null,
@@ -77,11 +79,11 @@
       : [],
   );
 
-  const STATUS_TEXT: Record<string, string> = {
-    verified: "Verified on a device",
-    official: "Official: from the manufacturer's documentation",
-    unofficial: "Unofficial: not checked against the documentation",
-  };
+  const STATUS_TEXT: Record<string, string> = $derived({
+    verified: t("mapexplorer.verified_on_a_device"),
+    official: t("mapexplorer.official_from_the_manufacturer"),
+    unofficial: t("mapexplorer.unofficial_not_checked_against"),
+  });
   const status = $derived(map ? mapStatus(mapStatusOf(map.meta)) : null);
 
   const shown = $derived.by(() => {

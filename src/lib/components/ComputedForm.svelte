@@ -18,9 +18,9 @@
 
   const names = $derived(open.map.registers.map((r) => r.name));
   const problem = $derived.by(() => {
-    if (!name.trim()) return "Give the value a name.";
+    if (!name.trim()) return t("computedform.give_the_value_a");
     if (names.some((n) => n.trim().toLowerCase() === name.trim().toLowerCase()))
-      return "The map already has a register with this name.";
+      return t("computedform.the_map_already_has");
     return formulaProblem(formula, names);
   });
   /** Registers to offer as examples, the way a formula writes them. */
@@ -49,10 +49,9 @@
   <div class="head">
     <strong>{t("computedform.add_a_computed_value")}</strong>
     <span class="dim"
-      >Worked out every cycle from the values read. Name registers with
-      underscores for spaces{sample.length ? ` (${sample.join(", ")})` : ""}, or
-      in brackets: [Voltage L1]. Operators + − × / % **, comparisons, bit
-      operators, and abs, min, max, avg, round, floor, ceil, sqrt, pow.</span
+      >{t("computedform.worked_out_every_cycle", {
+        sample: sample.length ? ` (${sample.join(", ")})` : "",
+      })}</span
     >
   </div>
   <div class="fields">

@@ -9,24 +9,25 @@
     <div class="text">
       <strong>{t("demobanner.demo_simulated_device")}</strong>
       <span
-        >No hardware is connected: Modbench's own simulator plays a made-up
-        meter on this computer (127.0.0.1:{bench.tcpPort}). Try:</span
+        >{t("demobanner.no_hardware_is_connected", {
+          port: bench.tcpPort,
+        })}</span
       >
       <ol>
         <li>
           <button class="link" onclick={() => (bench.tab = "map")}
             >{t("tab.map")}</button
-          >: the values by name, moving.
+          >{t("demobanner.the_values_by_name")}
         </li>
         <li>
           <button class="link" onclick={() => (bench.tab = "chart")}
             >{t("tab.chart")}</button
-          >: Voltage L1 over time; right-click a value to add more.
+          >{t("demobanner.voltage_l1_over_time")}
         </li>
         <li>
           <button class="link" onclick={() => (bench.tab = "raw")}
             >{t("tab.raw")}</button
-          >: the frames on the wire, byte by byte.
+          >{t("demobanner.the_frames_on_the")}
         </li>
       </ol>
     </div>
@@ -49,7 +50,9 @@
       class="btn accent"
       disabled={demo.starting}
       onclick={() => demo.start()}
-      >{demo.starting ? "Starting…" : "Start demo"}</button
+      >{demo.starting
+        ? t("demobanner.starting")
+        : t("settingsview.start_demo")}</button
     >
     <button
       class="btn"

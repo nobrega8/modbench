@@ -27,7 +27,9 @@
     {#if markers.a === null}
       <span class="dim">{t("markertable.click_a_chart_to")}</span>
     {:else if markers.b === null}
-      <span class="dim">A at {clock(markers.a)}. Click again to place B.</span>
+      <span class="dim"
+        >{t("markertable.a_at_time_click", { time: clock(markers.a) })}</span
+      >
     {:else}
       <span class="mono"
         >A {clock(markers.a)} · B {clock(markers.b)} · Δt {duration(

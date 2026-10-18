@@ -11,11 +11,11 @@
 
   // Most common first: they are tried in this order.
   const BAUDS = [9600, 19200, 38400, 115200, 4800, 57600, 2400, 1200];
-  const PARITIES: { id: Parity; label: string }[] = [
-    { id: "E", label: "Even" },
-    { id: "N", label: "None" },
-    { id: "O", label: "Odd" },
-  ];
+  const PARITIES: { id: Parity; label: string }[] = $derived([
+    { id: "E", label: t("conn.parity.even") },
+    { id: "N", label: t("conn.parity.none") },
+    { id: "O", label: t("conn.parity.odd") },
+  ]);
 
   let bauds = $state<number[]>([9600, 19200, 38400, 115200]);
   let parities = $state<Parity[]>(["E", "N", "O"]);
@@ -157,8 +157,8 @@
       disabled={busy}
       label={t("serialscan.ask_for")}
       options={[
-        { value: "holding", label: "Holding register" },
-        { value: "input", label: "Input register" },
+        { value: "holding", label: t("serialscan.holding_register") },
+        { value: "input", label: t("serialscan.input_register") },
       ]}
     />
   </label>
@@ -218,16 +218,20 @@
     </div>
     {#if p}
       <span class="dim mono"
-        >{p.baudrate} 8{p.parity}{p.stop_bits} · unit {p.unit} · {p.done + 1} of
-        {p.total}</span
+        >{p.baudrate} 8{p.parity}{p.stop_bits} · {t(
+          "serialscan.unit_unit_done_of",
+          { unit: p.unit, done: p.done + 1, total: p.total },
+        )}</span
       >
     {/if}
   </div>
 {:else}
   <p class="dim">
-    {combos} setting{combos === 1 ? "" : "s"} × {units} unit ID{units === 1
-      ? ""
-      : "s"}. At most {duration(worstSeconds)}.
+    {t("serialscan.combos_settings_units_unit", {
+      combos,
+      units,
+      time: duration(worstSeconds),
+    })}
   </p>
 {/if}
 
@@ -254,14 +258,17 @@
       {#each bench.serialHits as h, i (i)}
         <li>
           <span class="mono setting"
-            >{h.baudrate} 8{h.parity}{h.stop_bits} · unit {h.unit}</span
+            >{h.baudrate} 8{h.parity}{h.stop_bits} · {t(
+              "serialscan.unit_unit",
+              { unit: h.unit },
+            )}</span
           >
           <span class="dim">{h.response}</span>
           <button
             class="btn"
             disabled={inUse(h)}
             onclick={() => bench.useSerial(h)}
-            >{inUse(h) ? "In use" : "Use"}</button
+            >{inUse(h) ? t("serialscan.in_use") : t("libraryview.use")}</button
           >
         </li>
       {/each}

@@ -4,6 +4,7 @@
   that area too, so the field next to it (function, area) can follow.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { parseAddress } from "#lib/format.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import type { Area } from "#lib/types.ts";
@@ -63,8 +64,14 @@
   aria-label={label}
   aria-invalid={invalid}
   title={invalid
-    ? `Enter 0–65535 (decimal, 0x… or …h), or 400101 / %MW100${areas ? ` for ${areas.join(" or ")}` : ""}`
-    : "Address on the wire (0-based). 400101 or %MW100 also set the area."}
+    ? t("addressinput.enter_0_65535_decimal", {
+        areas: areas
+          ? t("addressinput.for_areas", {
+              areas: areas.join(t("addressinput.or")),
+            })
+          : "",
+      })
+    : t("addressinput.address_on_the_wire")}
 />
 
 <style>

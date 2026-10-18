@@ -105,7 +105,7 @@
     <div
       class="segmented small"
       role="radiogroup"
-      aria-label="{label}: register or address"
+      aria-label={t("simgenerators.label_register_or_address", { label })}
       use:slidePill
     >
       <button
@@ -113,7 +113,9 @@
         aria-checked={draft.mode === "register"}
         class:on={draft.mode === "register"}
         disabled={!sim.registers.length}
-        title={sim.registers.length ? undefined : "Load a map first"}
+        title={sim.registers.length
+          ? undefined
+          : t("simgenerators.load_a_map_first")}
         onclick={() => (draft.mode = "register")}
         >{t("simgenerators.map_register")}</button
       >
@@ -248,7 +250,7 @@
         <div class="row params" in:fieldIn>
           {#if draft.kind === "sine"}
             <label class="field">
-              <span>Centre{unit ? ` (${unit})` : ""}</span>
+              <span>{t("simgenerators.centre")}{unit ? ` (${unit})` : ""}</span>
               <input
                 class="input num"
                 type="number"
@@ -257,7 +259,7 @@
               />
             </label>
             <label class="field">
-              <span>Swing ±{unit ? ` (${unit})` : ""}</span>
+              <span>{t("simgenerators.swing")}{unit ? ` (${unit})` : ""}</span>
               <input
                 class="input num"
                 type="number"
@@ -277,7 +279,7 @@
             </label>
           {:else if draft.kind === "increment"}
             <label class="field">
-              <span>Step{unit ? ` (${unit})` : ""}</span>
+              <span>{t("simgenerators.step")}{unit ? ` (${unit})` : ""}</span>
               <input
                 class="input num"
                 type="number"
@@ -305,7 +307,7 @@
             </label>
           {:else if draft.kind === "random"}
             <label class="field">
-              <span>Lowest{unit ? ` (${unit})` : ""}</span>
+              <span>{t("simgenerators.lowest")}{unit ? ` (${unit})` : ""}</span>
               <input
                 class="input num"
                 type="number"
@@ -314,7 +316,8 @@
               />
             </label>
             <label class="field">
-              <span>Highest{unit ? ` (${unit})` : ""}</span>
+              <span>{t("simgenerators.highest")}{unit ? ` (${unit})` : ""}</span
+              >
               <input
                 class="input num"
                 type="number"
@@ -333,13 +336,18 @@
 
       <p class="dim note">
         {drafted
-          ? `In ${drafted.name}'s own units: its type (${drafted.type}), scale and offset are applied.`
-          : "Raw: a bit is 0 or 1, a register a whole number (negative ones are stored as int16)."}
+          ? t("simgenerators.in_name_s_own", {
+              name: drafted.name,
+              type: drafted.type,
+            })
+          : t("simgenerators.raw_a_bit_is")}
       </p>
 
       <div class="row actions">
         <button class="btn accent" onclick={save}
-          >{editing === "new" ? "Add" : "Save"}</button
+          >{editing === "new"
+            ? t("computedform.add")
+            : t("simgenerators.save")}</button
         >
         <button class="btn" onclick={() => (editing = null)}
           >{t("computedform.cancel")}</button

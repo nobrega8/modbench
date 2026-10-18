@@ -40,12 +40,12 @@
     note = null;
     const path = await save({
       defaultPath: `snapshot.${SNAPSHOT_EXTENSION}`,
-      filters: [{ name: "Snapshot", extensions: ["json"] }],
+      filters: [{ name: t("maptable.snapshot"), extensions: ["json"] }],
     });
     if (!path) return;
     try {
       await api.saveText(path, snapshotFile(s));
-      note = { ok: true, text: "Saved." };
+      note = { ok: true, text: t("chartexport.saved") };
     } catch (e) {
       note = { ok: false, text: `Not saved: ${errorText(e)}` };
     }
@@ -55,7 +55,7 @@
   async function openSnapshot(second: boolean) {
     note = null;
     const path = await open({
-      filters: [{ name: "Snapshot", extensions: ["json"] }],
+      filters: [{ name: t("maptable.snapshot"), extensions: ["json"] }],
     });
     if (typeof path !== "string") return;
     try {
@@ -64,8 +64,8 @@
       if (!fits(s))
         throw new Error(
           kind === "map"
-            ? "This snapshot is of a manual read, not of a device map."
-            : "This snapshot is of a device map, not of a manual read.",
+            ? t("snapshotbar.this_snapshot_is_of")
+            : t("snapshotbar.this_snapshot_is_of2"),
         );
       s.label = path.split(/[\\/]/).pop() ?? s.label;
       if (second) bench.compareWith = s;
@@ -82,24 +82,32 @@
     const has = !!bench.snapshot && fits(bench.snapshot);
     contextMenu.show(e, [
       {
-        label: has ? "Take a new snapshot" : "Take snapshot",
+        label: has
+          ? t("snapshotbar.take_a_new_snapshot")
+          : t("snapshotbar.take_snapshot"),
         disabled: !canTake,
         action: () => bench.takeSnapshot(),
       },
-      { label: "Open snapshot…", action: () => openSnapshot(false) },
-      has && { label: "Save snapshot…", action: saveSnapshot },
+      {
+        label: t("snapshotbar.open_snapshot"),
+        action: () => openSnapshot(false),
+      },
+      has && { label: t("snapshotbar.save_snapshot"), action: saveSnapshot },
       null,
       has && {
-        label: "Compare with the live values",
+        label: t("snapshotbar.compare_with_the_live"),
         disabled: !bench.compareWith,
         action: () => (bench.compareWith = null),
       },
       has && {
-        label: "Compare with a saved snapshot…",
+        label: t("snapshotbar.compare_with_a_saved"),
         action: () => openSnapshot(true),
       },
       null,
-      has && { label: "Clear snapshot", action: () => bench.clearSnapshot() },
+      has && {
+        label: t("snapshotbar.clear_snapshot"),
+        action: () => bench.clearSnapshot(),
+      },
     ]);
   }
 </script>

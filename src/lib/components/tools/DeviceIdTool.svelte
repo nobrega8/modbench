@@ -31,11 +31,11 @@
   import AddressInput from "../AddressInput.svelte";
   import Select from "../Select.svelte";
 
-  const levels = [
-    { id: 1, label: "Basic" },
-    { id: 2, label: "Regular" },
-    { id: 3, label: "Extended" },
-  ];
+  const levels = $derived([
+    { id: 1, label: t("deviceidtool.basic") },
+    { id: 2, label: t("deviceidtool.regular") },
+    { id: 3, label: t("deviceidtool.extended") },
+  ]);
 
   let busy = $state(false);
   let error = $state<string | null>(null);
@@ -45,13 +45,13 @@
   let limitError = $state<string | null>(null);
   const areas: Area[] = ["holding", "input", "coil", "discrete"];
 
-  const answers: Record<Support, string> = {
-    supported: "Supported",
-    not_supported: "Not supported",
-    refused: "Supported, refused this request",
-    no_answer: "No answer",
-    skipped: "Not tried",
-  };
+  const answers: Record<Support, string> = $derived({
+    supported: t("deviceidtool.supported"),
+    not_supported: t("deviceidtool.not_supported"),
+    refused: t("deviceidtool.supported_refused_this_request"),
+    no_answer: t("deviceidtool.no_answer"),
+    skipped: t("deviceidtool.not_tried"),
+  });
   // Functions the standard defines for serial lines only
   const serialOnly = new Set([7, 8, 11, 17]);
 
@@ -65,14 +65,33 @@
 
   const where = $derived(
     bench.transport === "rtu"
-      ? `${bench.serialPort || "the serial port"}, unit ${bench.unitId}`
-      : `${bench.host}:${bench.tcpPort}, unit ${bench.unitId}`,
+      ? t("deviceidtool.port_unit_unit", {
+          port: bench.serialPort || t("scanpanel.the_serial_port"),
+          unit: bench.unitId,
+        })
+      : t("deviceidtool.host_port_unit_unit", {
+          host: bench.host,
+          port: bench.tcpPort,
+          unit: bench.unitId,
+        }),
   );
 
   /** What the conformity byte says the device supports. */
   function conformity(c: number): string {
-    const kind = ["", "basic", "regular", "extended"][c & 0x7f] ?? "unknown";
-    return `${kind} objects, ${c & 0x80 ? "stream and single-object access" : "stream access only"}`;
+    const kind =
+      [
+        "",
+        t("deviceidtool.basic2"),
+        t("deviceidtool.regular2"),
+        t("deviceidtool.extended2"),
+      ][c & 0x7f] ?? t("deviceidtool.unknown");
+    return t("deviceidtool.kind_objects_access", {
+      kind,
+      access:
+        c & 0x80
+          ? t("deviceidtool.stream_and_single_object")
+          : t("deviceidtool.stream_access_only"),
+    });
   }
 
   async function check() {
@@ -118,7 +137,7 @@
       result = null;
       const text = errorText(e);
       error = text.includes("0x01")
-        ? 'The device does not support identification (FC43): it answered "illegal function".'
+        ? t("deviceidtool.the_device_does_not")
         : text;
     } finally {
       busy = false;
@@ -128,7 +147,7 @@
 
 <header class="tool-head">
   <h1>{t("deviceidtool.identify_the_device")}</h1>
-  <p>Vendor, product and revision via FC43 · {where}. Read only.</p>
+  <p>{t("deviceidtool.vendor_product_and_revision", { where })}</p>
 </header>
 
 <div class="row">
@@ -151,7 +170,9 @@
     </div>
   </div>
   <button class="btn accent" disabled={cannotAsk} onclick={read}
-    >{busy ? "Asking…" : "Read identification"}</button
+    >{busy
+      ? t("deviceidtool.asking")
+      : t("deviceidtool.read_identification")}</button
   >
 </div>
 
@@ -181,7 +202,10 @@
     <p class="empty">{t("deviceidtool.the_device_answered_without")}</p>
   {/if}
   <p class="dim">
-    Conformity 0x{hex(result.conformity, 2)}: {conformity(result.conformity)}.
+    {t("deviceidtool.conformity_0x_hex_text", {
+      hex: hex(result.conformity, 2),
+      text: conformity(result.conformity),
+    })}
   </p>
 {:else}
   <p class="empty">{t("deviceidtool.devices_without_fc43_answer")}</p>
@@ -208,20 +232,22 @@
     <label
       class="check"
       title={settings.readOnly
-        ? "Read-only mode is on (Settings › Connection)"
-        : "Writes back the value just read at the address"}
+        ? t("deviceidtool.read_only_mode_is")
+        : t("deviceidtool.writes_back_the_value")}
     >
       <input
         type="checkbox"
         bind:checked={writes}
         disabled={cannotAsk || settings.readOnly}
       />
-      Also try write functions{#if settings.readOnly}<span class="dim"
-          >{" · off in read-only mode"}</span
+      {t("deviceidtool.also_try_write_functions")}{#if settings.readOnly}<span
+          class="dim">{t("deviceidtool.off_in_read_only")}</span
         >{/if}
     </label>
     <button class="btn" disabled={cannotAsk} onclick={check}
-      >{checking ? "Checking…" : "Check function codes"}</button
+      >{checking
+        ? t("settingsview.checking")
+        : t("deviceidtool.check_function_codes")}</button
     >
   </div>
 
@@ -242,7 +268,7 @@
             <td class="num mono">{c.function}</td>
             <td
               >{c.name}{#if serialOnly.has(c.function)}<span class="dim"
-                  >{" · serial line only"}</span
+                  >{t("deviceidtool.serial_line_only")}</span
                 >{/if}</td
             >
             <td class="answer {c.support}"
@@ -276,7 +302,9 @@
       />
     </label>
     <button class="btn" disabled={cannotAsk} onclick={measure}
-      >{measuring ? "Reading…" : "Find largest read"}</button
+      >{measuring
+        ? t("deviceidtool.reading")
+        : t("deviceidtool.find_largest_read")}</button
     >
   </div>
   {#if limitError}

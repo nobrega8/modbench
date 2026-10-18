@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { clock } from "#lib/format.ts";
   import {
     lastGood,
@@ -172,12 +173,14 @@
   function noValue(samples: Sample[], s: Sample): string {
     const why =
       s.q === "failed"
-        ? "read failed"
+        ? t("trendchart.read_failed")
         : s.q === "unavailable"
-          ? "no value"
+          ? t("trendchart.no_value")
           : "—";
     const held = lastGood(samples, samples.indexOf(s));
-    return held ? `${why} · last ${label(held.v)} (held)` : why;
+    return held
+      ? t("trendchart.why_last_value_held", { why, value: label(held.v) })
+      : why;
   }
 
   const hover = $derived.by(() => {
@@ -201,7 +204,7 @@
 
 <div class="chart">
   <div class="head">
-    <span class="unit">{unit || "No unit"}</span>
+    <span class="unit">{unit || t("trendchart.no_unit")}</span>
     <ul class="legend">
       {#each lines as l (l.index)}
         <li>
@@ -212,8 +215,10 @@
           <span class="last mono">{lastLabel(l.samples)}</span>
           <button
             class="remove"
-            title="Remove {l.reg.name} from the chart"
-            aria-label="Remove {l.reg.name} from the chart"
+            title={t("trendchart.remove_name_from_the", { name: l.reg.name })}
+            aria-label={t("trendchart.remove_name_from_the", {
+              name: l.reg.name,
+            })}
             onclick={() => onremove(l.index)}>×</button
           >
         </li>
@@ -228,7 +233,9 @@
         {width}
         {height}
         role="img"
-        aria-label="{lines.map((l) => l.reg.name).join(', ')} over time"
+        aria-label={t("trendchart.names_over_time", {
+          names: lines.map((l) => l.reg.name).join(", "),
+        })}
         onpointermove={ondrag}
         onpointerdown={ondown}
         onpointerup={() => (dragging = null)}

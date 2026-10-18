@@ -40,13 +40,26 @@
 
 {#if update && !dismissed}
   <div class="banner" role="status">
-    <strong>Modbench {update.version} is available.</strong>
+    <strong
+      >{t("updatebanner.modbench_version_is_available", {
+        version: update.version,
+      })}</strong
+    >
     {#if updates.viaApt}
-      <span>Update with <span class="mono">{APT_UPGRADE}</span></span>
+      <span
+        >{t("updatebanner.update_with")}
+        <span class="mono">{APT_UPGRADE}</span></span
+      >
     {:else if failure}
-      <span class="bad">The update failed: {failure}</span>
+      <span class="bad"
+        >{t("updatebanner.the_update_failed_error", { error: failure })}</span
+      >
     {:else if downloading}
-      <span>Downloading…{progress === null ? "" : ` ${progress}%`}</span>
+      <span
+        >{t("onlinelibrary.downloading")}{progress === null
+          ? ""
+          : ` ${progress}%`}</span
+      >
     {:else if update.body}
       <span class="notes" title={changes(update.body).join("\n")}
         >{summary(update.body)}</span

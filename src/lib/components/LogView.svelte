@@ -26,42 +26,46 @@
 
   const shown = $derived(
     errorsOnly
-      ? bench.log.filter((t) => t.error !== null || t.note)
+      ? bench.log.filter((e) => e.error !== null || e.note)
       : bench.log,
   );
 
-  function addr(t: TrafficEntry) {
+  function addr(e: TrafficEntry) {
     return formatAddress(
-      t.address,
+      e.address,
       settings.addressFormat,
-      areaOfFunction(t.function),
+      areaOfFunction(e.function),
     );
   }
 
-  function line(t: TrafficEntry): string {
-    if (t.note) return `${clock(t.time_ms)}\t${t.note}`;
-    const fc = String(t.function).padStart(2, "0");
-    return `${clock(t.time_ms)}\tFC${fc}\t${FUNCTION_NAME[t.function] ?? ""}\t${addr(t)}\t${t.count}\t${t.duration_ms.toFixed(1)} ms\t${t.error ?? "OK"}`;
+  function line(e: TrafficEntry): string {
+    if (e.note) return `${clock(e.time_ms)}\e${e.note}`;
+    const fc = String(e.function).padStart(2, "0");
+    return `${clock(e.time_ms)}\tFC${fc}\e${FUNCTION_NAME[e.function] ?? ""}\e${addr(e)}\e${e.count}\e${e.duration_ms.toFixed(1)} ms\e${e.error ?? "OK"}`;
   }
 
   /** What a right-click on a request offers. */
-  function rowMenu(t: TrafficEntry): MenuEntry[] {
+  function rowMenu(e: TrafficEntry): MenuEntry[] {
     return [
-      { label: "Copy line", action: () => copy(line(t)) },
-      t.error !== null && {
-        label: "Copy error",
-        action: () => copy(t.error ?? ""),
+      { label: t("logview.copy_line"), action: () => copy(line(e)) },
+      e.error !== null && {
+        label: t("logview.copy_error"),
+        action: () => copy(e.error ?? ""),
       },
       {
-        label: errorsOnly ? "Copy errors shown" : "Copy all",
+        label: errorsOnly
+          ? t("logview.copy_errors_shown")
+          : t("logview.copy_all"),
         action: () => copy(shown.map(line).join("\n")),
       },
       null,
       {
-        label: errorsOnly ? "Show every request" : "Show errors only",
+        label: errorsOnly
+          ? t("logview.show_every_request")
+          : t("logview.show_errors_only"),
         action: () => (errorsOnly = !errorsOnly),
       },
-      { label: "Save log…", action: saveLog },
+      { label: t("logview.save_log"), action: saveLog },
       { label: "Clear log", danger: true, action: () => bench.clearLog() },
     ];
   }
@@ -77,7 +81,7 @@
       defaultPath: "modbench-log.csv",
       filters: [
         { name: "CSV", extensions: ["csv"] },
-        { name: "Text", extensions: ["txt"] },
+        { name: t("logview.text"), extensions: ["txt"] },
       ],
     });
     if (!path) return;
@@ -99,7 +103,9 @@
   >
   <AddressFormat />
   <span class="spacer"></span>
-  {#if saveError}<span class="bad">Could not save: {saveError}</span>{/if}
+  {#if saveError}<span class="bad"
+      >{t("logview.could_not_save_error", { error: saveError })}</span
+    >{/if}
   <button
     class="btn"
     disabled={!bench.log.length}
@@ -129,26 +135,26 @@
       </tr>
     </thead>
     <tbody>
-      {#each shown as t, i (i)}
-        {#if t.note}
+      {#each shown as row, i (i)}
+        {#if row.note}
           <tr class="note">
-            <td class="mono dim">{clock(t.time_ms)}</td>
-            <td colspan="5">{t.note}</td>
+            <td class="mono dim">{clock(row.time_ms)}</td>
+            <td colspan="5">{row.note}</td>
           </tr>
         {:else}
           <tr
-            class:err={t.error !== null}
-            oncontextmenu={(e) => contextMenu.show(e, rowMenu(t))}
+            class:err={row.error !== null}
+            oncontextmenu={(e) => contextMenu.show(e, rowMenu(row))}
           >
-            <td class="mono dim">{clock(t.time_ms)}</td>
+            <td class="mono dim">{clock(row.time_ms)}</td>
             <td
-              ><span class="mono">{String(t.function).padStart(2, "0")}</span>
-              {FUNCTION_NAME[t.function] ?? ""}</td
+              ><span class="mono">{String(row.function).padStart(2, "0")}</span>
+              {FUNCTION_NAME[row.function] ?? ""}</td
             >
-            <td class="mono">{addr(t)}</td>
-            <td class="mono">{t.count}</td>
-            <td class="mono dim">{t.duration_ms.toFixed(1)} ms</td>
-            <td class="res">{t.error ?? "OK"}</td>
+            <td class="mono">{addr(row)}</td>
+            <td class="mono">{row.count}</td>
+            <td class="mono dim">{row.duration_ms.toFixed(1)} ms</td>
+            <td class="res">{row.error ?? "OK"}</td>
           </tr>
         {/if}
       {:else}

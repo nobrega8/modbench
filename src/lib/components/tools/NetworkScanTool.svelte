@@ -140,10 +140,17 @@
 </div>
 
 <p class="dim policy">
-  {scan.mode === "fast" ? "Fast" : "Thorough"}: waits {scan.timeoutMs} ms for each
-  address, {scan.retries === 0
-    ? "no retries"
-    : `${scan.retries} ${scan.retries === 1 ? "retry" : "retries"} on a timeout`}.
+  {t("networkscantool.mode_waits_ms_ms", {
+    mode:
+      scan.mode === "fast"
+        ? t("networkscantool.fast")
+        : t("networkscantool.thorough"),
+    ms: scan.timeoutMs,
+    retries:
+      scan.retries === 0
+        ? t("networkscantool.no_retries")
+        : t("networkscantool.count_retries_on_a", { count: scan.retries }),
+  })}
 </p>
 
 {#if scan.running}
@@ -158,8 +165,11 @@
   </div>
   {#if scan.progress}
     <p class="dim mono">
-      {scan.progress.done} of {scan.progress.total} addresses · {scan.progress
-        .found} found so far
+      {t("networkscantool.done_of_total_addresses", {
+        done: scan.progress.done,
+        total: scan.progress.total,
+        found: scan.progress.found,
+      })}
     </p>
   {/if}
 {/if}
@@ -171,11 +181,15 @@
 {#if scan.hits && (scan.hits.length || !scan.running) && !scan.error}
   {#if !scan.running}
     <p>
-      {modbus?.length ?? 0} Modbus
-      {modbus?.length === 1 ? "device" : "devices"}{openOnly?.length
-        ? `, and ${openOnly.length} ${openOnly.length === 1 ? "address" : "addresses"} with the port open but no Modbus answer`
+      {t("networkscantool.modbus_devices_count", {
+        count: modbus?.length ?? 0,
+      })}{openOnly?.length
+        ? t("networkscantool.port_open_but_no", { count: openOnly.length })
         : ""}{scan.progress && scan.progress.done < scan.progress.total
-        ? ` (stopped after ${scan.progress.done} of ${scan.progress.total} addresses)`
+        ? t("networkscantool.stopped_after_done_of", {
+            done: scan.progress.done,
+            total: scan.progress.total,
+          })
         : ""}.
     </p>
   {/if}
@@ -203,7 +217,9 @@
             <td class="num mono">{h.response_ms.toFixed(0)} ms</td>
             <td class="answer" title={h.response}
               >{h.status === "tcp_only" && h.response.startsWith("timed out")
-                ? `no answer within ${scan.last?.timeout_ms ?? scan.timeoutMs} ms`
+                ? t("networkscantool.no_answer_within_ms", {
+                    ms: scan.last?.timeout_ms ?? scan.timeoutMs,
+                  })
                 : h.response}</td
             >
             <td>{h.identity ?? ""}</td>
@@ -213,8 +229,12 @@
                   class="btn small"
                   disabled={bench.running}
                   title={bench.running
-                    ? "Stop the test on the Main page first"
-                    : `Connect to ${h.ip}:${h.port}, unit ${h.unit}, on the Main page`}
+                    ? t("addressscantool.stop_the_test_on")
+                    : t("networkscantool.connect_to_host_port", {
+                        host: h.ip,
+                        port: h.port,
+                        unit: h.unit,
+                      })}
                   onclick={() => use(h)}>{t("mappicker.open")}</button
                 >
               {/if}
@@ -225,10 +245,11 @@
     </table>
   {:else if !scan.running}
     <p class="empty">
-      No address opened port {scan.last?.port ?? scan.port}.{scan.last
-        ?.retries === 0
-        ? " Try the thorough mode."
-        : " Try a longer wait."}
+      {t("networkscantool.no_address_opened_port", {
+        port: scan.last?.port ?? scan.port,
+      })}{scan.last?.retries === 0
+        ? t("networkscantool.try_the_thorough_mode")
+        : t("networkscantool.try_a_longer_wait")}
     </p>
   {/if}
 {/if}

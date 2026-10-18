@@ -210,7 +210,7 @@
     if (!m) return [];
     return [
       ...headerRows(m, p.map?.registers.length ?? entry.registers),
-      ["File", entry.path],
+      [t("onlinelibrary.file"), entry.path],
     ];
   }
 
@@ -226,7 +226,13 @@
       } else {
         await bench.refreshLibrary();
         onadded?.(
-          `${entry.vendor} ${entry.model} ${replacing ? "updated in" : "added to"} the library.`,
+          replacing
+            ? t("onlinelibrary.name_updated_in_the", {
+                name: `${entry.vendor} ${entry.model}`,
+              })
+            : t("onlinelibrary.name_added_to_the", {
+                name: `${entry.vendor} ${entry.model}`,
+              }),
         );
       }
     } catch (e) {
@@ -272,12 +278,14 @@
     <input
       class="input search"
       type="search"
-      placeholder={vendor === null ? "Search vendor or model" : "Search models"}
+      placeholder={vendor === null
+        ? t("onlinelibrary.search_vendor_or_model")
+        : t("onlinelibrary.search_models")}
       bind:this={searchBox}
       bind:value={search}
       aria-label={vendor === null
-        ? "Search vendors"
-        : `Search ${vendorName} models`}
+        ? t("onlinelibrary.search_vendors")
+        : t("onlinelibrary.search_vendor_models", { vendor: vendorName })}
     />
   </header>
 
@@ -306,18 +314,20 @@
                   <span class="model">{g.name}</span>
                 </div>
                 <span class="count"
-                  >{g.shown} map{g.shown === 1 ? "" : "s"}{query &&
-                  g.shown !== g.total
-                    ? ` of ${g.total}`
-                    : ""}</span
+                  >{query && g.shown !== g.total
+                    ? t("onlinelibrary.maps_shown_of_total", {
+                        shown: g.shown,
+                        total: g.total,
+                      })
+                    : t("onlinelibrary.maps_shown", { shown: g.shown })}</span
                 >
                 <span class="chev" aria-hidden="true">›</span>
               </button>
             {:else}
               <p class="note">
                 {entries?.length
-                  ? `Nothing matches “${search}”.`
-                  : "No maps yet."}
+                  ? t("onlinelibrary.nothing_matches_search", { search })
+                  : t("onlinelibrary.no_maps_yet")}
               </p>
             {/each}
           {:else}
@@ -343,12 +353,18 @@
                   {/if}
                 </div>
                 <span class="status"><MapStatus status={e.status} /></span>
-                <span class="count">{e.registers} registers</span>
+                <span class="count"
+                  >{t("mappicker.registers_count", {
+                    count: e.registers,
+                  })}</span
+                >
                 <button
                   class="btn small icon ghost info-btn"
                   class:on={infoPath === e.path}
                   title={t("onlinelibrary.map_details")}
-                  aria-label="Details of {e.model}"
+                  aria-label={t("onlinelibrary.details_of_model", {
+                    model: e.model,
+                  })}
                   aria-expanded={infoPath === e.path}
                   onclick={(ev) => toggleInfo(e, ev.currentTarget)}
                   ><Icon name="about" size={16} /></button
@@ -359,19 +375,24 @@
                     disabled={busy}
                     title={t("onlinelibrary.download_it_again_and")}
                     onclick={() => add(e)}
-                    >{busy ? "Downloading…" : "Replace"}</button
+                    >{busy
+                      ? t("onlinelibrary.downloading")
+                      : t("onlinelibrary.replace")}</button
                   >
                 {:else}
                   <button
                     class="btn accent small"
                     disabled={busy}
-                    onclick={() => add(e)}>{busy ? "Adding…" : "Add"}</button
+                    onclick={() => add(e)}
+                    >{busy
+                      ? t("onlinelibrary.adding")
+                      : t("computedform.add")}</button
                   >
                 {/if}
               </div>
             {:else}
               <p class="note">
-                No maps match “{search}”.
+                {t("libraryview.no_maps_match_search", { search })}
               </p>
             {/each}
           {/if}
@@ -405,10 +426,12 @@
         <p class="bad">{d.error}</p>
       {:else if !d.map}
         <p class="bad">
-          The map has errors: {d.diagnostics
-            .filter((x) => x.severity === "error")
-            .map((x) => x.message)
-            .join("; ")}
+          {t("onlinelibrary.the_map_has_errors", {
+            errors: d.diagnostics
+              .filter((x) => x.severity === "error")
+              .map((x) => x.message)
+              .join(", "),
+          })}
         </p>
       {:else}
         <dl>

@@ -24,8 +24,12 @@
     <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10" /></svg>
   </button>
   <button
-    aria-label={maximized ? "Restore" : "Maximize"}
-    title={maximized ? "Restore" : "Maximize"}
+    aria-label={maximized
+      ? t("windowcontrols.restore")
+      : t("windowcontrols.maximize")}
+    title={maximized
+      ? t("windowcontrols.restore")
+      : t("windowcontrols.maximize")}
     onclick={() => win.toggleMaximize()}
   >
     {#if maximized}
