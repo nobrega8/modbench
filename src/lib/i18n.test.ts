@@ -39,6 +39,17 @@ describe("catalogues", () => {
   });
 });
 
+describe("keys built at run time", () => {
+  it("exist in English for every function code and area", () => {
+    for (const fc of [1, 2, 3, 4, 5, 6, 15, 16])
+      expect(en[`fc.${fc}`]).toBeTruthy();
+    for (const area of ["coil", "discrete", "input", "holding"]) {
+      expect(en[`area.${area}`]).toBeTruthy();
+      expect(en[`areas.${area}`]).toBeTruthy();
+    }
+  });
+});
+
 describe("lookup", () => {
   it("fills placeholders, picks plural forms and falls back to English", () => {
     expect(translate("pt-PT", "test.running", { where: "COM3" })).toBe(
