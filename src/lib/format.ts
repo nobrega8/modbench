@@ -1,5 +1,6 @@
 // Formatting of values for display and parsing of what people type.
 
+import { t, td } from "./i18n.svelte.ts";
 import type { Area, RawData, Register, Value } from "./types";
 
 export const AREA_TAG: Record<Area, string> = {
@@ -9,22 +10,63 @@ export const AREA_TAG: Record<Area, string> = {
   holding: "HR",
 };
 
+// Getters, so that reading a name always gives the current language.
 export const AREA_NAME: Record<Area, string> = {
-  coil: "Coil",
-  discrete: "Discrete input",
-  input: "Input register",
-  holding: "Holding register",
+  get coil() {
+    return t("area.coil");
+  },
+  get discrete() {
+    return t("area.discrete");
+  },
+  get input() {
+    return t("area.input");
+  },
+  get holding() {
+    return t("area.holding");
+  },
+};
+
+/** The plural names of the areas, for headings and lists. */
+export const AREA_NAMES: Record<Area, string> = {
+  get coil() {
+    return t("areas.coil");
+  },
+  get discrete() {
+    return t("areas.discrete");
+  },
+  get input() {
+    return t("areas.input");
+  },
+  get holding() {
+    return t("areas.holding");
+  },
 };
 
 export const FUNCTION_NAME: Record<number, string> = {
-  1: "Read coils",
-  2: "Read discrete inputs",
-  3: "Read holding registers",
-  4: "Read input registers",
-  5: "Write single coil",
-  6: "Write single register",
-  15: "Write multiple coils",
-  16: "Write multiple registers",
+  get 1() {
+    return td("fc.1");
+  },
+  get 2() {
+    return td("fc.2");
+  },
+  get 3() {
+    return td("fc.3");
+  },
+  get 4() {
+    return td("fc.4");
+  },
+  get 5() {
+    return td("fc.5");
+  },
+  get 6() {
+    return td("fc.6");
+  },
+  get 15() {
+    return td("fc.15");
+  },
+  get 16() {
+    return td("fc.16");
+  },
 };
 
 export function hex(n: number, digits = 4): string {
@@ -40,13 +82,29 @@ export function hex(n: number, digits = 4): string {
  */
 export type AddressFormat = "base0" | "base1" | "hex" | "modicon" | "iec";
 
-export const ADDRESS_FORMATS: { id: AddressFormat; label: string }[] = [
-  { id: "base0", label: "0-based" },
-  { id: "base1", label: "1-based" },
-  { id: "hex", label: "Hexadecimal" },
-  { id: "modicon", label: "Modicon (400001)" },
-  { id: "iec", label: "IEC 61131-3 (%MW0)" },
-];
+export const ADDRESS_FORMATS: { id: AddressFormat; readonly label: string }[] =
+  [
+    {
+      id: "base0",
+      get label() {
+        return t("addrfmt.base0");
+      },
+    },
+    {
+      id: "base1",
+      get label() {
+        return t("addrfmt.base1");
+      },
+    },
+    {
+      id: "hex",
+      get label() {
+        return t("addrfmt.hex");
+      },
+    },
+    { id: "modicon", label: "Modicon (400001)" },
+    { id: "iec", label: "IEC 61131-3 (%MW0)" },
+  ];
 
 /** First digit of a Modicon address, by area. */
 const MODICON_DIGIT: Record<Area, string> = {
@@ -262,10 +320,10 @@ export function areaAccess(
   area: Area,
   readOnlyMode: boolean,
 ): { writable: boolean; text: string } {
-  const name = `${AREA_NAME[area]}s`;
+  const name = AREA_NAMES[area];
   if (area === "input" || area === "discrete")
-    return { writable: false, text: `${name} · read only` };
+    return { writable: false, text: t("access.readonly", { name }) };
   if (readOnlyMode)
-    return { writable: false, text: `${name} · read-only mode is on` };
-  return { writable: true, text: `${name} · writable` };
+    return { writable: false, text: t("access.readonlymode", { name }) };
+  return { writable: true, text: t("access.writable", { name }) };
 }

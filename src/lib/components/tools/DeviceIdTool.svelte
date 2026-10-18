@@ -24,7 +24,7 @@
 
 <script lang="ts">
   import { errorText } from "#lib/api.ts";
-  import { AREA_NAME, formatAddress, hex } from "#lib/format.ts";
+  import { AREA_NAME, AREA_NAMES, formatAddress, hex } from "#lib/format.ts";
   import { slidePill } from "#lib/motion.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
@@ -142,6 +142,19 @@
     } finally {
       busy = false;
     }
+  }
+
+  function limitVars(l: NonNullable<typeof limit>) {
+    return {
+      area: AREA_NAME[l.area].toLowerCase(),
+      address: formatAddress(l.address, settings.addressFormat, l.area),
+      largest: l.read.largest,
+      unit:
+        l.area === "coil" || l.area === "discrete"
+          ? t("deviceidtool.bits")
+          : t("deviceidtool.registers"),
+      limit: l.read.limit ?? 0,
+    };
   }
 </script>
 
@@ -298,7 +311,7 @@
         bind:value={limitArea}
         label={t("customregisterform.area")}
         disabled={cannotAsk}
-        options={areas.map((a) => ({ value: a, label: AREA_NAME[a] + "s" }))}
+        options={areas.map((a) => ({ value: a, label: AREA_NAMES[a] }))}
       />
     </label>
     <button class="btn" disabled={cannotAsk} onclick={measure}
@@ -311,15 +324,9 @@
     <p class="bad" role="alert">{limitError}</p>
   {:else if limit}
     <p>
-      From {AREA_NAME[limit.area].toLowerCase()}
-      {formatAddress(limit.address, settings.addressFormat, limit.area)}:
-      <strong>{limit.read.largest}</strong>
-      {limit.area === "coil" || limit.area === "discrete"
-        ? "bits"
-        : "registers"}
-      in one read{#if limit.read.limit}<span class="dim"
-          >{`. One more: ${limit.read.limit}`}</span
-        >{:else}, the most the protocol allows{/if}.
+      {limit.read.limit
+        ? t("deviceidtool.limit_more", limitVars(limit))
+        : t("deviceidtool.limit_max", limitVars(limit))}
     </p>
   {/if}
 </section>

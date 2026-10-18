@@ -13,7 +13,7 @@
 </script>
 
 <script lang="ts">
-  import { AREA_NAME, AREA_TAG, formatAddress } from "#lib/format.ts";
+  import { AREA_NAMES, AREA_TAG, formatAddress } from "#lib/format.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
   import AddressFormat from "../AddressFormat.svelte";
@@ -74,7 +74,7 @@
       bind:value={area}
       label={t("customregisterform.area")}
       disabled={busy}
-      options={areas.map((a) => ({ value: a, label: AREA_NAME[a] + "s" }))}
+      options={areas.map((a) => ({ value: a, label: AREA_NAMES[a] }))}
     />
   </label>
   <label class="field">
