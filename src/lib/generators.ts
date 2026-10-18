@@ -8,21 +8,50 @@ import type {
   GeneratorTarget,
   Register,
 } from "./types";
+import { t } from "./i18n.svelte.ts";
 
 export type Kind = GeneratorKind["kind"];
 
-export const KINDS: { id: Kind; label: string }[] = [
-  { id: "sine", label: "Sine" },
-  { id: "increment", label: "Increment" },
-  { id: "random", label: "Random" },
-  { id: "copy", label: "Copy" },
+export const KINDS: { id: Kind; readonly label: string }[] = [
+  {
+    id: "sine",
+    get label() {
+      return t("gen.sine");
+    },
+  },
+  {
+    id: "increment",
+    get label() {
+      return t("gen.increment");
+    },
+  },
+  {
+    id: "random",
+    get label() {
+      return t("gen.random");
+    },
+  },
+  {
+    id: "copy",
+    get label() {
+      return t("gen.copy");
+    },
+  },
 ];
 
 export const AREA_LABELS: Record<Area, string> = {
-  holding: "Holding",
-  input: "Input",
-  coil: "Coil",
-  discrete: "Discrete",
+  get holding() {
+    return t("genarea.holding");
+  },
+  get input() {
+    return t("genarea.input");
+  },
+  get coil() {
+    return t("genarea.coil");
+  },
+  get discrete() {
+    return t("genarea.discrete");
+  },
 };
 
 /** A target as the form edits it: both ways are kept while switching. */
@@ -192,13 +221,24 @@ export function describe(
   const u = unit ? ` ${unit}` : "";
   switch (g.kind) {
     case "increment":
-      return `${g.step < 0 ? "−" : "+"}${num(Math.abs(g.step))}${u} each time, ${num(g.min)} to ${num(g.max)}`;
+      return t("gen.each", {
+        sign: g.step < 0 ? "−" : "+",
+        step: num(Math.abs(g.step)),
+        unit: u,
+        min: num(g.min),
+        max: num(g.max),
+      });
     case "sine":
-      return `${num(g.offset)} ± ${num(g.amplitude)}${u}, ${num(g.period_s)} s period`;
+      return t("gen.sinedesc", {
+        offset: num(g.offset),
+        amplitude: num(g.amplitude),
+        unit: u,
+        period: num(g.period_s),
+      });
     case "random":
-      return `${num(g.min)} to ${num(g.max)}${u}`;
+      return t("gen.range", { min: num(g.min), max: num(g.max), unit: u });
     case "copy":
-      return `Follows ${name(g.from)}`;
+      return t("gen.follows", { name: name(g.from) });
   }
 }
 

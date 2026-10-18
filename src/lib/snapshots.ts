@@ -5,6 +5,7 @@
 import { formatRaw, formatValue, hex } from "./format";
 import { registerId } from "./profiles";
 import type { Area, PointResult, Register } from "./types";
+import { t } from "./i18n.svelte.ts";
 
 /** Saved snapshot files end in this. */
 export const SNAPSHOT_EXTENSION = "mbsnap.json";
@@ -129,12 +130,12 @@ export function parseSnapshot(text: string): Snapshot | { error: string } {
   try {
     data = JSON.parse(text);
   } catch {
-    return { error: "This is not a Modbench snapshot (not JSON)." };
+    return { error: t("snap.notjson") };
   }
   const s = data as Partial<Snapshot>;
   if (s?.kind !== "modbench-snapshot" || s.v !== 1)
-    return { error: "This is not a Modbench snapshot." };
-  if (!s.map && !s.read) return { error: "The snapshot holds no values." };
+    return { error: t("snap.notsnap") };
+  if (!s.map && !s.read) return { error: t("snap.empty") };
   return {
     kind: "modbench-snapshot",
     v: 1,

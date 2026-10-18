@@ -221,7 +221,7 @@ export function parseForRegister(
 ): { value: Value } | { error: string } {
   if (reg.type === "bool") {
     const b = parseBool(text);
-    return b === null ? { error: "Type 1 or 0 (on or off)." } : { value: b };
+    return b === null ? { error: t("fmt.bool") } : { value: b };
   }
   if (reg.type === "string") return { value: text };
   const label = reg.enum.find(
@@ -233,7 +233,7 @@ export function parseForRegister(
   if (asInt !== null) return { value: asInt };
   const n = Number(text.trim().replace(",", "."));
   if (text.trim() !== "" && Number.isFinite(n)) return { value: n };
-  return { error: "Type a number, e.g. 12.5, 0x1F or 1Fh." };
+  return { error: t("fmt.number") };
 }
 
 /** Why a numeric write value is outside the register's declared limits. */

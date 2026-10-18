@@ -3,6 +3,7 @@
 // file, and marked so the UI can tell them apart and remove them.
 
 import type { Access, Area, DataType, Register } from "./types";
+import { t } from "./i18n.svelte.ts";
 
 const PREFIX = "modbench.custom.";
 /** `extra` column that marks a register added here. */
@@ -38,27 +39,23 @@ export function customProblem(
   f: CustomFields,
   taken: Register[],
 ): string | null {
-  if (!f.name.trim()) return "Give the register a name.";
+  if (!f.name.trim()) return t("custom.name");
   if (
     taken.some(
       (r) => r.name.trim().toLowerCase() === f.name.trim().toLowerCase(),
     )
   )
-    return "The map already has a register with this name.";
-  if (!Number.isInteger(f.address) || f.address < 0)
-    return "Type an address from 0 to 65535.";
+    return t("custom.dup");
+  if (!Number.isInteger(f.address) || f.address < 0) return t("custom.addr");
   if (f.address + wordCount(f.type, f.length) > 0x10000)
-    return "The value does not fit below address 65535.";
+    return t("custom.overflow");
   const bits = f.area === "coil" || f.area === "discrete";
-  if (bits && f.type !== "bool")
-    return "Coils and discrete inputs hold single bits: use bool.";
-  if (!bits && f.type === "bool")
-    return "A bool in a register needs a bit; pick a number type.";
+  if (bits && f.type !== "bool") return t("custom.bits");
+  if (!bits && f.type === "bool") return t("custom.bool");
   if (f.type === "string" && !(f.length && f.length > 0))
-    return "A string needs its length in registers.";
-  if (!Number.isFinite(f.scale) || f.scale === 0)
-    return "The scale must be a number other than 0.";
-  if (!Number.isFinite(f.offset)) return "The offset must be a number.";
+    return t("custom.string");
+  if (!Number.isFinite(f.scale) || f.scale === 0) return t("custom.scale");
+  if (!Number.isFinite(f.offset)) return t("custom.offset");
   return null;
 }
 

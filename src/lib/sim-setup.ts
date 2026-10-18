@@ -4,6 +4,7 @@
 // when the map file has moved.
 
 import type { DeviceMap, Generator, Parity, Transport } from "./types";
+import { t } from "./i18n.svelte.ts";
 
 export const SETUP_EXTENSION = "mbsim";
 const VERSION = 1;
@@ -54,13 +55,13 @@ export function parseSetup(text: string): SimSetup | { error: string } {
   try {
     data = JSON.parse(text);
   } catch {
-    return { error: "This is not a simulator setup (not JSON)." };
+    return { error: t("setup.notjson") };
   }
   if (!isObject(data) || typeof data.modbench_sim_setup !== "number")
-    return { error: "This is not a simulator setup." };
+    return { error: t("setup.notsetup") };
   if (data.modbench_sim_setup > VERSION)
     return {
-      error: "This setup was saved by a newer Modbench; update to open it.",
+      error: t("setup.newer"),
     };
 
   const l = data.listen;
@@ -75,11 +76,11 @@ export function parseSetup(text: string): SimSetup | { error: string } {
     !isInt(l.data_bits, 5, 8) ||
     !isInt(l.stop_bits, 1, 2)
   )
-    return { error: "The setup's listen settings are not valid." };
+    return { error: t("setup.listen") };
 
   const devices = data.devices;
   if (!Array.isArray(devices) || !devices.length)
-    return { error: "The setup has no devices." };
+    return { error: t("setup.nodevices") };
   for (const [i, d] of devices.entries()) {
     const ok =
       isObject(d) &&
@@ -89,14 +90,14 @@ export function parseSetup(text: string): SimSetup | { error: string } {
       (d.map === null || (isObject(d.map) && Array.isArray(d.map.registers))) &&
       Array.isArray(d.generators) &&
       d.generators.every(isObject);
-    if (!ok) return { error: `Device ${i + 1} of the setup is not valid.` };
+    if (!ok) return { error: t("setup.baddevice", { n: i + 1 }) };
   }
   // As the simulator checks it: one device per unit ID, one for all.
   const units = devices.map((d) => d.unit as number | null);
   if (units.filter((u) => u === null).length > 1)
-    return { error: "Only one device can answer every unit ID." };
+    return { error: t("setup.oneall") };
   const twice = units.find((u, i) => u !== null && units.indexOf(u) !== i);
   if (twice !== undefined)
-    return { error: `Two devices have unit ID ${twice}.` };
+    return { error: t("setup.twice", { unit: twice ?? "" }) };
   return data as unknown as SimSetup;
 }

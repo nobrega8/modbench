@@ -4,6 +4,7 @@
 // looks the same in any program that opens it.
 
 import { clock, duration } from "./format";
+import { t } from "./i18n.svelte.ts";
 
 export interface Palette {
   background: string;
@@ -158,7 +159,7 @@ export function composeSvg(
 
   for (const c of charts) {
     // Legend: the unit, then each line, wrapped to the image's width.
-    const unit = (c.unit || "No unit").toUpperCase();
+    const unit = (c.unit || t("chart.nounit")).toUpperCase();
     text(PAD, y + 14, unit, 11, p.text3);
     let x = PAD + Math.max(46, measure(unit, 11, false)) + 14;
     for (const item of c.legend) {

@@ -4,6 +4,7 @@
 // text Copy, and nothing at all instead of the webview's browser menu.
 
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { t } from "./i18n.svelte.ts";
 
 export interface MenuItem {
   label: string;
@@ -108,7 +109,7 @@ function fieldItems(
   };
   return [
     {
-      label: "Cut",
+      label: t("ctx.cut"),
       disabled: !editable || selected === "",
       action: async () => {
         await copy(selected);
@@ -117,12 +118,12 @@ function fieldItems(
       },
     },
     {
-      label: "Copy",
+      label: t("ctx.copy"),
       disabled: selected === "",
       action: () => copy(selected),
     },
     {
-      label: "Paste",
+      label: t("ctx.paste"),
       disabled: !editable,
       action: async () => {
         let text = "";
@@ -138,7 +139,7 @@ function fieldItems(
     },
     null,
     {
-      label: "Select all",
+      label: t("ctx.selectall"),
       disabled: field.value === "",
       action: () => {
         field.focus();
@@ -160,7 +161,9 @@ export function fallback(e: MouseEvent) {
   if (field) return contextMenu.show(e, fieldItems(field));
   const text = getSelection()?.toString() ?? "";
   if (text.trim()) {
-    return contextMenu.show(e, [{ label: "Copy", action: () => copy(text) }]);
+    return contextMenu.show(e, [
+      { label: t("ctx.copy"), action: () => copy(text) },
+    ]);
   }
   e.preventDefault();
   contextMenu.close();

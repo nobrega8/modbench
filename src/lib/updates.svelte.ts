@@ -2,6 +2,7 @@
 
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { api } from "#lib/api.ts";
+import { t } from "./i18n.svelte.ts";
 
 /** Command that updates a copy installed from the .deb package. */
 export const APT_UPGRADE = "sudo apt update && sudo apt upgrade";
@@ -26,11 +27,11 @@ class Updates {
     try {
       this.available = await check();
       this.message = this.available
-        ? `Modbench ${this.available.version} is available.`
-        : "Modbench is up to date.";
+        ? t("upd.available", { version: this.available.version })
+        : t("upd.uptodate");
     } catch (e) {
       // No release published yet, or offline.
-      if (!quiet) this.message = `Could not check for updates: ${String(e)}`;
+      if (!quiet) this.message = t("upd.failed", { error: String(e) });
     } finally {
       this.checking = false;
     }

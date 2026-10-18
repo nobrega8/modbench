@@ -20,6 +20,7 @@ import type {
   SimEvent,
   Transport,
 } from "./types";
+import { t } from "./i18n.svelte.ts";
 
 /** This page is the simulator's own window (see `sim_open_window`). */
 export const IN_SIM_WINDOW =
@@ -202,7 +203,7 @@ class Simulator {
   async start() {
     this.error = null;
     if ((this.kind === "rtu" || this.kind === "ascii") && !this.serialPort) {
-      this.error = "Choose a serial port first.";
+      this.error = t("sim.chooseport");
       return;
     }
     try {
@@ -265,8 +266,7 @@ class Simulator {
     try {
       const map = open ?? (await api.openMap(path)).map;
       if (!map) {
-        this.error =
-          "This map has errors; open it on the Main page to see them.";
+        this.error = t("sim.maperrors");
         return;
       }
       await this.load(map, fileName(path), path);
@@ -400,13 +400,13 @@ class Simulator {
       problem = errorText(e);
     }
     this.setupNote = problem
-      ? { ok: false, text: `Not opened: ${problem}` }
+      ? { ok: false, text: t("sim.notopened", { problem }) }
       : {
           ok: true,
           text:
             this.running === null
-              ? `Opened ${fileName(path)}.`
-              : `Opened ${fileName(path)}; stop the simulator to take its interface settings too.`,
+              ? t("sim.opened", { file: fileName(path) })
+              : t("sim.openedstop", { file: fileName(path) }),
         };
   }
 

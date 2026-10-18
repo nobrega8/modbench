@@ -2,6 +2,7 @@
 // values over time, for the trend player.
 
 import type { Sample } from "./trend";
+import { t } from "./i18n.svelte.ts";
 
 export interface Column {
   name: string;
@@ -93,8 +94,7 @@ export function parseRecording(text: string): Recording | { error: string } {
   const header = rows[0];
   if (!header || header[0] !== "time" || header.length < 2)
     return {
-      error:
-        'This is not a Modbench recording: its first column must be "time".',
+      error: t("rec.notrec"),
     };
   const columns: Column[] = header.slice(1).map((h) => {
     const m = /^(.*) \(([^()]*)\)$/.exec(h);
@@ -113,7 +113,7 @@ export function parseRecording(text: string): Recording | { error: string } {
     end = Math.max(end, t);
     columns.forEach((c, i) => c.samples.push(cellSample(row[i + 1] ?? "", t)));
   }
-  if (!count) return { error: "The recording has no rows." };
+  if (!count) return { error: t("rec.norows") };
   for (const c of columns) c.samples.sort((a, b) => a.t - b.t);
   return { columns, start, end, rows: count };
 }

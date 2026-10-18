@@ -8,6 +8,7 @@ import { settings } from "./settings.svelte";
 import { sim } from "./simulator.svelte";
 import { bench, CONNECTION_FIELDS } from "./state.svelte";
 import type { DeviceMap, Generator } from "./types";
+import { t } from "./i18n.svelte.ts";
 
 /** The path the demo's map is opened under; no file has it. */
 export const DEMO_PATH = "modbench:demo";
@@ -117,7 +118,7 @@ class Demo {
     if (this.active || this.starting) return;
     this.error = null;
     if (bench.running) {
-      this.error = "Stop the test on the Main page first.";
+      this.error = t("demo.stopfirst");
       return;
     }
     if (sim.running) {

@@ -1,6 +1,7 @@
 // Response time statistics for the Test step.
 
 import type { TrafficEntry } from "./types";
+import { t } from "./i18n.svelte.ts";
 
 export interface ResponseTimes {
   /** Responses measured so far. */
@@ -76,15 +77,16 @@ export function ms(value: number): string {
 /** Why a request failed, as a short name; "OK" when it did not. */
 export function cause(entry: TrafficEntry): string {
   const e = entry.error;
-  if (e === null) return "OK";
-  if (e.startsWith("timed out")) return "Timeout (no answer)";
+  if (e === null) return t("cause.ok");
+  if (e.startsWith("timed out")) return t("cause.timeout");
   const ex = /^device exception 0x([0-9A-F]{2}) \((.+)\)$/.exec(e);
-  if (ex) return `Exception ${parseInt(ex[1], 16)}: ${ex[2]}`;
-  if (e.startsWith("protocol error")) return "Bad frame";
+  if (ex)
+    return t("cause.exception", { code: parseInt(ex[1], 16), text: ex[2] });
+  if (e.startsWith("protocol error")) return t("cause.badframe");
   if (e.startsWith("I/O error") || e.startsWith("serial port error"))
-    return "Connection error";
-  if (e.startsWith("read-only mode")) return "Blocked by read-only mode";
-  return "Other error";
+    return t("cause.connection");
+  if (e.startsWith("read-only mode")) return t("cause.readonly");
+  return t("cause.other");
 }
 
 /** Requests of one function code: how many, how many failed, how fast. */

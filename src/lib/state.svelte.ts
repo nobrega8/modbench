@@ -1,5 +1,6 @@
 // App state for the three-step workflow: connection, request, test.
 
+import { t } from "./i18n.svelte.ts";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorText } from "./api";
 import { FUNCTION_NAME } from "./format";
@@ -263,7 +264,7 @@ class Bench {
   /** Keeps the values shown now: the map's, or the manual read's. */
   takeSnapshot(label = "") {
     const time = new Date().toLocaleTimeString();
-    const name = label || `Snapshot ${time}`;
+    const name = label || t("state.snapshot", { time });
     const open = this.map;
     if (this.source === "map" && open) {
       this.snapshot = snapMap(
@@ -392,12 +393,12 @@ class Bench {
       );
     if (!problems.length) return true;
     const ok = await ask(
-      `${problems.join("\n")}\n\nAddresses or meanings may differ on this device. Write anyway?`,
+      t("state.mismatch.body", { problems: problems.join("\n") }),
       {
-        title: "Device does not match the map",
+        title: t("state.mismatch.title"),
         kind: "warning",
-        okLabel: "Write anyway",
-        cancelLabel: "Cancel",
+        okLabel: t("state.writeanyway"),
+        cancelLabel: t("state.cancel"),
       },
     );
     this.mismatchAccepted = ok;
@@ -407,17 +408,12 @@ class Bench {
   /** Asks before a write when Settings require it; true to go ahead. */
   async confirmWrite(what: string): Promise<boolean> {
     if (!settings.confirmWrites) return true;
-    return ask(
-      `${what}
-
-This writes to the device.`,
-      {
-        title: "Write to device",
-        kind: "warning",
-        okLabel: "Write",
-        cancelLabel: "Cancel",
-      },
-    );
+    return ask(t("state.write.body", { what }), {
+      title: t("state.write.title"),
+      kind: "warning",
+      okLabel: t("state.write"),
+      cancelLabel: t("state.cancel"),
+    });
   }
 
   get map(): OpenMap | null {
@@ -656,7 +652,10 @@ This writes to the device.`,
       this.connected = true;
       return true;
     } catch (e) {
-      this.status = { ok: false, text: `Could not connect: ${errorText(e)}` };
+      this.status = {
+        ok: false,
+        text: t("state.connectfail", { error: errorText(e) }),
+      };
       return false;
     }
   }
@@ -677,12 +676,15 @@ This writes to the device.`,
       if (settings.readOnly) {
         this.status = {
           ok: false,
-          text: "Read-only mode is on: write commands are blocked. Turn it off in Settings.",
+          text: t("state.readonly"),
         };
         return;
       }
       const ok = await this.confirmWrite(
-        `Send "${FUNCTION_NAME[this.fc]}" to address ${this.address}?`,
+        t("state.send", {
+          name: FUNCTION_NAME[this.fc],
+          address: this.address,
+        }),
       );
       if (!ok) return;
     }
@@ -884,14 +886,14 @@ This writes to the device.`,
 
   private async runMap() {
     if (!this.map) {
-      this.status = { ok: false, text: "Choose a device map first." };
+      this.status = { ok: false, text: t("state.choosemap") };
       await this.stop();
       return;
     }
     if (this.skipped.size >= this.map.map.registers.length) {
       this.status = {
         ok: false,
-        text: "Every register is switched off. Turn on Read for at least one.",
+        text: t("state.alloff"),
       };
       await this.stop();
       return;
@@ -931,7 +933,7 @@ This writes to the device.`,
     const connection = this.connectionText;
     try {
       if (!(await this.open())) {
-        this.scanError = this.status?.text ?? "Could not connect.";
+        this.scanError = this.status?.text ?? t("state.connectshort");
         return;
       }
       this.status = null;
@@ -1028,11 +1030,11 @@ This writes to the device.`,
     if (!(await this.acceptMismatch()))
       return items.map((i) => ({
         index: i.index,
-        error: "Not written: the device does not match the map.",
+        error: t("state.notwritten"),
       }));
     const temporary = !this.connected;
     if (temporary && !(await this.open())) {
-      const error = this.status?.text ?? "Could not connect.";
+      const error = this.status?.text ?? t("state.connectshort");
       return items.map((i) => ({ index: i.index, error }));
     }
     const done: { index: number; error: string | null }[] = [];
@@ -1069,7 +1071,7 @@ This writes to the device.`,
     if (temporary) {
       this.saveConnection();
       if (!(await this.open()))
-        throw new Error(this.status?.text ?? "Could not connect.");
+        throw new Error(this.status?.text ?? t("state.connectshort"));
       this.status = null;
     }
     try {
@@ -1088,7 +1090,7 @@ This writes to the device.`,
     data: number[],
     broadcast: boolean,
   ): Promise<Exchange | null> {
-    if (this.scanning) throw new Error("A scan is running.");
+    if (this.scanning) throw new Error(t("state.scanrunning"));
     return this.withLink(async () => {
       const before = this.exchanges.length;
       const last = this.exchanges.at(-1);
@@ -1114,7 +1116,7 @@ This writes to the device.`,
    * step 1 by their identity registers, best fit first.
    */
   async findMaps(): Promise<MapSearch> {
-    if (this.scanning) throw new Error("A scan is running.");
+    if (this.scanning) throw new Error(t("state.scanrunning"));
     const paths = [
       ...this.library.filter((e) => !e.error).map((e) => e.path),
       ...this.maps.map((m) => m.path).filter((p) => !p.startsWith("modbench:")),
@@ -1124,7 +1126,7 @@ This writes to the device.`,
 
   /** Asks the device to identify itself (FC43): 1 basic, 2 regular, 3 extended. */
   async readDeviceId(level: number): Promise<DeviceIdentity> {
-    if (this.scanning) throw new Error("A scan is running.");
+    if (this.scanning) throw new Error(t("state.scanrunning"));
     return this.withLink(() => api.readDeviceId(level));
   }
 
@@ -1137,21 +1139,15 @@ This writes to the device.`,
     address: number,
     writes: boolean,
   ): Promise<FunctionCheck[] | null> {
-    if (this.scanning) throw new Error("A scan is running.");
+    if (this.scanning) throw new Error(t("state.scanrunning"));
     if (writes) {
-      if (settings.readOnly)
-        throw new Error("Read-only mode is on: write functions are not tried.");
-      const ok = await ask(
-        `To try the write functions, Modbench reads coil and holding register ${address} and writes the same values back (FC 5, 6, 15, 16 and 23), and sends a mask write that keeps every bit (FC 22).
-
-The values do not change, but a device can still act on a write. Only do this on a device you may change.`,
-        {
-          title: "Try write functions",
-          kind: "warning",
-          okLabel: "Write",
-          cancelLabel: "Cancel",
-        },
-      );
+      if (settings.readOnly) throw new Error(t("state.rofunctions"));
+      const ok = await ask(t("state.tryw.body", { address }), {
+        title: t("state.tryw.title"),
+        kind: "warning",
+        okLabel: t("state.write"),
+        cancelLabel: t("state.cancel"),
+      });
       if (!ok) return null;
     }
     return this.withLink(() => api.checkFunctions(address, writes));
@@ -1159,7 +1155,7 @@ The values do not change, but a device can still act on a write. Only do this on
 
   /** The largest block of an area the device returns in one read. */
   async largestRead(area: Area, address: number): Promise<ReadLimit> {
-    if (this.scanning) throw new Error("A scan is running.");
+    if (this.scanning) throw new Error(t("state.scanrunning"));
     return this.withLink(() => api.largestRead(area, address));
   }
 
@@ -1382,7 +1378,7 @@ The values do not change, but a device can still act on a write. Only do this on
 
   onPollStopped(reason: string) {
     this.link = null;
-    this.status = { ok: false, text: `Reading stopped: ${reason}` };
+    this.status = { ok: false, text: t("state.stopped", { reason }) };
     this.running = false;
     this.connected = false;
   }
