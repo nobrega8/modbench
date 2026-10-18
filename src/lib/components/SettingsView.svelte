@@ -74,6 +74,10 @@
     api.appVersion().then((v) => (version = v));
   });
 
+  // The text size is applied when the slider is let go: scaling the window
+  // while dragging moves the slider itself away from the pointer.
+  let scaleDraft = $state<number | null>(null);
+
   function changed() {
     settings.save();
     settings.applyTheme();
@@ -263,16 +267,20 @@
                 min={TEXT_SCALE_MIN * 100}
                 max={TEXT_SCALE_MAX * 100}
                 step="10"
-                value={Math.round(settings.textScale * 100)}
+                value={Math.round((scaleDraft ?? settings.textScale) * 100)}
                 aria-label="Text size"
                 oninput={(e) => {
-                  settings.textScale = Number(e.currentTarget.value) / 100;
-                  settings.applyTextScale();
+                  scaleDraft = Number(e.currentTarget.value) / 100;
                 }}
-                onchange={changed}
+                onchange={(e) => {
+                  settings.textScale = Number(e.currentTarget.value) / 100;
+                  scaleDraft = null;
+                  settings.applyTextScale();
+                  changed();
+                }}
               />
               <span class="mono pct"
-                >{Math.round(settings.textScale * 100)}%</span
+                >{Math.round((scaleDraft ?? settings.textScale) * 100)}%</span
               >
               <button
                 class="btn"
