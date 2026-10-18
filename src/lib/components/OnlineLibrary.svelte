@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api, errorText } from "#lib/api.ts";
   import { headerRows } from "#lib/map-header.ts";
+  import { modelMatches } from "#lib/search.ts";
   import { slideIn, smoothResize } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
   import type { OnlineEntry, Parsed } from "#lib/types.ts";
@@ -85,7 +86,7 @@
 
   function matches(e: OnlineEntry): boolean {
     return (
-      e.model.toLowerCase().includes(query) ||
+      modelMatches(query, e.model, e.models) ||
       (e.description ?? "").toLowerCase().includes(query)
     );
   }

@@ -19,6 +19,8 @@ pub struct LibraryEntry {
     pub path: String,
     pub vendor: String,
     pub model: String,
+    /// Every model name or code the map applies to (`models`); searched too.
+    pub models: Vec<String>,
     pub description: Option<String>,
     pub vendor_website: Option<String>,
     /// `x_status` of the map: "verified", "official" or "unofficial" (older maps say "unverified" for "official").
@@ -221,6 +223,7 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                     path: path.display().to_string(),
                     vendor: map.meta.vendor.clone(),
                     model: map.meta.model.clone(),
+                    models: map.meta.models.clone(),
                     description: map.meta.description.clone(),
                     vendor_website: map.meta.vendor_website.clone(),
                     status: map
@@ -250,6 +253,7 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
                                 .into()
                         })
                         .unwrap_or_default(),
+                    models: Vec::new(),
                     description: None,
                     vendor_website: None,
                     status: None,
@@ -393,6 +397,28 @@ mod tests {
         assert_eq!(slug("Schneider Electric"), "schneider-electric");
         assert_eq!(slug("  PM 200/B  "), "pm-200-b");
         assert_eq!(slug("--"), "unnamed");
+    }
+
+    #[test]
+    fn entries_carry_every_model() {
+        // The library's example lists EM-200 and EM-200-MID in `models`; a
+        // search for either must find it (issue #122).
+        let root = temp_root("models");
+        let src = root.join("em-200.mbmap.json");
+        std::fs::copy(
+            concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../vendor/mbmap-library/examples/example-corp/em-200.mbmap.json"
+            ),
+            &src,
+        )
+        .unwrap();
+        let lib = root.join("library");
+        import(&lib, &[src.display().to_string()]);
+        let entries = list(&lib).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].models, ["EM-200", "EM-200-MID"]);
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

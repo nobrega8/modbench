@@ -2,6 +2,7 @@
   import { popIn, popOut } from "#lib/motion.ts";
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import { errorText } from "#lib/api.ts";
+  import { modelMatches } from "#lib/search.ts";
   import { bench } from "#lib/state.svelte.ts";
   import { MAP_EXTENSIONS } from "#lib/types.ts";
   import MapStatus from "./MapStatus.svelte";
@@ -19,6 +20,7 @@
     path: string;
     vendor: string;
     model: string;
+    models: string[];
     description: string;
     website: string | null;
     registers: number;
@@ -45,6 +47,7 @@
       path: m.path,
       vendor: m.map.meta.vendor,
       model: m.map.meta.model,
+      models: m.map.meta.models ?? [],
       description: m.map.meta.description ?? "",
       website: m.map.meta.vendor_website,
       registers: m.map.registers.length,
@@ -65,6 +68,7 @@
         path: e.path,
         vendor: e.vendor,
         model: e.model,
+        models: e.models,
         description: e.description ?? "",
         website: e.vendor_website,
         registers: e.registers,
@@ -81,7 +85,7 @@
     return (
       !q ||
       it.vendor.toLowerCase().includes(q) ||
-      it.model.toLowerCase().includes(q) ||
+      modelMatches(q, it.model, it.models) ||
       it.description.toLowerCase().includes(q) ||
       fileName(it.path).toLowerCase().includes(q)
     );
