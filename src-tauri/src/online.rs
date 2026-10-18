@@ -55,6 +55,18 @@ fn client() -> Result<Client, String> {
 
 /// GET with a size cap; returns the final URL, the content type and the body.
 async fn get(client: &Client, url: Url, cap: usize) -> Result<(Url, String, Vec<u8>), String> {
+    get_up_to(client, url, cap, false).await
+}
+
+/// Like `get`, but with `head_only` the body is cut at `</head>` (or at the
+/// cap) instead of failing: icon links live there, and some home pages are
+/// megabytes long.
+async fn get_up_to(
+    client: &Client,
+    url: Url,
+    cap: usize,
+    head_only: bool,
+) -> Result<(Url, String, Vec<u8>), String> {
     let mut response = client
         .get(url)
         .send()
@@ -71,11 +83,20 @@ async fn get(client: &Client, url: Url, cap: usize) -> Result<(Url, String, Vec<
     let mut body = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(|e| e.to_string())? {
         body.extend_from_slice(&chunk);
+        if head_only && (body.len() > cap || find_ci(&body, b"</head>").is_some()) {
+            break;
+        }
         if body.len() > cap {
             return Err("response too large".into());
         }
     }
     Ok((final_url, content_type, body))
+}
+
+fn find_ci(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack
+        .windows(needle.len())
+        .position(|w| w.eq_ignore_ascii_case(needle))
 }
 
 /// The maps published in the online library.
@@ -348,7 +369,8 @@ fn site_variants(home: &Url) -> Vec<Url> {
 
 async fn icon_from_site(client: &Client, home: &Url) -> Option<(&'static str, Vec<u8>)> {
     let mut candidates: Vec<Url> = Vec::new();
-    if let Ok((page_url, content_type, body)) = get(client, home.clone(), MAX_PAGE_BYTES).await
+    if let Ok((page_url, content_type, body)) =
+        get_up_to(client, home.clone(), MAX_PAGE_BYTES, true).await
         && (content_type.contains("html") || content_type.is_empty())
     {
         let html = String::from_utf8_lossy(&body);
