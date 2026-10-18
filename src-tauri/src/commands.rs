@@ -612,7 +612,7 @@ pub fn open_link(link: String) -> Result<(), ModbusError> {
         "releases" => "https://github.com/nobrega8/modbench/releases",
         "library" => "https://github.com/nobrega8/mbmap-library",
         "spec" => "https://github.com/nobrega8/mbmap-library/blob/main/SPEC.md",
-        "support" => "https://ko-fi.com/nobrega",
+        "support" => "https://buymeacoffee.com/nobrega8",
         "manual" => {
             "https://raw.githubusercontent.com/nobrega8/modbench/main/manual/modbench-manual.pdf"
         }

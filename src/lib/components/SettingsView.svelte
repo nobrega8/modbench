@@ -232,7 +232,7 @@
                 ><path
                   d="M8 13.5S2 10 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 7.5-6 7.5z"
                 /></svg
-              >Ko-fi {@render external()}</button
+              >Buy Me a Coffee {@render external()}</button
             >
           </div>
         </div>
