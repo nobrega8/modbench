@@ -566,3 +566,23 @@ input[type="checkbox"]:focus-visible {
     transition: none;
   }
 }
+
+/* CJK languages: each one gets its own script's system fonts first, so Han
+   characters are drawn with the right regional glyphs. */
+:root:lang(ja) {
+  --ui:
+    "Inter", system-ui, -apple-system, "Segoe UI", "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", "Noto Sans CJK JP",
+    "Noto Sans JP", sans-serif;
+}
+:root:lang(ko) {
+  --ui:
+    "Inter", system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo",
+    "Malgun Gothic", "Noto Sans CJK KR", "Noto Sans KR", sans-serif;
+}
+:root:lang(zh-Hant) {
+  --ui:
+    "Inter", system-ui, -apple-system, "Segoe UI", "PingFang TC",
+    "Hiragino Sans CNS", "Microsoft JhengHei", "Noto Sans CJK TC",
+    "Noto Sans TC", sans-serif;
+}

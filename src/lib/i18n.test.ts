@@ -55,18 +55,35 @@ describe("lookup", () => {
     expect(translate("zh-Hans", "count.registers", { count: 2 })).toBe(
       "2 个寄存器",
     );
+    expect(translate("pl", "count.registers", { count: 1 })).toBe("1 rejestr");
+    expect(translate("pl", "count.registers", { count: 3 })).toBe("3 rejestry");
+    expect(translate("pl", "count.registers", { count: 5 })).toBe(
+      "5 rejestrów",
+    );
+    expect(translate("ja", "count.registers", { count: 1 })).toBe(
+      "1 個のレジスタ",
+    );
+    expect(translate("de", "settings.theme.dark")).toBe("Dunkel");
     expect(translate("pt-PT", "no.such.key")).toBe("no.such.key");
   });
 });
 
 describe("system language", () => {
   it("picks the first supported language, English otherwise", () => {
-    expect(detectLocale(["pt-BR", "en-US"])).toBe("pt-PT");
-    expect(detectLocale(["de-DE", "ru-RU"])).toBe("ru");
+    expect(detectLocale(["pt-BR", "en-US"])).toBe("pt-BR");
+    expect(detectLocale(["pt-PT", "en-US"])).toBe("pt-PT");
+    expect(detectLocale(["pt"])).toBe("pt-PT");
+    expect(detectLocale(["es-419"])).toBe("es");
+    expect(detectLocale(["de-AT", "ru-RU"])).toBe("de");
+    expect(detectLocale(["fr-CA"])).toBe("fr");
+    expect(detectLocale(["it", "tr", "pl", "ja", "ko"])).toBe("it");
+    expect(detectLocale(["ja-JP"])).toBe("ja");
+    expect(detectLocale(["ko-KR"])).toBe("ko");
     expect(detectLocale(["zh-CN"])).toBe("zh-Hans");
     expect(detectLocale(["zh-Hans-SG"])).toBe("zh-Hans");
-    expect(detectLocale(["zh-TW", "fr"])).toBe("en");
-    expect(detectLocale(["zh-Hant-HK", "pt"])).toBe("pt-PT");
+    expect(detectLocale(["zh-TW", "fr"])).toBe("zh-Hant");
+    expect(detectLocale(["zh-Hant-HK", "pt"])).toBe("zh-Hant");
+    expect(detectLocale(["nl-NL", "ar"])).toBe("en");
     expect(detectLocale([])).toBe("en");
   });
 });
