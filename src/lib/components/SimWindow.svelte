@@ -3,6 +3,7 @@
   backend holds the simulator's state; both windows follow it.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { sim, whereText } from "#lib/simulator.svelte.ts";
   import ToolsView from "./ToolsView.svelte";
   import WindowControls from "./WindowControls.svelte";
@@ -16,7 +17,9 @@
 <div class="app">
   <header class="topbar" class:mac data-tauri-drag-region>
     <span class="brand" data-tauri-drag-region
-      ><img src="/favicon.png" alt="" width="20" height="20" />Simulator</span
+      ><img src="/favicon.png" alt="" width="20" height="20" />{t(
+        "tools.simulator",
+      )}</span
     >
     {#if sim.running !== null}
       <span class="live" data-tauri-drag-region

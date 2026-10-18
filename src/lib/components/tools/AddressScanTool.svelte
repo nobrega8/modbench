@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import type { Area } from "#lib/types.ts";
 
   // Kept while other tools are shown.
@@ -62,26 +63,26 @@
 </script>
 
 <header class="tool-head">
-  <h1>Find addresses</h1>
-  <p>Which addresses answer, on the step 1 connection. Read only.</p>
+  <h1>{t("tools.addresses")}</h1>
+  <p>{t("addressscantool.which_addresses_answer_on")}</p>
 </header>
 
 <div class="row">
   <label class="field">
-    <span>Area</span>
+    <span>{t("customregisterform.area")}</span>
     <Select
       bind:value={area}
-      label="Area"
+      label={t("customregisterform.area")}
       disabled={busy}
       options={areas.map((a) => ({ value: a, label: AREA_NAME[a] + "s" }))}
     />
   </label>
   <label class="field">
-    <span>From</span>
+    <span>{t("scanpanel.from")}</span>
     <AddressInput
       value={from}
       width="90px"
-      label="First address"
+      label={t("addressscantool.first_address")}
       disabled={busy}
       onchange={(n, a) => {
         from = n;
@@ -90,11 +91,11 @@
     />
   </label>
   <label class="field">
-    <span>To</span>
+    <span>{t("scanpanel.to")}</span>
     <AddressInput
       value={to}
       width="90px"
-      label="Last address"
+      label={t("addressscantool.last_address")}
       disabled={busy}
       onchange={(n, a) => {
         to = n;
@@ -102,38 +103,40 @@
       }}
     />
   </label>
-  <label class="field" title="Addresses read at once before splitting">
-    <span>Block</span>
+  <label class="field" title={t("addressscantool.addresses_read_at_once")}>
+    <span>{t("addressscantool.block")}</span>
     <IntInput
       value={Math.min(block, maxBlock)}
       min={1}
       max={maxBlock}
       width="72px"
-      label="Block size"
+      label={t("addressscantool.block_size")}
       disabled={busy}
       onchange={(n) => (block = n)}
     />
   </label>
-  <label class="field" title="How long to wait for each answer">
-    <span>Wait (ms)</span>
+  <label class="field" title={t("serialscan.how_long_to_wait")}>
+    <span>{t("scanpanel.wait_ms")}</span>
     <IntInput
       value={wait}
       min={20}
       max={5000}
       width="80px"
-      label="Wait per request"
+      label={t("serialscan.wait_per_request")}
       disabled={busy}
       onchange={(n) => (wait = n)}
     />
   </label>
   {#if busy}
-    <button class="btn" onclick={() => bench.cancelScan()}>Stop</button>
+    <button class="btn" onclick={() => bench.cancelScan()}
+      >{t("test.stop")}</button
+    >
   {:else}
     <button
       class="btn accent"
       disabled={bench.running || bench.scanning || from > to}
       title={bench.running ? "Stop the test on the Main page first" : undefined}
-      onclick={scan}>Scan</button
+      onclick={scan}>{t("scanpanel.scan")}</button
     >
   {/if}
   <span class="spacer"></span>
@@ -194,7 +197,9 @@
     <table class="data">
       <thead>
         <tr>
-          <th>From</th><th>To</th><th class="num">Count</th><th></th>
+          <th>{t("scanpanel.from")}</th><th>{t("scanpanel.to")}</th><th
+            class="num">{t("addressscantool.count")}</th
+          ><th></th>
         </tr>
       </thead>
       <tbody>
@@ -210,10 +215,10 @@
             <td class="act">
               <button
                 class="btn small"
-                title="Read these addresses on the Main page"
+                title={t("addressscantool.read_these_addresses_on")}
                 onclick={() =>
                   bench.readRange(bench.addressArea, r.start, r.count)}
-                >Read</button
+                >{t("maptable.read")}</button
               >
             </td>
           </tr>
@@ -221,7 +226,7 @@
       </tbody>
     </table>
   {:else}
-    <p class="empty">No address answered. Check the unit ID, area or range.</p>
+    <p class="empty">{t("addressscantool.no_address_answered_check")}</p>
   {/if}
 {/if}
 

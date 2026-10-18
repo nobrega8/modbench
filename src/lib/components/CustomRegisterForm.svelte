@@ -3,6 +3,7 @@
   and kept for this map file on this computer; the file is not changed.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import {
     customProblem,
     customRegister,
@@ -88,15 +89,12 @@
 
 <form class="custom" onsubmit={add} in:fieldIn>
   <div class="head">
-    <strong>Add a register</strong>
-    <span class="dim"
-      >For one the map is missing. It is read from the next cycle and kept for
-      this map on this computer; the map file is not changed.</span
-    >
+    <strong>{t("customregisterform.add_a_register")}</strong>
+    <span class="dim">{t("customregisterform.for_one_the_map")}</span>
   </div>
   <div class="fields">
     <label class="field">
-      <span>Name</span>
+      <span>{t("computedform.name")}</span>
       <input
         class="input"
         bind:value={name}
@@ -106,8 +104,13 @@
       />
     </label>
     <label class="field">
-      <span>Area</span>
-      <Select bind:value={area} options={AREAS} label="Area" width="170px" />
+      <span>{t("customregisterform.area")}</span>
+      <Select
+        bind:value={area}
+        options={AREAS}
+        label={t("customregisterform.area")}
+        width="170px"
+      />
     </label>
     <label class="field">
       <span
@@ -133,17 +136,17 @@
     </label>
     {#if !bits}
       <label class="field">
-        <span>Type</span>
+        <span>{t("customregisterform.type")}</span>
         <Select
           bind:value={type}
           options={TYPES.map((t) => ({ value: t, label: t }))}
-          label="Type"
+          label={t("customregisterform.type")}
           width="110px"
         />
       </label>
       {#if type === "string"}
         <label class="field">
-          <span>Length (registers)</span>
+          <span>{t("customregisterform.length_registers")}</span>
           <input
             class="input num"
             type="number"
@@ -154,7 +157,7 @@
         </label>
       {:else}
         <label class="field">
-          <span>Scale</span>
+          <span>{t("customregisterform.scale")}</span>
           <input
             class="input num"
             type="number"
@@ -164,7 +167,7 @@
           />
         </label>
         <label class="field">
-          <span>Offset</span>
+          <span>{t("customregisterform.offset")}</span>
           <input
             class="input num"
             type="number"
@@ -174,7 +177,7 @@
           />
         </label>
         <label class="field">
-          <span>Unit</span>
+          <span>{t("computedform.unit")}</span>
           <input
             class="input"
             bind:value={unit}
@@ -186,22 +189,24 @@
     {/if}
     {#if writable}
       <label class="field">
-        <span>Access</span>
+        <span>{t("customregisterform.access")}</span>
         <Select
           bind:value={access}
           options={[
             { value: "R", label: "Read" },
             { value: "RW", label: "Read and write" },
           ]}
-          label="Access"
+          label={t("customregisterform.access")}
           width="150px"
         />
       </label>
     {/if}
   </div>
   <div class="actions">
-    <button class="btn accent">Add</button>
-    <button type="button" class="btn" onclick={onclose}>Cancel</button>
+    <button class="btn accent">{t("computedform.add")}</button>
+    <button type="button" class="btn" onclick={onclose}
+      >{t("computedform.cancel")}</button
+    >
     {#if problem}<span class="bad" role="alert">{problem}</span>{/if}
   </div>
 </form>

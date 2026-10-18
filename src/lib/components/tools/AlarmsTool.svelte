@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { byIndex, check, type Alarm } from "#lib/alarms.ts";
   import { formatValue } from "#lib/format.ts";
   import { registerId } from "#lib/profiles.ts";
@@ -65,19 +66,19 @@
 </script>
 
 <header class="tool-head">
-  <h1>Alarms</h1>
-  <p>Values out of limits turn red on the Device map tab.</p>
+  <h1>{t("tools.alarms")}</h1>
+  <p>{t("alarmstool.values_out_of_limits")}</p>
 </header>
 
 {#if !open}
-  <p class="empty">Open a device map in step 2 first.</p>
+  <p class="empty">{t("alarmstool.open_a_device_map")}</p>
 {:else}
   <div class="row">
     <Select
       bind:value={pick}
       width="320px"
-      label="Add an alarm"
-      placeholder="Add an alarm on a register…"
+      label={t("alarmstool.add_an_alarm")}
+      placeholder={t("alarmstool.add_an_alarm_on")}
       disabled={!options.length}
       options={options.map(({ reg, index }) => ({
         value: index,
@@ -91,9 +92,9 @@
     <table class="data">
       <thead>
         <tr>
-          <th>Register</th>
-          <th class="num">Value</th>
-          <th>Alarm when</th>
+          <th>{t("req.register")}</th>
+          <th class="num">{t("maptable.value")}</th>
+          <th>{t("alarmstool.alarm_when")}</th>
           <th></th>
         </tr>
       </thead>
@@ -124,7 +125,7 @@
                 />
               {:else}
                 <span class="limits">
-                  <span class="dim">below</span>
+                  <span class="dim">{t("alarmstool.below")}</span>
                   <input
                     class="input num"
                     value={alarm.low ?? ""}
@@ -132,7 +133,7 @@
                     aria-label="Low limit of {reg.name}"
                     onchange={(e) => setLimit(alarm, "low", e)}
                   />
-                  <span class="dim">or above</span>
+                  <span class="dim">{t("alarmstool.or_above")}</span>
                   <input
                     class="input num"
                     value={alarm.high ?? ""}
@@ -148,7 +149,7 @@
               <button
                 class="btn ghost"
                 aria-label="Remove the alarm on {reg.name}"
-                onclick={() => remove(alarm)}>Remove</button
+                onclick={() => remove(alarm)}>{t("maptable.remove")}</button
               >
             </td>
           </tr>
@@ -156,7 +157,7 @@
       </tbody>
     </table>
   {:else}
-    <p class="empty">No alarms yet.</p>
+    <p class="empty">{t("alarmstool.no_alarms_yet")}</p>
   {/if}
 {/if}
 

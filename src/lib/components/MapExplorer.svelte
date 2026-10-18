@@ -4,6 +4,7 @@
   map's header stays beside them.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { api, errorText } from "#lib/api.ts";
   import { AREA_TAG, formatAddress } from "#lib/format.ts";
   import { settings } from "#lib/settings.svelte.ts";
@@ -116,12 +117,14 @@
     <input
       class="input search"
       type="search"
-      placeholder="Search registers"
+      placeholder={t("mapexplorer.search_registers")}
       bind:value={search}
-      aria-label="Search registers"
+      aria-label={t("mapexplorer.search_registers")}
     />
-    <button class="btn icon ghost" title="Close" onclick={() => (path = null)}
-      ><Icon name="close" size={16} /></button
+    <button
+      class="btn icon ghost"
+      title={t("mapexplorer.close")}
+      onclick={() => (path = null)}><Icon name="close" size={16} /></button
     >
   </header>
 
@@ -130,16 +133,16 @@
       {#if problem}
         <p class="note bad">{problem}</p>
       {:else if !map}
-        <p class="note">Loading…</p>
+        <p class="note">{t("mapexplorer.loading")}</p>
       {:else}
         <table class="data">
           <thead>
             <tr>
-              <th>Address</th>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Unit</th>
-              <th>Access</th>
+              <th>{t("req.address")}</th>
+              <th>{t("computedform.name")}</th>
+              <th>{t("customregisterform.type")}</th>
+              <th>{t("computedform.unit")}</th>
+              <th>{t("customregisterform.access")}</th>
             </tr>
           </thead>
           <tbody>
@@ -161,7 +164,11 @@
                 <td>{r.access}</td>
               </tr>
             {:else}
-              <tr><td colspan="5" class="note">No registers match.</td></tr>
+              <tr
+                ><td colspan="5" class="note"
+                  >{t("mapexplorer.no_registers_match")}</td
+                ></tr
+              >
             {/each}
           </tbody>
         </table>
@@ -170,7 +177,7 @@
 
     {#if map}
       {@const m = map.meta}
-      <aside aria-label="Map properties">
+      <aside aria-label={t("mapexplorer.map_properties")}>
         {#if status}
           <p class="status">
             <MapStatus {status} />{STATUS_TEXT[status] ?? status}
@@ -182,11 +189,11 @@
             <dd>{value}</dd>
           {/each}
           {#if m.enums.length}
-            <dt>Translation tables</dt>
+            <dt>{t("mapexplorer.translation_tables")}</dt>
             <dd>{m.enums.map(([name]) => name).join(", ")}</dd>
           {/if}
           {#if m.sentinels.length}
-            <dt>Sentinels</dt>
+            <dt>{t("mapexplorer.sentinels")}</dt>
             <dd>
               {m.sentinels
                 .map(
@@ -203,7 +210,7 @@
         </dl>
 
         {#if m.sources?.length}
-          <h3>Sources</h3>
+          <h3>{t("mapexplorer.sources")}</h3>
           <ul>
             {#each m.sources as src, i (i)}
               <li>
@@ -221,7 +228,7 @@
         {/if}
 
         {#if m.notes?.length}
-          <h3>Notes</h3>
+          <h3>{t("mapexplorer.notes")}</h3>
           <ul>
             {#each m.notes as note, i (i)}<li>{note}</li>{/each}
           </ul>

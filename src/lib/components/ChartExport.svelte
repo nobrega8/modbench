@@ -5,6 +5,7 @@
   chart-image.ts).
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { Image } from "@tauri-apps/api/image";
   import { writeImage } from "@tauri-apps/plugin-clipboard-manager";
   import { save } from "@tauri-apps/plugin-dialog";
@@ -189,7 +190,7 @@
   >
 {/if}
 <button class="btn" {disabled} aria-haspopup="menu" onclick={menu}
-  >Export image…</button
+  >{t("chartexport.export_image")}</button
 >
 
 <style>

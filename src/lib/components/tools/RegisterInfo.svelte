@@ -4,6 +4,7 @@
   a generator is made for it, so the generator fits the register.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { AREA_NAME, formatAddress, limitHint } from "#lib/format.ts";
   import { referenceValue } from "#lib/generators.ts";
   import { settings } from "#lib/settings.svelte.ts";
@@ -38,21 +39,21 @@
     {#if r.group}<span class="dim">{r.group}</span>{/if}
   </div>
   <dl>
-    <dt>Where</dt>
+    <dt>{t("registerinfo.where")}</dt>
     <dd>
       {AREA_NAME[r.area]}
       <span class="mono"
         >{formatAddress(r.address, settings.addressFormat, r.area)}</span
       >
     </dd>
-    <dt>Type</dt>
+    <dt>{t("customregisterform.type")}</dt>
     <dd class="mono">{encoding}{unit && ` → ${r.unit}`}</dd>
     {#if limits}
-      <dt>Limits</dt>
+      <dt>{t("registerinfo.limits")}</dt>
       <dd>{limits}{unit}</dd>
     {/if}
     {#if r.reference}
-      <dt>Reference</dt>
+      <dt>{t("registerinfo.reference")}</dt>
       <dd>
         {reference !== null && reference !== Number(r.reference)
           ? `${Number(reference.toPrecision(6))}${unit} (raw ${r.reference})`
@@ -60,7 +61,7 @@
       </dd>
     {/if}
     {#if r.enum.length}
-      <dt>Values</dt>
+      <dt>{t("settings.values")}</dt>
       <dd>
         {r.enum
           .slice(0, LABELS_SHOWN)

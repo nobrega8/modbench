@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
   import { valuesCsv } from "#lib/csv.ts";
@@ -362,16 +363,14 @@
       >{/if}
   </div>
   {#if status === "official"}
-    <span
-      class="refs"
-      title="Written from the manufacturer's documentation, but not tested on a device yet. Check a value on the device before relying on the rest."
-      >Official</span
+    <span class="refs" title={t("maptable.written_from_the_manufacturer")}
+      >{t("maptable.official")}</span
     >
   {:else if status === "unofficial"}
     <span
       class="refs bad"
-      title="Converted from another catalogue and not checked against the manufacturer's documentation. Check a value on the device before relying on the rest."
-      >Unofficial</span
+      title={t("maptable.converted_from_another_catalogue")}
+      >{t("maptable.unofficial")}</span
     >
   {/if}
   {#if recognised && identity}
@@ -383,7 +382,7 @@
         identity.serial && `serial number ${identity.serial}`,
       ]
         .filter(Boolean)
-        .join(", ")}>Device recognised</span
+        .join(", ")}>{t("maptable.device_recognised")}</span
     >
   {:else if mapRange && !fwVersion}
     <span
@@ -396,7 +395,7 @@
     <span
       class="refs"
       class:bad={refs.mismatch > 0 || refs.failed > 0}
-      title="Registers with a known value in the map. A mismatch points to a wrong map or wrong settings (address, byte order, type); a failed read to a connection or address problem."
+      title={t("maptable.registers_with_a_known")}
       >Reference {refs.match}/{refs.total}{#if refs.mismatch}
         · {refs.mismatch} differ{/if}{#if refs.failed}
         · {refs.failed} failed{/if}</span
@@ -420,18 +419,18 @@
   <button
     class="btn small"
     disabled={readCount === open.map.registers.length}
-    onclick={() => bench.setAllRead(true)}>Read all</button
+    onclick={() => bench.setAllRead(true)}>{t("maptable.read_all")}</button
   >
   <button
     class="btn small"
     disabled={readCount === 0}
-    onclick={() => bench.setAllRead(false)}>Read none</button
+    onclick={() => bench.setAllRead(false)}>{t("maptable.read_none")}</button
   >
   <button
     class="btn small"
-    title="Save the values shown to a CSV file"
+    title={t("maptable.save_the_values_shown")}
     disabled={!bench.mapResults.size}
-    onclick={exportValues}>Export…</button
+    onclick={exportValues}>{t("maptable.export")}</button
   >
   <button
     class="btn small"
@@ -457,15 +456,15 @@
   <input
     class="input search"
     type="search"
-    placeholder="Search name or address"
+    placeholder={t("maptable.search_name_or_address")}
     bind:value={search}
-    aria-label="Search registers"
+    aria-label={t("mapexplorer.search_registers")}
   />
   <AddressFormat />
   {#if groups.length}
     <Select
       bind:value={group}
-      label="Group"
+      label={t("maptable.group")}
       options={[
         { value: "", label: "All groups" },
         ...groups.map((g) => ({ value: g, label: g })),
@@ -476,7 +475,7 @@
 
 {#if mismatch && identity}
   <div class="mismatch" role="alert">
-    <strong>The connected device does not match this map.</strong>
+    <strong>{t("maptable.the_connected_device_does")}</strong>
     {#if identity.model.status === "mismatch"}<span
         >The map is for {modelNames}; the device reports {identity.model
           .found}.</span
@@ -486,18 +485,13 @@
           fwVersion,
         )}.</span
       >{/if}
-    <span class="dim"
-      >Values may be wrong. Writes ask for confirmation first.</span
-    >
+    <span class="dim">{t("maptable.values_may_be_wrong")}</span>
   </div>
 {/if}
 
 {#if open.version === 1}
   <div class="deprecated">
-    <span
-      >This map uses format version 1 (CSV), which is deprecated. Convert it to
-      version 2 (JSON); the original file is kept.</span
-    >
+    <span>{t("maptable.this_map_uses_format")}</span>
     <button class="btn" disabled={converting} onclick={convert}
       >{converting ? "Converting…" : "Convert to version 2"}</button
     >
@@ -526,19 +520,19 @@
   <table>
     <thead>
       <tr>
-        <th class="read">Read</th>
-        <th class="addr">Address</th>
-        <th>Name</th>
-        <th>Type</th>
-        <th class="val">Value</th>
+        <th class="read">{t("maptable.read")}</th>
+        <th class="addr">{t("req.address")}</th>
+        <th>{t("computedform.name")}</th>
+        <th>{t("customregisterform.type")}</th>
+        <th class="val">{t("maptable.value")}</th>
         {#if snap}<th
             class="val"
             title="The value in the snapshot {snap.label}{bench.compareWith
               ? `, compared with ${bench.compareWith.label}`
-              : ', compared with the live value'}">Snapshot</th
+              : ', compared with the live value'}">{t("maptable.snapshot")}</th
           >{/if}
-        <th>Unit</th>
-        <th>Raw</th>
+        <th>{t("computedform.unit")}</th>
+        <th>{t("maptable.raw")}</th>
         <th class="act"></th>
       </tr>
     </thead>
@@ -576,7 +570,8 @@
             title={formulaOf(reg) !== null
               ? "Computed on this computer, not read from the device"
               : `${AREA_NAME[reg.area]} ${reg.address} on the wire${base ? ` (${reg.address + base} in the manual)` : ""}`}
-            >{#if formulaOf(reg) !== null}<span class="area">calc</span
+            >{#if formulaOf(reg) !== null}<span class="area"
+                >{t("maptable.calc")}</span
               >{:else}<span class="area">{AREA_TAG[reg.area]}</span
               >{formatAddress(
                 reg.address,
@@ -596,7 +591,8 @@
                 >fw {rangeText(reg.firmware_min, reg.firmware_max)}</span
               >{/if}{#if isCustom(reg)}<span
                 class="grp custom"
-                title="Added on this computer; not in the map file">custom</span
+                title={t("maptable.added_on_this_computer")}
+                >{t("maptable.custom")}</span
               >{/if}{#if reg.reference}<span
                 class="refmark"
                 class:ok={r?.reference === "match"}
@@ -605,7 +601,8 @@
                   ? `Matches the reference value ${reg.reference}`
                   : r?.reference === "mismatch"
                     ? `Differs from the reference value ${reg.reference}`
-                    : `Reference value ${reg.reference}`}>ref</span
+                    : `Reference value ${reg.reference}`}
+                >{t("maptable.ref")}</span
               >{/if}</td
           >
           <td
@@ -622,7 +619,8 @@
               ? `${shownTitle ?? ""}\nAlarm ${limitsText(alarms.get(index)!, reg.unit)}`.trim()
               : shownTitle}
           >
-            {#if reg.access === "W"}<span class="dim">write only</span
+            {#if reg.access === "W"}<span class="dim"
+                >{t("maptable.write_only")}</span
               >{:else if r?.sentinel}<span
                 class="sentinel"
                 title="The device returned a reserved value: {r.sentinel}"
@@ -636,8 +634,9 @@
               title={different.has(index)
                 ? `Snapshot: ${before}\n${bench.compareWith ? bench.compareWith.label : "Now"}: ${after(reg, index)}`
                 : undefined}
-              >{#if different.has(index)}<span class="ne" aria-label="differs"
-                  >≠</span
+              >{#if different.has(index)}<span
+                  class="ne"
+                  aria-label={t("maptable.differs")}>≠</span
                 >{/if}{before ?? "—"}</td
             >
           {/if}
@@ -650,14 +649,15 @@
           <td class="act">
             {#if reg.access !== "R"}
               <button class="btn small" onclick={() => edit(index)}
-                >Write…</button
+                >{t("maptable.write")}</button
               >
             {/if}
             {#if isCustom(reg)}
               <button
                 class="btn ghost small"
-                title="Remove this register you added"
-                onclick={() => bench.removeCustomRegister(index)}>Remove</button
+                title={t("maptable.remove_this_register_you")}
+                onclick={() => bench.removeCustomRegister(index)}
+                >{t("maptable.remove")}</button
               >
             {/if}
           </td>
@@ -672,7 +672,10 @@
                   write(index, draft);
                 }}
               >
-                <span>New value for <strong>{reg.name}</strong></span>
+                <span
+                  >{t("maptable.new_value_for")}
+                  <strong>{reg.name}</strong></span
+                >
                 {#if reg.type === "bool"}
                   {#each [true, false] as on (on)}
                     {@const label =
@@ -690,7 +693,7 @@
                   <Select
                     bind:value={draft}
                     label="Value for {reg.name}"
-                    placeholder="Choose…"
+                    placeholder={t("maptable.choose")}
                     options={[
                       ...reg.enum.map(([v, l]) => ({
                         value: l,
@@ -704,7 +707,9 @@
                       draft = "";
                     }}
                   />
-                  <button class="btn accent" disabled={busy}>Write</button>
+                  <button class="btn accent" disabled={busy}
+                    >{t("maptable.write2")}</button
+                  >
                 {:else}
                   <!-- svelte-ignore a11y_autofocus -->
                   <input
@@ -712,26 +717,29 @@
                     bind:value={draft}
                     autofocus
                     spellcheck="false"
-                    aria-label="New value"
+                    aria-label={t("maptable.new_value")}
                   />
                   {#if reg.unit}<span class="dim">{reg.unit}</span>{/if}
-                  <button class="btn accent" disabled={busy}>Write</button>
+                  <button class="btn accent" disabled={busy}
+                    >{t("maptable.write2")}</button
+                  >
                   {#if reg.enum.length}
                     <button
                       type="button"
                       class="btn ghost"
-                      title="Pick one of the map's values again"
+                      title={t("maptable.pick_one_of_the")}
                       onclick={() => {
                         custom = false;
                         draft = "";
-                      }}>Options</button
+                      }}>{t("maptable.options")}</button
                     >
                   {/if}
                 {/if}
                 <button
                   type="button"
                   class="btn"
-                  onclick={() => (editing = null)}>Cancel</button
+                  onclick={() => (editing = null)}
+                  >{t("computedform.cancel")}</button
                 >
                 {#if note?.index === index && !note.ok}<span class="bad"
                     >{note.text}</span
@@ -762,10 +770,10 @@
             <ComputedForm {open} onclose={() => (computing = false)} />
           {:else}
             <button class="btn ghost small" onclick={() => (adding = true)}
-              >Add a register the map is missing…</button
+              >{t("maptable.add_a_register_the")}</button
             >
             <button class="btn ghost small" onclick={() => (computing = true)}
-              >Add a computed value…</button
+              >{t("maptable.add_a_computed_value")}</button
             >
           {/if}
         </td>

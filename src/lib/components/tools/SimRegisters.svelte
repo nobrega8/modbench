@@ -4,6 +4,7 @@
   to see what the map says about it and give it a generator.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { api, errorText } from "#lib/api.ts";
   import {
     AREA_TAG,
@@ -152,12 +153,11 @@
   <input
     class="input search"
     type="search"
-    placeholder="Search registers"
-    aria-label="Search registers"
+    placeholder={t("mapexplorer.search_registers")}
+    aria-label={t("mapexplorer.search_registers")}
     bind:value={search}
   />
-  <span class="dim hint">Click a value to change it; right-click for more.</span
-  >
+  <span class="dim hint">{t("simregisters.click_a_value_to")}</span>
 </div>
 {#if problem}<p class="bad">{problem}</p>{/if}
 
@@ -165,9 +165,9 @@
   <table class="data regs">
     <thead>
       <tr>
-        <th></th><th>Address</th><th>Register</th><th>Type</th><th class="num"
-          >Value</th
-        ><th></th>
+        <th></th><th>{t("req.address")}</th><th>{t("req.register")}</th><th
+          >{t("customregisterform.type")}</th
+        ><th class="num">{t("maptable.value")}</th><th></th>
       </tr>
     </thead>
     <tbody>
@@ -216,14 +216,18 @@
           <td class="act">
             <button
               class="btn ghost small"
-              title="Details and generator"
+              title={t("simregisters.details_and_generator")}
               aria-label="Details of {r.name}"
               onclick={(e) => openMenu(e, i)}><Icon name="more" /></button
             >
           </td>
         </tr>
       {:else}
-        <tr><td colspan="6" class="empty">No register matches.</td></tr>
+        <tr
+          ><td colspan="6" class="empty"
+            >{t("simregisters.no_register_matches")}</td
+          ></tr
+        >
       {/each}
     </tbody>
   </table>
@@ -258,7 +262,7 @@
             const i = menu!.i;
             menu = null;
             click(i);
-          }}>Set value…</button
+          }}>{t("simregisters.set_value")}</button
         >
       {/if}
     </div>

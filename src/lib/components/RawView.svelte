@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { clock, hex } from "#lib/format.ts";
   import { decodeFrame, type Framing } from "#lib/frames.ts";
   import { bench, type Exchange } from "#lib/state.svelte.ts";
@@ -84,28 +85,26 @@
 </script>
 
 <div class="toolbar">
-  <span class="hint"
-    >Bytes exactly as sent to and received from the device, newest last.</span
-  >
+  <span class="hint">{t("rawview.bytes_exactly_as_sent")}</span>
   <span class="spacer"></span>
   <label class="check">
     <input type="checkbox" bind:checked={decode} />
-    Decode fields
+    {t("rawview.decode_fields")}
   </label>
   <button
     class="btn"
     disabled={!bench.exchanges.length}
-    onclick={() => bench.clearRaw()}>Clear</button
+    onclick={() => bench.clearRaw()}>{t("chartview.clear")}</button
   >
 </div>
 
 <div class="latest">
   <div class="frame">
-    <span class="tag out">Data out</span>
+    <span class="tag out">{t("rawview.data_out")}</span>
     <code>{last ? bytes(last.out) : "—"}</code>
   </div>
   <div class="frame">
-    <span class="tag in">Data in</span>
+    <span class="tag in">{t("rawview.data_in")}</span>
     <code
       >{last
         ? last.in.length
@@ -129,14 +128,14 @@
       />
     </div>
     <div>
-      <span class="tag in">Data in</span>
+      <span class="tag in">{t("rawview.data_in")}</span>
       {#if shown.in.length}
         <FrameFields
           compact
           decoded={decodeFrame(shown.in, framing, "response")}
         />
       {:else}
-        <p class="empty">No response.</p>
+        <p class="empty">{t("rawview.no_response")}</p>
       {/if}
     </div>
   </div>
@@ -169,7 +168,7 @@
       >
     </div>
   {:else}
-    <p class="empty">Nothing sent yet. Press Start to send a request.</p>
+    <p class="empty">{t("rawview.nothing_sent_yet_press")}</p>
   {/each}
 </div>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { popIn, popOut } from "#lib/motion.ts";
   import { open } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
@@ -208,9 +209,9 @@
   <input
     class="input search"
     type="search"
-    placeholder="Search"
+    placeholder={t("libraryview.search")}
     bind:value={search}
-    aria-label="Search the library"
+    aria-label={t("libraryview.search_the_library")}
   />
   <span class="spacer"></span>
   {#if current && !currentInLibrary}
@@ -224,8 +225,8 @@
   {#if bench.libraryFolder}
     <button
       class="btn icon"
-      title="Open the library folder"
-      aria-label="Open the library folder"
+      title={t("libraryview.open_the_library_folder")}
+      aria-label={t("libraryview.open_the_library_folder")}
       onclick={() => api.libraryOpenFolder().catch(() => {})}
       ><Icon name="folder" /></button
     >
@@ -237,14 +238,14 @@
       aria-haspopup="menu"
       aria-expanded={menuOpen}
       onclick={() => (menuOpen = !menuOpen)}
-      >Import
+      >{t("libraryview.import")}
       <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" /></svg
       ></button
     >
     {#if menuOpen}
       <div class="menu" role="menu" in:popIn out:popOut>
         <button role="menuitem" onclick={chooseFiles}>
-          <span class="item">From a file…</span>
+          <span class="item">{t("libraryview.from_a_file")}</span>
         </button>
         <button
           role="menuitem"
@@ -253,7 +254,7 @@
             onlineOpen = true;
           }}
         >
-          <span class="item">From the online library…</span>
+          <span class="item">{t("libraryview.from_the_online_library")}</span>
         </button>
       </div>
     {/if}
@@ -277,12 +278,12 @@
   <table>
     <thead>
       <tr>
-        <th>Vendor</th>
-        <th class="st"><span class="sr">Status</span></th>
-        <th class="st"><span class="sr">Origin</span></th>
-        <th>Model</th>
-        <th>Description</th>
-        <th class="num">Registers</th>
+        <th>{t("libraryview.vendor")}</th>
+        <th class="st"><span class="sr">{t("libraryview.status")}</span></th>
+        <th class="st"><span class="sr">{t("libraryview.origin")}</span></th>
+        <th>{t("libraryview.model")}</th>
+        <th>{t("libraryview.description")}</th>
+        <th class="num">{t("libraryview.registers")}</th>
         <th></th>
       </tr>
     </thead>
@@ -306,15 +307,15 @@
             {#if e.edited}
               <span
                 role="img"
-                aria-label="Edited: changed since it was added"
-                title="Edited: changed since it was added"
+                aria-label={t("libraryview.edited_changed_since_it")}
+                title={t("libraryview.edited_changed_since_it")}
                 ><Icon name="edited" size={14} /></span
               >
             {:else if e.origin === "imported"}
               <span
                 role="img"
-                aria-label="Imported: added by you"
-                title="Imported: added by you"
+                aria-label={t("libraryview.imported_added_by_you")}
+                title={t("libraryview.imported_added_by_you")}
                 ><Icon name="imported" size={14} /></span
               >
             {/if}
@@ -340,26 +341,26 @@
               >
               {#if confirm.kind === "delete"}
                 <button class="btn small danger" onclick={() => remove(e.path)}
-                  >Delete</button
+                  >{t("libraryview.delete")}</button
                 >
               {:else}
                 <button class="btn small accent" onclick={() => edit(e.path)}
-                  >Edit</button
+                  >{t("libraryview.edit")}</button
                 >
               {/if}
               <button class="btn small" onclick={() => (confirm = null)}
-                >Cancel</button
+                >{t("computedform.cancel")}</button
               >
             {:else}
               <button
                 class="btn small accent"
                 disabled={!!e.error || bench.running}
                 title={bench.running ? "Stop the test first" : undefined}
-                onclick={() => use(e.path)}>Use</button
+                onclick={() => use(e.path)}>{t("libraryview.use")}</button
               >
               <button
                 class="btn small icon ghost"
-                title="Explore"
+                title={t("libraryview.explore")}
                 aria-label="Explore {e.model}"
                 disabled={!!e.error}
                 onclick={() => (exploring = e.path)}
@@ -367,21 +368,21 @@
               >
               <button
                 class="btn small icon ghost"
-                title="Edit"
+                title={t("libraryview.edit")}
                 aria-label="Edit {e.model}"
                 onclick={() => (confirm = { path: e.path, kind: "edit" })}
                 ><Icon name="edit" /></button
               >
               <button
                 class="btn small icon ghost"
-                title="Duplicate"
+                title={t("libraryview.duplicate")}
                 aria-label="Duplicate {e.model}"
                 disabled={!!e.error}
                 onclick={() => duplicate(e)}><Icon name="duplicate" /></button
               >
               <button
                 class="btn small icon ghost del"
-                title="Delete"
+                title={t("libraryview.delete")}
                 aria-label="Delete {e.model}"
                 onclick={() => (confirm = { path: e.path, kind: "delete" })}
                 ><Icon name="trash" /></button

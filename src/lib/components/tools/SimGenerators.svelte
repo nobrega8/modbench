@@ -3,6 +3,7 @@
   to add or edit one. They run while the simulator does.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { formatAddress } from "#lib/format.ts";
   import {
     AREA_LABELS,
@@ -99,7 +100,7 @@
   }
 </script>
 
-{#snippet target(t: TargetDraft, label: string)}
+{#snippet target(draft: TargetDraft, label: string)}
   <div class="target">
     <div
       class="segmented small"
@@ -109,40 +110,41 @@
     >
       <button
         role="radio"
-        aria-checked={t.mode === "register"}
-        class:on={t.mode === "register"}
+        aria-checked={draft.mode === "register"}
+        class:on={draft.mode === "register"}
         disabled={!sim.registers.length}
         title={sim.registers.length ? undefined : "Load a map first"}
-        onclick={() => (t.mode = "register")}>Map register</button
+        onclick={() => (draft.mode = "register")}
+        >{t("simgenerators.map_register")}</button
       >
       <button
         role="radio"
-        aria-checked={t.mode === "address"}
-        class:on={t.mode === "address"}
-        onclick={() => (t.mode = "address")}>Address</button
+        aria-checked={draft.mode === "address"}
+        class:on={draft.mode === "address"}
+        onclick={() => (draft.mode = "address")}>{t("req.address")}</button
       >
     </div>
-    {#if t.mode === "register"}
+    {#if draft.mode === "register"}
       <Select
-        bind:value={t.register}
+        bind:value={draft.register}
         options={registerOptions}
         {label}
         width="240px"
       />
     {:else}
       <Select
-        bind:value={t.area}
+        bind:value={draft.area}
         options={areas}
         label="{label} area"
         width="120px"
       />
       <AddressInput
-        value={t.address}
+        value={draft.address}
         width="90px"
         label="{label} address"
         onchange={(n, a) => {
-          t.address = n;
-          if (a) t.area = a;
+          draft.address = n;
+          if (a) draft.area = a;
         }}
       />
     {/if}
@@ -151,13 +153,11 @@
 
 <section class="generators">
   <div class="row head">
-    <h2 class="key">Generators</h2>
-    <span class="dim"
-      >Values that change on their own while the simulator runs.</span
-    >
+    <h2 class="key">{t("simgenerators.generators")}</h2>
+    <span class="dim">{t("simgenerators.values_that_change_on")}</span>
     <span class="spacer"></span>
     <button class="btn" disabled={editing === "new"} onclick={add}
-      >Add generator</button
+      >{t("simgenerators.add_generator")}</button
     >
   </div>
 
@@ -165,8 +165,9 @@
     <table class="data">
       <thead>
         <tr>
-          <th>Value</th><th>Kind</th><th>Changes</th><th class="num">Every</th
-          ><th></th>
+          <th>{t("maptable.value")}</th><th>{t("simgenerators.kind")}</th><th
+            >{t("simgenerators.changes")}</th
+          ><th class="num">{t("simgenerators.every")}</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -185,10 +186,10 @@
             <td class="num mono">{g.every_ms} ms</td>
             <td class="act">
               <button class="btn ghost small" onclick={() => edit(i)}
-                >Edit</button
+                >{t("libraryview.edit")}</button
               >
               <button class="btn ghost small" onclick={() => remove(i)}
-                >Remove</button
+                >{t("maptable.remove")}</button
               >
             </td>
           </tr>
@@ -196,13 +197,13 @@
       </tbody>
     </table>
   {:else if editing === null}
-    <p class="empty">None yet. Add one to make a value move.</p>
+    <p class="empty">{t("simgenerators.none_yet_add_one")}</p>
   {/if}
 
   {#if editing !== null}
     <div class="editor" bind:this={editor} in:fieldIn>
       <div class="field">
-        <span>Value to change</span>
+        <span>{t("simgenerators.value_to_change")}</span>
         {@render target(draft.to, "Value")}
       </div>
       {#if drafted}
@@ -213,11 +214,11 @@
 
       <div class="row">
         <div class="field">
-          <span>Kind</span>
+          <span>{t("simgenerators.kind")}</span>
           <div
             class="segmented"
             role="radiogroup"
-            aria-label="Kind"
+            aria-label={t("simgenerators.kind")}
             use:slidePill
           >
             {#each KINDS as k (k.id)}
@@ -231,13 +232,13 @@
           </div>
         </div>
         <label class="field">
-          <span>Every (ms)</span>
+          <span>{t("simgenerators.every_ms")}</span>
           <IntInput
             value={draft.every_ms}
             min={50}
             max={3_600_000}
             width="100px"
-            label="Every, in milliseconds"
+            label={t("simgenerators.every_in_milliseconds")}
             onchange={(n) => (draft.every_ms = n)}
           />
         </label>
@@ -265,7 +266,7 @@
               />
             </label>
             <label class="field">
-              <span>Period (s)</span>
+              <span>{t("simgenerators.period_s")}</span>
               <input
                 class="input num"
                 type="number"
@@ -285,7 +286,7 @@
               />
             </label>
             <label class="field">
-              <span>From</span>
+              <span>{t("scanpanel.from")}</span>
               <input
                 class="input num"
                 type="number"
@@ -294,7 +295,7 @@
               />
             </label>
             <label class="field">
-              <span>To, then wraps</span>
+              <span>{t("simgenerators.to_then_wraps")}</span>
               <input
                 class="input num"
                 type="number"
@@ -323,7 +324,7 @@
             </label>
           {:else}
             <div class="field">
-              <span>Copy from</span>
+              <span>{t("simgenerators.copy_from")}</span>
               {@render target(draft.from, "Copy from")}
             </div>
           {/if}
@@ -340,7 +341,9 @@
         <button class="btn accent" onclick={save}
           >{editing === "new" ? "Add" : "Save"}</button
         >
-        <button class="btn" onclick={() => (editing = null)}>Cancel</button>
+        <button class="btn" onclick={() => (editing = null)}
+          >{t("computedform.cancel")}</button
+        >
       </div>
     </div>
   {/if}

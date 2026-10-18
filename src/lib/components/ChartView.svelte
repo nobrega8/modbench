@@ -4,6 +4,7 @@
   addresses of a manual read.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
   import Select from "./Select.svelte";
   import { MAX_SERIES } from "#lib/trend.ts";
@@ -88,7 +89,7 @@
   />
   <Select
     bind:value={windowMs}
-    label="Time span"
+    label={t("chartview.time_span")}
     options={windows.map((w) => ({ value: w.ms, label: w.label }))}
   />
   <span class="spacer"></span>
@@ -101,7 +102,9 @@
     name="chart"
     disabled={!span || !count}
   />
-  <button class="btn" disabled={!span} onclick={onclear}>Clear</button>
+  <button class="btn" disabled={!span} onclick={onclear}
+    >{t("chartview.clear")}</button
+  >
 </div>
 
 {#if !count}

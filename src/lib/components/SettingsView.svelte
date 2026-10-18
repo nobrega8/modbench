@@ -115,7 +115,7 @@
 {/snippet}
 
 <div class="settings">
-  <nav aria-label="Settings">
+  <nav aria-label={t("nav.settings")}>
     {#each categories as c (c.title)}
       <h2 class="key">{t(c.title)}</h2>
       {#each c.sections as s (s.id)}
@@ -139,7 +139,7 @@
           <img src="/app-icon.png" alt="" width="88" height="88" />
           <h1>Modbench</h1>
           <p class="version">
-            Version <span class="mono">{version}</span>
+            {t("settingsview.version")} <span class="mono">{version}</span>
             {#if updates.available}
               · <strong>{updates.available.version} is available</strong>
             {:else if updates.message}
@@ -147,7 +147,7 @@
             {/if}
           </p>
           <p class="tagline">
-            A Modbus TCP and RTU client to test, map and simulate devices.
+            {t("settingsview.a_modbus_tcp_and")}
           </p>
           <div class="hero-buttons">
             <button
@@ -164,12 +164,12 @@
           </div>
         </section>
 
-        <h2 class="key">Help</h2>
+        <h2 class="key">{t("settingsview.help")}</h2>
         <div class="group">
           <div class="setting">
             <div class="text">
-              <span class="name">User manual</span>
-              <span class="hint">Every page and tool, as a PDF.</span>
+              <span class="name">{t("settingsview.user_manual")}</span>
+              <span class="hint">{t("settingsview.every_page_and_tool")}</span>
             </div>
             <button
               class="btn"
@@ -179,8 +179,8 @@
           </div>
           <div class="setting">
             <div class="text">
-              <span class="name">Release notes</span>
-              <span class="hint">What changed in each version.</span>
+              <span class="name">{t("settingsview.release_notes")}</span>
+              <span class="hint">{t("settingsview.what_changed_in_each")}</span>
             </div>
             <button
               class="btn"
@@ -190,8 +190,10 @@
           </div>
           <div class="setting">
             <div class="text">
-              <span class="name">Report a problem</span>
-              <span class="hint">Bugs and device requests, on GitHub.</span>
+              <span class="name">{t("settingsview.report_a_problem")}</span>
+              <span class="hint"
+                >{t("settingsview.bugs_and_device_requests")}</span
+              >
             </div>
             <button
               class="btn"
@@ -201,12 +203,12 @@
           </div>
         </div>
 
-        <h2 class="key">Project</h2>
+        <h2 class="key">{t("settingsview.project")}</h2>
         <div class="group">
           <div class="setting">
             <div class="text">
-              <span class="name">Licence</span>
-              <span class="hint">GPL-3.0, on GitHub.</span>
+              <span class="name">{t("settingsview.licence")}</span>
+              <span class="hint">{t("settingsview.gpl_3_0_on")}</span>
             </div>
             <button class="btn" onclick={() => run(() => api.openLink("repo"))}
               >Source code {@render external()}</button
@@ -214,8 +216,8 @@
           </div>
           <div class="setting">
             <div class="text">
-              <span class="name">Support this project</span>
-              <span class="hint">A coffee on Ko-fi helps development.</span>
+              <span class="name">{t("settingsview.support_this_project")}</span>
+              <span class="hint">{t("settingsview.a_coffee_on_ko")}</span>
             </div>
             <button
               class="btn"
@@ -235,7 +237,11 @@
         <div class="group">
           <div class="setting theme-row">
             <span class="name">{t("settings.theme")}</span>
-            <div class="themes" role="radiogroup" aria-label="Theme">
+            <div
+              class="themes"
+              role="radiogroup"
+              aria-label={t("settings.theme")}
+            >
               {#each themes as th (th.id)}
                 <button
                   class="theme"
@@ -268,7 +274,7 @@
                 max={TEXT_SCALE_MAX * 100}
                 step="10"
                 value={Math.round((scaleDraft ?? settings.textScale) * 100)}
-                aria-label="Text size"
+                aria-label={t("settings.textSize")}
                 oninput={(e) => {
                   scaleDraft = Number(e.currentTarget.value) / 100;
                 }}
@@ -326,14 +332,14 @@
         <div class="group">
           <label class="setting">
             <div class="text">
-              <span class="name">Highlight changed values</span>
-              <span class="hint"
-                >How long a changed value stays highlighted.</span
+              <span class="name"
+                >{t("settingsview.highlight_changed_values")}</span
               >
+              <span class="hint">{t("settingsview.how_long_a_changed")}</span>
             </div>
             <Select
               bind:value={settings.highlightSeconds}
-              label="Highlight changed values"
+              label={t("settingsview.highlight_changed_values")}
               options={holds.map((h) => ({ value: h.s, label: h.label }))}
               onchange={changed}
             />
@@ -346,8 +352,10 @@
         <div class="group">
           <label class="setting">
             <div class="text">
-              <span class="name">Remember the last connection</span>
-              <span class="hint">Step 1 is filled in again at start.</span>
+              <span class="name"
+                >{t("settingsview.remember_the_last_connection")}</span
+              >
+              <span class="hint">{t("settingsview.step_1_is_filled")}</span>
             </div>
             <input
               type="checkbox"
@@ -359,10 +367,11 @@
           </label>
           <label class="setting">
             <div class="text">
-              <span class="name">Remember register choices for each device</span
+              <span class="name"
+                >{t("settingsview.remember_register_choices_for")}</span
               >
               <span class="hint"
-                >Registers read, byte order and Loop, per map and unit ID.</span
+                >{t("settingsview.registers_read_byte_order")}</span
               >
             </div>
             <input
@@ -375,19 +384,27 @@
           </label>
           <div class="setting">
             <div class="text">
-              <span class="name">Forget saved device choices</span>
+              <span class="name"
+                >{t("settingsview.forget_saved_device_choices")}</span
+              >
               <span class="hint"
                 >{forgotten === null
                   ? "Every device goes back to reading all registers."
                   : `Forgot ${forgotten} device${forgotten === 1 ? "" : "s"}.`}</span
               >
             </div>
-            <button class="btn" onclick={forgetDevices}>Forget</button>
+            <button class="btn" onclick={forgetDevices}
+              >{t("settingsview.forget")}</button
+            >
           </div>
           <label class="setting">
             <div class="text">
-              <span class="name">Confirm before writing to a device</span>
-              <span class="hint">Ask before every write.</span>
+              <span class="name"
+                >{t("settingsview.confirm_before_writing_to")}</span
+              >
+              <span class="hint"
+                >{t("settingsview.ask_before_every_write")}</span
+              >
             </div>
             <input
               type="checkbox"
@@ -399,10 +416,11 @@
           </label>
           <label class="setting">
             <div class="text">
-              <span class="name">Reconnect when the connection is lost</span>
+              <span class="name"
+                >{t("settingsview.reconnect_when_the_connection")}</span
+              >
               <span class="hint"
-                >Reopen a failed connection during a test, backing off up to 10
-                s.</span
+                >{t("settingsview.reopen_a_failed_connection")}</span
               >
             </div>
             <input
@@ -415,9 +433,9 @@
           </label>
           <div class="setting">
             <div class="text">
-              <span class="name">Demo</span>
+              <span class="name">{t("demobanner.demo")}</span>
               <span class="hint"
-                >A simulated meter; your settings are kept.</span
+                >{t("settingsview.a_simulated_meter_your")}</span
               >
             </div>
             <button
@@ -426,15 +444,13 @@
               onclick={() => {
                 bench.page = "main";
                 demo.start();
-              }}>Start demo</button
+              }}>{t("settingsview.start_demo")}</button
             >
           </div>
           <label class="setting">
             <div class="text">
-              <span class="name">Offer the demo at the first start</span>
-              <span class="hint"
-                >Offer the demo until a connection is used.</span
-              >
+              <span class="name">{t("settingsview.offer_the_demo_at")}</span>
+              <span class="hint">{t("settingsview.offer_the_demo_until")}</span>
             </div>
             <input
               type="checkbox"
@@ -446,9 +462,8 @@
           </label>
           <label class="setting">
             <div class="text">
-              <span class="name">Read-only mode</span>
-              <span class="hint"
-                >Block every write. For plants in operation.</span
+              <span class="name">{t("settingsview.read_only_mode")}</span>
+              <span class="hint">{t("settingsview.block_every_write_for")}</span
               >
             </div>
             <input
@@ -461,9 +476,11 @@
           </label>
           <label class="setting">
             <div class="text">
-              <span class="name">Write single registers with FC16</span>
+              <span class="name"
+                >{t("settingsview.write_single_registers_with")}</span
+              >
               <span class="hint"
-                >Write single registers with FC16 instead of FC06.</span
+                >{t("settingsview.write_single_registers_with2")}</span
               >
             </div>
             <input
@@ -476,14 +493,14 @@
           </label>
           <label class="setting">
             <div class="text">
-              <span class="name">CSV separator</span>
+              <span class="name">{t("settingsview.csv_separator")}</span>
               <span class="hint"
-                >Semicolon for spreadsheets with a decimal comma.</span
+                >{t("settingsview.semicolon_for_spreadsheets_with")}</span
               >
             </div>
             <Select
               bind:value={settings.csvSeparator}
-              label="CSV separator"
+              label={t("settingsview.csv_separator")}
               options={[
                 { value: ",", label: "Comma ( , )" },
                 { value: ";", label: "Semicolon ( ; )" },
@@ -493,12 +510,14 @@
           </label>
           <label class="setting">
             <div class="text">
-              <span class="name">Requests kept in the log</span>
-              <span class="hint">Older requests are dropped first.</span>
+              <span class="name">{t("settingsview.requests_kept_in_the")}</span>
+              <span class="hint"
+                >{t("settingsview.older_requests_are_dropped")}</span
+              >
             </div>
             <Select
               bind:value={settings.logLimit}
-              label="Requests kept in the log"
+              label={t("settingsview.requests_kept_in_the")}
               options={logLimits.map((n) => ({
                 value: n,
                 label: n.toLocaleString("en"),
@@ -514,7 +533,7 @@
         <div class="group">
           <div class="setting">
             <div class="text">
-              <span class="name">Library folder</span>
+              <span class="name">{t("settingsview.library_folder")}</span>
               <span class="hint path" title={bench.libraryFolder}
                 >{bench.libraryFolder || "—"}</span
               >
@@ -529,13 +548,13 @@
               <button
                 class="btn"
                 onclick={() => run(() => api.libraryOpenFolder())}
-                >Open folder</button
+                >{t("settingsview.open_folder")}</button
               >
             </div>
           </div>
           <div class="setting">
             <div class="text">
-              <span class="name">Shared maps</span>
+              <span class="name">{t("settingsview.shared_maps")}</span>
               <span class="hint"
                 >The <span class="mono">.mbmap</span> format and shared maps.</span
               >
@@ -561,7 +580,9 @@
         <div class="group">
           <label class="setting">
             <div class="text">
-              <span class="name">Check for updates when Modbench starts</span>
+              <span class="name"
+                >{t("settingsview.check_for_updates_when")}</span
+              >
               <span class="hint"
                 >{#if updates.viaApt}Installed with apt: updates install with
                   <span class="mono">{APT_UPGRADE}</span>{:else}You choose when

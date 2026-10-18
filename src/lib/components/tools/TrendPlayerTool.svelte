@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import type { Recording } from "#lib/playback.ts";
 
   // Kept while other tools are shown.
@@ -140,12 +141,14 @@
 </script>
 
 <header class="tool-head">
-  <h1>Trend player</h1>
-  <p>Plays back a recording made on the Device map tab.</p>
+  <h1>{t("tools.player")}</h1>
+  <p>{t("trendplayertool.plays_back_a_recording")}</p>
 </header>
 
 <div class="row">
-  <button class="btn accent" onclick={load}>Open recording…</button>
+  <button class="btn accent" onclick={load}
+    >{t("trendplayertool.open_recording")}</button
+  >
   {#if recording}
     <span class="dim"
       >{fileName} · {recording.rows} rows · {duration(
@@ -158,7 +161,11 @@
 {#if problem}<p class="bad" role="alert">{problem}</p>{/if}
 
 {#if recording}
-  <div class="columns" role="group" aria-label="Columns on the chart">
+  <div
+    class="columns"
+    role="group"
+    aria-label={t("trendplayertool.columns_on_the_chart")}
+  >
     {#each recording.columns as c, i (i)}
       <label class="check">
         <input
@@ -174,9 +181,11 @@
 
   <div class="transport">
     {#if playing}
-      <button class="btn" onclick={() => (playing = false)}>Pause</button>
+      <button class="btn" onclick={() => (playing = false)}
+        >{t("trendplayertool.pause")}</button
+      >
     {:else}
-      <button class="btn" onclick={play}>Play</button>
+      <button class="btn" onclick={play}>{t("trendplayertool.play")}</button>
     {/if}
     <input
       type="range"
@@ -185,17 +194,17 @@
       max={recording.end}
       step="any"
       bind:value={head}
-      aria-label="Play head"
+      aria-label={t("trendplayertool.play_head")}
     />
     <span class="mono time">{clock(head)}</span>
     <Select
       bind:value={speed}
-      label="Speed"
+      label={t("trendplayertool.speed")}
       options={speeds.map((s) => ({ value: s, label: `${s}×` }))}
     />
     <Select
       bind:value={windowMs}
-      label="Time span"
+      label={t("chartview.time_span")}
       options={windows.map((w) => ({ value: w.ms, label: w.label }))}
     />
     <ChartExport
@@ -209,7 +218,7 @@
   </div>
 
   {#if !shown.length}
-    <p class="empty">Choose columns to plot.</p>
+    <p class="empty">{t("trendplayertool.choose_columns_to_plot")}</p>
   {:else}
     <div class="charts" bind:this={charts}>
       {#each groups as g (g.unit)}
@@ -226,7 +235,7 @@
     <MarkerTable {markers} lines={groups.flatMap((g) => g.lines)} />
   {/if}
 {:else if !problem}
-  <p class="empty">Text columns cannot be plotted.</p>
+  <p class="empty">{t("trendplayertool.text_columns_cannot_be")}</p>
 {/if}
 
 <style>

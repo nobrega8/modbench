@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   // Kept while other tools are shown.
   let input = $state("4148 0000");
   let decimal = $state(false);
@@ -26,13 +27,13 @@
 </script>
 
 <header class="tool-head">
-  <h1>Data decoder</h1>
-  <p>Registers as every type, in all four byte orders.</p>
+  <h1>{t("tools.decoder")}</h1>
+  <p>{t("datadecodertool.registers_as_every_type")}</p>
 </header>
 
 <div class="row">
   <label class="field grow">
-    <span>Registers</span>
+    <span>{t("libraryview.registers")}</span>
     <input
       class="input num"
       bind:value={input}
@@ -42,32 +43,32 @@
     />
   </label>
   <div class="field">
-    <span>Typed as</span>
+    <span>{t("datadecodertool.typed_as")}</span>
     <div
       class="segmented"
       role="radiogroup"
-      aria-label="Typed as"
+      aria-label={t("datadecodertool.typed_as")}
       use:slidePill
     >
       <button
         role="radio"
         aria-checked={!decimal}
         class:on={!decimal}
-        onclick={() => (decimal = false)}>Hex</button
+        onclick={() => (decimal = false)}>{t("registergrid.hex")}</button
       >
       <button
         role="radio"
         aria-checked={decimal}
         class:on={decimal}
-        onclick={() => (decimal = true)}>Decimal</button
+        onclick={() => (decimal = true)}>{t("datadecodertool.decimal")}</button
       >
     </div>
   </div>
   <button
     class="btn"
     disabled={bench.read?.data.kind !== "registers"}
-    title="Use the registers last read on the Main page"
-    onclick={fromRead}>Use last read</button
+    title={t("datadecodertool.use_the_registers_last")}
+    onclick={fromRead}>{t("datadecodertool.use_last_read")}</button
   >
 </div>
 
@@ -95,18 +96,18 @@
     </tbody>
   </table>
   <p class="dim note">
-    ABCD is standard; CDAB swaps words, BADC bytes, DCBA both.
+    {t("datadecodertool.abcd_is_standard_cdab")}
   </p>
 
   <table class="data">
     <thead>
       <tr>
         <th>#</th>
-        <th>Hex</th>
-        <th class="num">Unsigned</th>
-        <th class="num">Signed</th>
-        <th class="num">Bytes swapped</th>
-        <th>Binary</th>
+        <th>{t("registergrid.hex")}</th>
+        <th class="num">{t("datadecodertool.unsigned")}</th>
+        <th class="num">{t("datadecodertool.signed")}</th>
+        <th class="num">{t("datadecodertool.bytes_swapped")}</th>
+        <th>{t("datadecodertool.binary")}</th>
         <th>BCD</th>
       </tr>
     </thead>

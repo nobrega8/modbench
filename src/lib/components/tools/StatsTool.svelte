@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { functionName } from "#lib/frames.ts";
   import {
     SUGGEST_AFTER,
@@ -31,23 +32,23 @@
 </script>
 
 <header class="tool-head">
-  <h1>Statistics</h1>
-  <p>Requests since the last reset, by result and function.</p>
+  <h1>{t("tools.stats")}</h1>
+  <p>{t("statstool.requests_since_the_last")}</p>
 </header>
 
 <div class="row">
-  <span><strong>{b.total}</strong> requests</span>
+  <span><strong>{b.total}</strong> {t("statstool.requests")}</span>
   <span class="spacer"></span>
   <button class="btn" disabled={!b.total} onclick={() => bench.resetBreakdown()}
-    >Reset</button
+    >{t("settings.reset")}</button
   >
 </div>
 
 {#if !b.total}
-  <p class="empty">Nothing yet. Press Start on the Main page.</p>
+  <p class="empty">{t("statstool.nothing_yet_press_start")}</p>
 {:else}
   <section>
-    <h2 class="key">By result</h2>
+    <h2 class="key">{t("statstool.by_result")}</h2>
     <table class="data">
       <tbody>
         {#each causes as [name, n] (name)}
@@ -68,16 +69,16 @@
   </section>
 
   <section>
-    <h2 class="key">By function</h2>
+    <h2 class="key">{t("statstool.by_function")}</h2>
     <table class="data">
       <thead>
         <tr>
-          <th>Function</th>
-          <th class="num">Requests</th>
-          <th class="num">Failed</th>
-          <th class="num">Min ms</th>
-          <th class="num">Avg ms</th>
-          <th class="num">Max ms</th>
+          <th>{t("logview.function")}</th>
+          <th class="num">{t("statstool.requests2")}</th>
+          <th class="num">{t("statstool.failed")}</th>
+          <th class="num">{t("statstool.min_ms")}</th>
+          <th class="num">{t("statstool.avg_ms")}</th>
+          <th class="num">{t("statstool.max_ms")}</th>
         </tr>
       </thead>
       <tbody>
@@ -91,7 +92,7 @@
               <td class="num mono">{ms(average(f.times))}</td>
               <td class="num mono">{ms(f.times.max)}</td>
             {:else}
-              <td class="num dim" colspan="3">no answers</td>
+              <td class="num dim" colspan="3">{t("statstool.no_answers")}</td>
             {/if}
           </tr>
         {/each}
@@ -100,7 +101,7 @@
   </section>
 
   <section>
-    <h2 class="key">Suggested timeout</h2>
+    <h2 class="key">{t("statstool.suggested_timeout")}</h2>
     {#if suggested === null}
       <p class="dim note">
         Shown after {SUGGEST_AFTER} answers ({times.count} so far).
@@ -119,7 +120,8 @@
           title={bench.running
             ? "Stop the test to change step 1."
             : "Put it in step 1's Timeout field."}
-          onclick={() => (bench.timeoutMs = suggested)}>Use in step 1</button
+          onclick={() => (bench.timeoutMs = suggested)}
+          >{t("statstool.use_in_step_1")}</button
         >
       </div>
     {/if}

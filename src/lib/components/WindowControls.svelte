@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { getCurrentWindow } from "@tauri-apps/api/window";
 
   const win = getCurrentWindow();
@@ -15,7 +16,11 @@
 </script>
 
 <div class="controls">
-  <button aria-label="Minimize" title="Minimize" onclick={() => win.minimize()}>
+  <button
+    aria-label={t("windowcontrols.minimize")}
+    title={t("windowcontrols.minimize")}
+    onclick={() => win.minimize()}
+  >
     <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0 5h10" /></svg>
   </button>
   <button
@@ -38,8 +43,8 @@
   </button>
   <button
     class="close"
-    aria-label="Close"
-    title="Close"
+    aria-label={t("mapexplorer.close")}
+    title={t("mapexplorer.close")}
     onclick={() => win.close()}
   >
     <svg viewBox="0 0 10 10" aria-hidden="true"

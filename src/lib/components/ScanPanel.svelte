@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { slidePill } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
   import { settings } from "#lib/settings.svelte.ts";
@@ -34,7 +35,7 @@
       <div
         class="segmented"
         role="tablist"
-        aria-label="What to find"
+        aria-label={t("scanpanel.what_to_find")}
         use:slidePill
       >
         <button
@@ -42,25 +43,28 @@
           aria-selected={!serial}
           class:on={!serial}
           disabled={busy}
-          onclick={() => (mode = "units")}>Unit IDs</button
+          onclick={() => (mode = "units")}>{t("scanpanel.unit_ids")}</button
         >
         <button
           role="tab"
           aria-selected={serial}
           class:on={serial}
           disabled={busy}
-          onclick={() => (mode = "serial")}>Serial settings</button
+          onclick={() => (mode = "serial")}
+          >{t("scanpanel.serial_settings")}</button
         >
       </div>
     {:else}
-      <strong>Find unit IDs</strong>
+      <strong>{t("scanpanel.find_unit_ids")}</strong>
     {/if}
     <span class="dim"
       >{serial
         ? `Tries each baud rate, parity and stop bits on ${bench.serialPort || "the serial port"} and asks for one register.`
         : "Asks each unit ID for one holding register."} Reads only; nothing is written.</span
     >
-    <button class="btn" onclick={onclose} disabled={busy}>Close</button>
+    <button class="btn" onclick={onclose} disabled={busy}
+      >{t("mapexplorer.close")}</button
+    >
   </div>
 
   {#if serial}
@@ -68,49 +72,52 @@
   {:else}
     <div class="row">
       <label class="field">
-        <span>From</span>
+        <span>{t("scanpanel.from")}</span>
         <IntInput
           value={from}
           min={0}
           max={255}
           width="72px"
-          label="First unit ID"
+          label={t("scanpanel.first_unit_id")}
           disabled={busy}
           onchange={(n) => (from = n)}
         />
       </label>
       <label class="field">
-        <span>To</span>
+        <span>{t("scanpanel.to")}</span>
         <IntInput
           value={to}
           min={0}
           max={255}
           width="72px"
-          label="Last unit ID"
+          label={t("scanpanel.last_unit_id")}
           disabled={busy}
           onchange={(n) => (to = n)}
         />
       </label>
-      <label class="field" title="How long to wait for each unit ID">
-        <span>Wait (ms)</span>
+      <label class="field" title={t("scanpanel.how_long_to_wait")}>
+        <span>{t("scanpanel.wait_ms")}</span>
         <IntInput
           value={timeout}
           min={20}
           max={5000}
           width="80px"
-          label="Wait per unit ID"
+          label={t("scanpanel.wait_per_unit_id")}
           disabled={busy}
           onchange={(n) => (timeout = n)}
         />
       </label>
       {#if busy}
-        <button class="btn" onclick={() => bench.cancelScan()}>Stop</button>
+        <button class="btn" onclick={() => bench.cancelScan()}
+          >{t("test.stop")}</button
+        >
         <span class="dim mono">Unit {bench.scanUnit}…</span>
       {:else}
         <button
           class="btn accent"
           disabled={bench.running || from > to}
-          onclick={() => bench.scan(from, to, timeout)}>Scan</button
+          onclick={() => bench.scan(from, to, timeout)}
+          >{t("scanpanel.scan")}</button
         >
       {/if}
     </div>
@@ -162,7 +169,7 @@
         </ul>
       {:else}
         <p class="dim">
-          No unit ID answered. Check the cable, baud rate, parity or the wait.
+          {t("scanpanel.no_unit_id_answered")}
         </p>
       {/if}
     {/if}

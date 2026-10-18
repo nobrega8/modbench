@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { changes, summary } from "#lib/release-notes.ts";
   import { relaunch } from "@tauri-apps/plugin-process";
   import { settings } from "#lib/settings.svelte.ts";
@@ -53,15 +54,17 @@
     {/if}
     <span class="spacer"></span>
     {#if updates.viaApt}
-      <button class="btn" onclick={() => (dismissed = true)}>Dismiss</button>
+      <button class="btn" onclick={() => (dismissed = true)}
+        >{t("action.dismiss")}</button
+      >
     {:else}
       <button class="btn accent" disabled={downloading} onclick={install}
-        >Install and restart</button
+        >{t("updatebanner.install_and_restart")}</button
       >
       <button
         class="btn"
         disabled={downloading}
-        onclick={() => (dismissed = true)}>Later</button
+        onclick={() => (dismissed = true)}>{t("updatebanner.later")}</button
       >
     {/if}
   </div>

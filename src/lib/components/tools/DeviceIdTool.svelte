@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import type {
     Area,
     DeviceIdentity,
@@ -126,14 +127,19 @@
 </script>
 
 <header class="tool-head">
-  <h1>Identify the device</h1>
+  <h1>{t("deviceidtool.identify_the_device")}</h1>
   <p>Vendor, product and revision via FC43 · {where}. Read only.</p>
 </header>
 
 <div class="row">
   <div class="field">
-    <span>Objects</span>
-    <div class="segmented" role="radiogroup" aria-label="Objects" use:slidePill>
+    <span>{t("deviceidtool.objects")}</span>
+    <div
+      class="segmented"
+      role="radiogroup"
+      aria-label={t("deviceidtool.objects")}
+      use:slidePill
+    >
       {#each levels as l (l.id)}
         <button
           role="radio"
@@ -155,7 +161,11 @@
   {#if result.objects.length}
     <table class="data">
       <thead>
-        <tr><th>ID</th><th>Object</th><th>Value</th></tr>
+        <tr
+          ><th>ID</th><th>{t("deviceidtool.object")}</th><th
+            >{t("maptable.value")}</th
+          ></tr
+        >
       </thead>
       <tbody>
         {#each result.objects as o (o.id)}
@@ -168,30 +178,29 @@
       </tbody>
     </table>
   {:else}
-    <p class="empty">The device answered without any objects.</p>
+    <p class="empty">{t("deviceidtool.the_device_answered_without")}</p>
   {/if}
   <p class="dim">
     Conformity 0x{hex(result.conformity, 2)}: {conformity(result.conformity)}.
   </p>
 {:else}
-  <p class="empty">Devices without FC43 answer "illegal function".</p>
+  <p class="empty">{t("deviceidtool.devices_without_fc43_answer")}</p>
 {/if}
 
 <section class="functions">
   <header class="tool-head">
-    <h2>Function codes</h2>
+    <h2>{t("deviceidtool.function_codes")}</h2>
     <p>
-      "Illegal function": not supported. Any other answer: supported. Read only
-      unless writes are allowed.
+      {t("deviceidtool.illegal_function_not_supported")}
     </p>
   </header>
   <div class="row">
     <label class="field">
-      <span>Address</span>
+      <span>{t("req.address")}</span>
       <AddressInput
         value={address}
         width="90px"
-        label="Address to try"
+        label={t("deviceidtool.address_to_try")}
         disabled={cannotAsk}
         onchange={(n) => (address = n)}
       />
@@ -221,7 +230,11 @@
   {:else if checks}
     <table class="data">
       <thead>
-        <tr><th class="num">FC</th><th>Function</th><th>Answer</th></tr>
+        <tr
+          ><th class="num">FC</th><th>{t("logview.function")}</th><th
+            >{t("deviceidtool.answer")}</th
+          ></tr
+        >
       </thead>
       <tbody>
         {#each checks as c (c.function)}
@@ -242,23 +255,22 @@
       </tbody>
     </table>
     {#if bench.transport !== "rtu"}
-      <p class="dim">Serial-only functions often fail over TCP.</p>
+      <p class="dim">{t("deviceidtool.serial_only_functions_often")}</p>
     {/if}
   {/if}
 
   <header class="tool-head">
-    <h2>Largest read</h2>
+    <h2>{t("deviceidtool.largest_read")}</h2>
     <p>
-      Most registers or bits in one read from the address above. Use it as Max
-      registers in step 1.
+      {t("deviceidtool.most_registers_or_bits")}
     </p>
   </header>
   <div class="row">
     <label class="field">
-      <span>Area</span>
+      <span>{t("customregisterform.area")}</span>
       <Select
         bind:value={limitArea}
-        label="Area"
+        label={t("customregisterform.area")}
         disabled={cannotAsk}
         options={areas.map((a) => ({ value: a, label: AREA_NAME[a] + "s" }))}
       />

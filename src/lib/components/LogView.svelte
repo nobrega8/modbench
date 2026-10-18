@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
   import {
@@ -93,7 +94,8 @@
 
 <div class="toolbar">
   <label class="check"
-    ><input type="checkbox" bind:checked={errorsOnly} /> Errors only</label
+    ><input type="checkbox" bind:checked={errorsOnly} />
+    {t("logview.errors_only")}</label
   >
   <AddressFormat />
   <span class="spacer"></span>
@@ -101,10 +103,10 @@
   <button
     class="btn"
     disabled={!bench.log.length}
-    onclick={() => bench.clearLog()}>Clear log</button
+    onclick={() => bench.clearLog()}>{t("logview.clear_log")}</button
   >
   <button class="btn" disabled={!bench.log.length} onclick={saveLog}
-    >Save log…</button
+    >{t("logview.save_log")}</button
   >
 </div>
 
@@ -119,9 +121,11 @@
   <table>
     <thead>
       <tr>
-        <th>Time</th><th>Function</th><th>Address</th><th>Qty</th><th
-          >Duration</th
-        ><th>Result</th>
+        <th>{t("logview.time")}</th><th>{t("logview.function")}</th><th
+          >{t("req.address")}</th
+        ><th>{t("logview.qty")}</th><th>{t("logview.duration")}</th><th
+          >{t("logview.result")}</th
+        >
       </tr>
     </thead>
     <tbody>
@@ -148,7 +152,9 @@
           </tr>
         {/if}
       {:else}
-        <tr><td colspan="6" class="empty">No requests yet.</td></tr>
+        <tr
+          ><td colspan="6" class="empty">{t("logview.no_requests_yet")}</td></tr
+        >
       {/each}
     </tbody>
   </table>

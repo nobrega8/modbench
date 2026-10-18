@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import type { Area } from "#lib/types.ts";
 
   // Kept while other tools are shown.
@@ -306,7 +307,7 @@
 
 {#if sim.windowOpen && !IN_SIM_WINDOW}
   <header class="tool-head">
-    <h1>Simulator</h1>
+    <h1>{t("tools.simulator")}</h1>
     <p>
       The simulator is open in its own window{sim.running !== null
         ? `, listening on ${whereText(sim.running)}`
@@ -315,16 +316,16 @@
   </header>
   <div class="row">
     <button class="btn accent" onclick={() => api.simOpenWindow()}
-      >Show its window</button
+      >{t("simulatortool.show_its_window")}</button
     >
     <button class="btn" onclick={() => api.simCloseWindow()}
-      >Bring it back here</button
+      >{t("simulatortool.bring_it_back_here")}</button
     >
   </div>
 {:else}
   <header class="tool-head">
     <div class="title-row">
-      <h1>Simulator</h1>
+      <h1>{t("tools.simulator")}</h1>
       <span class="spacer"></span>
       {#if sim.setupNote}
         <span
@@ -336,57 +337,58 @@
       {/if}
       <button
         class="btn ghost"
-        title="Load the interface, devices, unit IDs, maps and generators saved with Save setup…"
-        onclick={openSetup}>Open setup…</button
+        title={t("simulatortool.load_the_interface_devices")}
+        onclick={openSetup}>{t("simulatortool.open_setup")}</button
       >
       <button
         class="btn ghost"
-        title="Save the interface, devices, unit IDs, maps and generators to a file"
-        onclick={saveSetup}>Save setup…</button
+        title={t("simulatortool.save_the_interface_devices")}
+        onclick={saveSetup}>{t("simulatortool.save_setup")}</button
       >
       {#if IN_SIM_WINDOW}
         <button
           class="btn ghost"
-          title="Close this window and show the simulator on the Tools page again"
-          onclick={() => api.simCloseWindow()}>Back to the main window</button
+          title={t("simulatortool.close_this_window_and")}
+          onclick={() => api.simCloseWindow()}
+          >{t("simulatortool.back_to_the_main")}</button
         >
       {:else}
         <button
           class="btn ghost"
-          title="Open the simulator in a window of its own, to see it next to the Main page"
+          title={t("simulatortool.open_the_simulator_in")}
           onclick={() => api.simOpenWindow()}
-          ><Icon name="popout" />Pop out</button
+          ><Icon name="popout" />{t("simulatortool.pop_out")}</button
         >
       {/if}
     </div>
-    <p>Devices on this computer, shaped after a map. No hardware needed.</p>
+    <p>{t("simulatortool.devices_on_this_computer")}</p>
   </header>
 
   <div class="row">
     <label class="field">
-      <span>Interface</span>
+      <span>{t("conn.interface")}</span>
       <Select
         bind:value={sim.kind}
         options={kinds}
-        label="How clients reach the simulator"
+        label={t("simulatortool.how_clients_reach_the")}
         disabled={!stopped}
       />
     </label>
     {#if serial}
       <label class="field">
-        <span>Serial port</span>
+        <span>{t("conn.serialPort")}</span>
         <span class="with-btn">
           <Select
             bind:value={sim.serialPort}
             disabled={!stopped}
-            label="Serial port"
-            placeholder="No ports found"
+            label={t("conn.serialPort")}
+            placeholder={t("conn.noPorts")}
             options={portOptions}
           />
           <button
             class="btn icon"
-            title="Search for serial ports again"
-            aria-label="Search for serial ports again"
+            title={t("conn.rescan")}
+            aria-label={t("conn.rescan")}
             disabled={!stopped}
             onclick={refreshPorts}
           >
@@ -404,20 +406,20 @@
         </span>
       </label>
       <label class="field">
-        <span>Baud rate</span>
+        <span>{t("conn.baud")}</span>
         <Select
           bind:value={sim.baudrate}
           disabled={!stopped}
-          label="Baud rate"
+          label={t("conn.baud")}
           options={baudrates.map((b) => ({ value: b, label: String(b) }))}
         />
       </label>
       <label class="field">
-        <span>Data bits</span>
+        <span>{t("conn.dataBits")}</span>
         <Select
           bind:value={sim.dataBits}
           disabled={!stopped}
-          label="Data bits"
+          label={t("conn.dataBits")}
           options={[
             { value: 8, label: "8 bits" },
             { value: 7, label: "7 bits" },
@@ -425,11 +427,11 @@
         />
       </label>
       <label class="field">
-        <span>Parity</span>
+        <span>{t("conn.parity")}</span>
         <Select
           bind:value={sim.parity}
           disabled={!stopped}
-          label="Parity"
+          label={t("conn.parity")}
           options={[
             { value: "N", label: "None" },
             { value: "E", label: "Even" },
@@ -438,11 +440,11 @@
         />
       </label>
       <label class="field">
-        <span>Stop bits</span>
+        <span>{t("conn.stopBits")}</span>
         <Select
           bind:value={sim.stopBits}
           disabled={!stopped}
-          label="Stop bits"
+          label={t("conn.stopBits")}
           options={[
             { value: 1, label: "1 stop bit" },
             { value: 2, label: "2 stop bits" },
@@ -451,20 +453,20 @@
       </label>
     {:else}
       <label class="field">
-        <span>Port</span>
+        <span>{t("conn.port")}</span>
         <IntInput
           value={sim.port}
           min={1}
           max={65535}
           width="80px"
-          label="Port"
+          label={t("conn.port")}
           disabled={!stopped}
           onchange={(n) => (sim.port = n)}
         />
       </label>
       <label
         class="check switch-row"
-        title="Let other computers on the network connect (the firewall may ask)"
+        title={t("simulatortool.let_other_computers_on")}
       >
         <input
           type="checkbox"
@@ -473,13 +475,17 @@
           bind:checked={sim.isPublic}
           disabled={!stopped}
         />
-        Other computers
+        {t("simulatortool.other_computers")}
       </label>
     {/if}
     {#if sim.running === null}
-      <button class="btn accent" onclick={() => sim.start()}>Start</button>
+      <button class="btn accent" onclick={() => sim.start()}
+        >{t("test.start")}</button
+      >
     {:else}
-      <button class="btn danger" onclick={() => sim.stop()}>Stop</button>
+      <button class="btn danger" onclick={() => sim.stop()}
+        >{t("test.stop")}</button
+      >
     {/if}
     <span class="status" aria-live="polite">
       {#if sim.running !== null}
@@ -488,23 +494,26 @@
         >
         {#if overNetwork(sim.running)}
           <button class="btn ghost" onclick={useInMain}
-            >Connect Main to it</button
+            >{t("simulatortool.connect_main_to_it")}</button
           >
         {/if}
       {:else}
-        <span class="dim">Stopped</span>
+        <span class="dim">{t("test.stopped")}</span>
       {/if}
     </span>
   </div>
 
   {#if serial}
     <p class="dim hint">
-      Clients connect to the other end of the line; locally, use a null-modem
-      pair (com0com, socat).
+      {t("simulatortool.clients_connect_to_the")}
     </p>
   {/if}
 
-  <div class="devices" role="tablist" aria-label="Simulated devices">
+  <div
+    class="devices"
+    role="tablist"
+    aria-label={t("simulatortool.simulated_devices")}
+  >
     {#each sim.devices as d, i (i)}
       <button
         role="tab"
@@ -516,24 +525,21 @@
     {/each}
     <button
       class="btn ghost"
-      title="Another device at the same address, on its own unit ID"
-      onclick={() => sim.addDevice()}>Add device</button
+      title={t("simulatortool.another_device_at_the")}
+      onclick={() => sim.addDevice()}>{t("simulatortool.add_device")}</button
     >
   </div>
 
   <div class="row source">
-    <label
-      class="field"
-      title="Leave empty to answer every unit ID that no other device has"
-    >
-      <span>Unit ID</span>
+    <label class="field" title={t("simulatortool.leave_empty_to_answer")}>
+      <span>{t("networkscantool.unit_id")}</span>
       {#key sim.selected}
         <input
           class="input num"
           style:width="80px"
           value={sim.unit ?? ""}
-          placeholder="All"
-          aria-label="Unit ID"
+          placeholder={t("simulatortool.all")}
+          aria-label={t("networkscantool.unit_id")}
           onchange={async (e) => {
             const input = e.currentTarget;
             const n = parseInteger(input.value);
@@ -544,55 +550,59 @@
       {/key}
     </label>
     <label class="field">
-      <span>Map</span>
+      <span>{t("req.mapField")}</span>
       {#key [picks, sim.selected]}
         <Select
           value={sim.source ?? ""}
           options={sources}
-          label="Map the device is shaped after"
+          label={t("simulatortool.map_the_device_is")}
           width="300px"
           onchange={choose}
         />
       {/key}
     </label>
-    <label
-      class="check"
-      title="Only the map's addresses exist; the others answer exception 2"
-    >
+    <label class="check" title={t("simulatortool.only_the_map_s")}>
       <input
         type="checkbox"
         bind:checked={sim.strict}
         disabled={!sim.map}
         onchange={() => sim.reload()}
       />
-      Only the map's addresses
+      {t("simulatortool.only_the_map_s2")}
     </label>
     <span class="spacer"></span>
     {#if sim.devices.length > 1}
       <button
         class="btn ghost"
-        title="Remove this device; its unit ID gets no answer"
-        onclick={() => sim.removeDevice()}>Remove device</button
+        title={t("simulatortool.remove_this_device_its")}
+        onclick={() => sim.removeDevice()}
+        >{t("simulatortool.remove_device")}</button
       >
     {/if}
     {#if sim.map}
       <button
         class="btn ghost"
-        title="Back to the map's reference values"
-        onclick={() => sim.reload()}>Reset values</button
+        title={t("simulatortool.back_to_the_map")}
+        onclick={() => sim.reload()}>{t("simulatortool.reset_values")}</button
       >
-      <div class="segmented" role="tablist" aria-label="View" use:slidePill>
+      <div
+        class="segmented"
+        role="tablist"
+        aria-label={t("simulatortool.view")}
+        use:slidePill
+      >
         <button
           role="tab"
           aria-selected={mode === "registers"}
           class:on={mode === "registers"}
-          onclick={() => (mode = "registers")}>Registers</button
+          onclick={() => (mode = "registers")}
+          >{t("libraryview.registers")}</button
         >
         <button
           role="tab"
           aria-selected={mode === "grid"}
           class:on={mode === "grid"}
-          onclick={() => (mode = "grid")}>Grid</button
+          onclick={() => (mode = "grid")}>{t("registergrid.grid")}</button
         >
       </div>
     {/if}
@@ -604,7 +614,12 @@
     <SimRegisters ongenerate={(r, i) => generators?.generateFor(r, i)} />
   {:else}
     <div class="row">
-      <div class="segmented" role="tablist" aria-label="Area" use:slidePill>
+      <div
+        class="segmented"
+        role="tablist"
+        aria-label={t("customregisterform.area")}
+        use:slidePill
+      >
         {#each areas as a (a.id)}
           <button
             role="tab"
@@ -618,11 +633,11 @@
         {/each}
       </div>
       <label class="inline">
-        <span class="dim">From</span>
+        <span class="dim">{t("scanpanel.from")}</span>
         <AddressInput
           value={first}
           width="80px"
-          label="First address shown"
+          label={t("simulatortool.first_address_shown")}
           onchange={(n, a) => {
             start = n;
             if (a) area = a;
@@ -693,9 +708,11 @@
           <table class="data">
             <thead>
               <tr>
-                <th>Time</th><th>Client</th><th class="num">Unit</th><th
-                  >Request</th
-                ><th>Address</th><th>Result</th>
+                <th>{t("logview.time")}</th><th
+                  >{t("framedecodertool.client")}</th
+                ><th class="num">{t("computedform.unit")}</th><th
+                  >{t("step.request")}</th
+                ><th>{t("req.address")}</th><th>{t("logview.result")}</th>
               </tr>
             </thead>
             <tbody>
@@ -741,12 +758,12 @@
 
   <section class="activity">
     <div class="row">
-      <h2 class="key">Activity</h2>
+      <h2 class="key">{t("simulatortool.activity")}</h2>
       <span class="spacer"></span>
       <button
         class="btn ghost"
         disabled={!sim.reads.length && !sim.writes.length}
-        onclick={() => sim.clearEvents()}>Clear</button
+        onclick={() => sim.clearEvents()}>{t("chartview.clear")}</button
       >
     </div>
     <div class="panes">

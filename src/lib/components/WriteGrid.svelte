@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { hex, parseInteger } from "#lib/format.ts";
   import { bench } from "#lib/state.svelte.ts";
 
@@ -31,7 +32,7 @@
 </script>
 
 {#if !isWrite}
-  <p class="note">Choose a write command in step 2 to send these values.</p>
+  <p class="note">{t("writegrid.choose_a_write_command")}</p>
 {:else}
   <p class="note">
     {bits

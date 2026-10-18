@@ -3,6 +3,7 @@
   B, their difference, and the minimum, maximum and average between them.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { clock, duration } from "#lib/format.ts";
   import { markerStats, type Markers } from "#lib/markers.svelte.ts";
   import { valueLabel as label } from "#lib/trend.ts";
@@ -22,11 +23,9 @@
 
 <div class="markers">
   <div class="head">
-    <strong>Markers</strong>
+    <strong>{t("markertable.markers")}</strong>
     {#if markers.a === null}
-      <span class="dim"
-        >Click a chart to place marker A, then B. Drag a marker to move it.</span
-      >
+      <span class="dim">{t("markertable.click_a_chart_to")}</span>
     {:else if markers.b === null}
       <span class="dim">A at {clock(markers.a)}. Click again to place B.</span>
     {:else}
@@ -38,21 +37,21 @@
     {/if}
     <span class="spacer"></span>
     <button class="btn" disabled={!markers.any} onclick={() => markers.clear()}
-      >Clear markers</button
+      >{t("markertable.clear_markers")}</button
     >
   </div>
   {#if rows.length}
     <table class="data">
       <thead>
         <tr>
-          <th>Line</th>
-          <th class="num">At A</th>
-          <th class="num">At B</th>
+          <th>{t("markertable.line")}</th>
+          <th class="num">{t("markertable.at_a")}</th>
+          <th class="num">{t("markertable.at_b")}</th>
           <th class="num">B − A</th>
-          <th class="num">Min</th>
-          <th class="num">Max</th>
-          <th class="num">Average</th>
-          <th class="num">Samples</th>
+          <th class="num">{t("time.min")}</th>
+          <th class="num">{t("time.max")}</th>
+          <th class="num">{t("markertable.average")}</th>
+          <th class="num">{t("markertable.samples")}</th>
         </tr>
       </thead>
       <tbody>

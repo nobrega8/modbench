@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { demo } from "#lib/demo.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
 </script>
@@ -6,7 +7,7 @@
 {#if demo.active}
   <section class="banner live" role="status">
     <div class="text">
-      <strong>Demo · simulated device</strong>
+      <strong>{t("demobanner.demo_simulated_device")}</strong>
       <span
         >No hardware is connected: Modbench's own simulator plays a made-up
         meter on this computer (127.0.0.1:{bench.tcpPort}). Try:</span
@@ -14,35 +15,34 @@
       <ol>
         <li>
           <button class="link" onclick={() => (bench.tab = "map")}
-            >Device map</button
+            >{t("tab.map")}</button
           >: the values by name, moving.
         </li>
         <li>
           <button class="link" onclick={() => (bench.tab = "chart")}
-            >Chart</button
+            >{t("tab.chart")}</button
           >: Voltage L1 over time; right-click a value to add more.
         </li>
         <li>
           <button class="link" onclick={() => (bench.tab = "raw")}
-            >Raw data</button
+            >{t("tab.raw")}</button
           >: the frames on the wire, byte by byte.
         </li>
       </ol>
     </div>
-    <button class="btn accent" onclick={() => demo.exit()}>Leave demo</button>
+    <button class="btn accent" onclick={() => demo.exit()}
+      >{t("demobanner.leave_demo")}</button
+    >
   </section>
 {:else if (demo.offered && !demo.dismissed) || demo.error}
-  <section class="banner" aria-label="Demo">
+  <section class="banner" aria-label={t("demobanner.demo")}>
     <div class="text">
       {#if demo.error}
-        <strong class="bad">The demo could not start</strong>
+        <strong class="bad">{t("demobanner.the_demo_could_not")}</strong>
         <span>{demo.error}</span>
       {:else}
-        <strong>New to Modbench?</strong>
-        <span
-          >Try it with a simulated device: no hardware or map needed. Your
-          settings are left as they are.</span
-        >
+        <strong>{t("demobanner.new_to_modbench")}</strong>
+        <span>{t("demobanner.try_it_with_a")}</span>
       {/if}
     </div>
     <button
@@ -56,11 +56,11 @@
       onclick={() => {
         demo.error = null;
         demo.dismiss(false);
-      }}>Not now</button
+      }}>{t("demobanner.not_now")}</button
     >
     {#if !demo.error}
       <button class="btn" onclick={() => demo.dismiss(true)}
-        >Don't ask again</button
+        >{t("demobanner.don_t_ask_again")}</button
       >
     {/if}
   </section>

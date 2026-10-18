@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import Select from "./Select.svelte";
   import { bench } from "#lib/state.svelte.ts";
   import type { Area, Parity, SerialHit } from "#lib/types.ts";
@@ -73,7 +74,7 @@
 
 <div class="opts">
   <div class="field">
-    <span>Baud rates</span>
+    <span>{t("serialscan.baud_rates")}</span>
     <div class="chips">
       {#each BAUDS as b (b)}
         <label class="chip"
@@ -88,7 +89,7 @@
     </div>
   </div>
   <div class="field">
-    <span>Parity</span>
+    <span>{t("conn.parity")}</span>
     <div class="chips">
       {#each PARITIES as par (par.id)}
         <label class="chip"
@@ -108,7 +109,7 @@
     </div>
   </div>
   <div class="field">
-    <span>Stop bits</span>
+    <span>{t("conn.stopBits")}</span>
     <div class="chips">
       {#each [1, 2] as s (s)}
         <label class="chip"
@@ -126,35 +127,35 @@
 
 <div class="row">
   <label class="field">
-    <span>Unit from</span>
+    <span>{t("serialscan.unit_from")}</span>
     <IntInput
       value={from}
       min={0}
       max={255}
       width="72px"
-      label="First unit ID"
+      label={t("scanpanel.first_unit_id")}
       disabled={busy}
       onchange={(n) => (from = n)}
     />
   </label>
   <label class="field">
-    <span>To</span>
+    <span>{t("scanpanel.to")}</span>
     <IntInput
       value={to}
       min={0}
       max={255}
       width="72px"
-      label="Last unit ID"
+      label={t("scanpanel.last_unit_id")}
       disabled={busy}
       onchange={(n) => (to = n)}
     />
   </label>
   <label class="field">
-    <span>Ask for</span>
+    <span>{t("serialscan.ask_for")}</span>
     <Select
       bind:value={area}
       disabled={busy}
-      label="Ask for"
+      label={t("serialscan.ask_for")}
       options={[
         { value: "holding", label: "Holding register" },
         { value: "input", label: "Input register" },
@@ -162,12 +163,12 @@
     />
   </label>
   <label class="field">
-    <span>Address</span>
+    <span>{t("req.address")}</span>
     <AddressInput
       value={address}
       areas={["holding", "input"]}
       width="88px"
-      label="Register address"
+      label={t("serialscan.register_address")}
       disabled={busy}
       onchange={(n, a) => {
         address = n;
@@ -175,29 +176,31 @@
       }}
     />
   </label>
-  <label class="field" title="How long to wait for each answer">
-    <span>Wait (ms)</span>
+  <label class="field" title={t("serialscan.how_long_to_wait")}>
+    <span>{t("scanpanel.wait_ms")}</span>
     <IntInput
       value={timeout}
       min={20}
       max={5000}
       width="80px"
-      label="Wait per request"
+      label={t("serialscan.wait_per_request")}
       disabled={busy}
       onchange={(n) => (timeout = n)}
     />
   </label>
   <label class="check stop"
-    ><input type="checkbox" bind:checked={first} disabled={busy} /> Stop at the first
-    match</label
+    ><input type="checkbox" bind:checked={first} disabled={busy} />
+    {t("serialscan.stop_at_the_first")}</label
   >
   {#if busy}
-    <button class="btn" onclick={() => bench.cancelScan()}>Stop</button>
+    <button class="btn" onclick={() => bench.cancelScan()}
+      >{t("test.stop")}</button
+    >
   {:else}
     <button
       class="btn accent"
       disabled={bench.running || !combos || !units || bench.serialPort === ""}
-      onclick={start}>Scan</button
+      onclick={start}>{t("scanpanel.scan")}</button
     >
   {/if}
 </div>
@@ -265,7 +268,7 @@
     </ul>
   {:else}
     <p class="dim">
-      No answer. Check the wiring (swap A and B), the unit IDs or the wait.
+      {t("serialscan.no_answer_check_the")}
     </p>
   {/if}
 {/if}

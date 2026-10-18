@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import type { Direction, Framing } from "#lib/frames.ts";
 
   // Kept while other tools are shown.
@@ -37,13 +38,13 @@
 </script>
 
 <header class="tool-head">
-  <h1>Frame decoder</h1>
-  <p>A frame field by field, with its CRC or LRC checked.</p>
+  <h1>{t("tools.frames")}</h1>
+  <p>{t("framedecodertool.a_frame_field_by")}</p>
 </header>
 
 <div class="row">
   <label class="field grow">
-    <span>Frame</span>
+    <span>{t("framedecodertool.frame")}</span>
     <input
       class="input num"
       bind:value={input}
@@ -53,8 +54,13 @@
     />
   </label>
   <div class="field">
-    <span>Framing</span>
-    <div class="segmented" role="radiogroup" aria-label="Framing" use:slidePill>
+    <span>{t("conn.framing")}</span>
+    <div
+      class="segmented"
+      role="radiogroup"
+      aria-label={t("conn.framing")}
+      use:slidePill
+    >
       {#each framings as f (f.id)}
         <button
           role="radio"
@@ -66,21 +72,30 @@
     </div>
   </div>
   <div class="field">
-    <span>Sent by</span>
-    <div class="segmented" role="radiogroup" aria-label="Sent by" use:slidePill>
+    <span>{t("framedecodertool.sent_by")}</span>
+    <div
+      class="segmented"
+      role="radiogroup"
+      aria-label={t("framedecodertool.sent_by")}
+      use:slidePill
+    >
       <button
         role="radio"
         aria-checked={direction === "request"}
         class:on={direction === "request"}
         onclick={() => (direction = "request")}
-        ><span class="from tx" aria-hidden="true"></span>Client</button
+        ><span class="from tx" aria-hidden="true"></span>{t(
+          "framedecodertool.client",
+        )}</button
       >
       <button
         role="radio"
         aria-checked={direction === "response"}
         class:on={direction === "response"}
         onclick={() => (direction = "response")}
-        ><span class="from rx" aria-hidden="true"></span>Device</button
+        ><span class="from rx" aria-hidden="true"></span>{t(
+          "tools.device",
+        )}</button
       >
     </div>
   </div>
@@ -88,7 +103,7 @@
 
 {#if !bytes}
   <p class="bad">
-    Hex bytes, e.g. 01 03 00 00 00 0A C5 CD, or ASCII starting with ":".
+    {t("framedecodertool.hex_bytes_e_g")}
   </p>
 {:else if decoded}
   <FrameFields {decoded} />

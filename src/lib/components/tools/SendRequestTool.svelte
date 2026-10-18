@@ -1,4 +1,5 @@
 <script module lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   /** A request kept in the list, to send again. */
   interface Saved {
     name: string;
@@ -209,33 +210,38 @@
 </script>
 
 <header class="tool-head">
-  <h1>Send request</h1>
+  <h1>{t("tools.request")}</h1>
   <p>
     Any function code or raw bytes · {bench.connectionText}, unit {bench.unitId}.
   </p>
 </header>
 
 <div class="row">
-  <div class="segmented" role="tablist" aria-label="Request" use:slidePill>
+  <div
+    class="segmented"
+    role="tablist"
+    aria-label={t("step.request")}
+    use:slidePill
+  >
     <button
       role="tab"
       aria-selected={mode === "function"}
       class:on={mode === "function"}
-      onclick={() => (mode = "function")}>Function</button
+      onclick={() => (mode = "function")}>{t("logview.function")}</button
     >
     <button
       role="tab"
       aria-selected={mode === "raw"}
       class:on={mode === "raw"}
-      onclick={() => (mode = "raw")}>Raw bytes</button
+      onclick={() => (mode = "raw")}>{t("sendrequesttool.raw_bytes")}</button
     >
   </div>
   {#if mode === "function"}
     <label class="field">
-      <span>Function</span>
+      <span>{t("logview.function")}</span>
       <Select
         bind:value={fc}
-        label="Function"
+        label={t("logview.function")}
         width="300px"
         options={[
           ...FUNCTIONS.map((f) => ({
@@ -246,8 +252,9 @@
         ]}
       />
     </label>
-    <label class="check" title="Unit 0: every device acts, none answers">
-      <input type="checkbox" bind:checked={broadcast} /> Broadcast (unit 0)
+    <label class="check" title={t("sendrequesttool.unit_0_every_device")}>
+      <input type="checkbox" bind:checked={broadcast} />
+      {t("sendrequesttool.broadcast_unit_0")}
     </label>
   {/if}
 </div>
@@ -256,18 +263,18 @@
   <div class="row">
     {#if fc === OTHER}
       <label class="field">
-        <span>Function code</span>
+        <span>{t("sendrequesttool.function_code")}</span>
         <IntInput
           value={otherFc}
           min={1}
           max={127}
           width="80px"
-          label="Function code"
+          label={t("sendrequesttool.function_code")}
           onchange={(n) => (otherFc = n)}
         />
       </label>
       <label class="field grow">
-        <span>Data (hex)</span>
+        <span>{t("sendrequesttool.data_hex")}</span>
         <input
           class="input mono"
           bind:value={otherHex}
@@ -293,13 +300,15 @@
           />
         </label>
       {/each}
-      {#if !spec.fields.length}<span class="dim">No parameters.</span>{/if}
+      {#if !spec.fields.length}<span class="dim"
+          >{t("sendrequesttool.no_parameters")}</span
+        >{/if}
     {/if}
   </div>
 {:else}
   <div class="row">
     <label class="field grow">
-      <span>Bytes (hex), sent without framing</span>
+      <span>{t("sendrequesttool.bytes_hex_sent_without")}</span>
       <textarea
         class="input mono"
         rows="2"
@@ -307,14 +316,14 @@
         spellcheck="false"
         placeholder="00 01 00 00 00 06 01 03 00 00 00 0A"></textarea>
     </label>
-    <label class="field" title="How long to collect the answer">
-      <span>Wait (ms)</span>
+    <label class="field" title={t("sendrequesttool.how_long_to_collect")}>
+      <span>{t("scanpanel.wait_ms")}</span>
       <IntInput
         value={waitMs}
         min={20}
         max={10000}
         width="80px"
-        label="Wait"
+        label={t("sendrequesttool.wait")}
         onchange={(n) => (waitMs = n)}
       />
     </label>
@@ -333,12 +342,12 @@
         : `PDU ${hexBytes([built.fc, ...built.data])}`}</span
     >
     {#if writes(built, mode === "raw", broadcast && mode !== "raw")}
-      <span class="tag">may write</span>
+      <span class="tag">{t("sendrequesttool.may_write")}</span>
     {/if}
   {/if}
   <span class="spacer"></span>
   <button class="btn" disabled={typeof built === "string"} onclick={saveToList}
-    >Add to list</button
+    >{t("sendrequesttool.add_to_list")}</button
   >
   <button
     class="btn accent"
@@ -354,12 +363,12 @@
   <section class="answer">
     {#if answer.note}<p class="dim">{answer.note}</p>{/if}
     {#if answer.out.length}
-      <h2 class="key">Sent</h2>
+      <h2 class="key">{t("sendrequesttool.sent")}</h2>
       <p class="mono">{hexBytes(answer.out)}</p>
       {#if decodedOut}<p class="dim">{decodedOut.summary}</p>{/if}
     {/if}
     {#if answer.in.length}
-      <h2 class="key">Answer</h2>
+      <h2 class="key">{t("deviceidtool.answer")}</h2>
       <p class="mono">{hexBytes(answer.in)}</p>
       {#if decodedIn}
         <p>{decodedIn.summary}</p>
@@ -377,7 +386,7 @@
         </table>
       {/if}
     {:else if !answer.note}
-      <p class="dim">No answer.</p>
+      <p class="dim">{t("sendrequesttool.no_answer")}</p>
     {/if}
   </section>
 {/if}
@@ -385,31 +394,32 @@
 {#if list.length}
   <section class="list">
     <div class="row">
-      <h2 class="key">List</h2>
+      <h2 class="key">{t("registergrid.list")}</h2>
       <span class="spacer"></span>
       <button
         class="btn small"
         disabled={busy || looping || bench.running}
-        onclick={sendAll}>Send all</button
+        onclick={sendAll}>{t("sendrequesttool.send_all")}</button
       >
       {#if looping}
-        <button class="btn small" onclick={() => (looping = false)}>Stop</button
+        <button class="btn small" onclick={() => (looping = false)}
+          >{t("test.stop")}</button
         >
       {:else}
         <button
           class="btn small"
           disabled={busy || bench.running}
-          onclick={loop}>Loop</button
+          onclick={loop}>{t("sendrequesttool.loop")}</button
         >
       {/if}
       <label class="inline"
-        >every
+        >{t("req.every")}
         <IntInput
           value={loopMs}
           min={50}
           max={600000}
           width="80px"
-          label="Loop interval"
+          label={t("sendrequesttool.loop_interval")}
           onchange={(n) => (loopMs = n)}
         /> ms</label
       >
@@ -418,20 +428,22 @@
       {#each list as s, i (i)}
         <li>
           <span class="mono">{s.name}</span>
-          {#if s.broadcast}<span class="tag">broadcast</span>{/if}
+          {#if s.broadcast}<span class="tag"
+              >{t("sendrequesttool.broadcast")}</span
+            >{/if}
           <span class="spacer"></span>
           <button
             class="btn small"
             disabled={busy || bench.running}
             onclick={() => send({ fc: s.fc, data: s.data }, s.raw, s.broadcast)}
-            >Send</button
+            >{t("sendrequesttool.send")}</button
           >
           <button
             class="btn small ghost"
             onclick={() => {
               list = list.filter((_, k) => k !== i);
               persist();
-            }}>Remove</button
+            }}>{t("maptable.remove")}</button
           >
         </li>
       {/each}

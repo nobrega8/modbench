@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import Select from "./Select.svelte";
   import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
@@ -214,20 +215,20 @@
   <span class="spacer"></span>
   <button
     class="btn"
-    title="Save the values last read from the writable registers"
-    onclick={saveTemplate}>Save template…</button
+    title={t("mapwritelist.save_the_values_last")}
+    onclick={saveTemplate}>{t("mapwritelist.save_template")}</button
   >
   <button
     class="btn"
-    title="Write the values of a saved template to this device"
-    onclick={loadTemplate}>Load template…</button
+    title={t("mapwritelist.write_the_values_of")}
+    onclick={loadTemplate}>{t("mapwritelist.load_template")}</button
   >
   <input
     class="input search"
     type="search"
-    placeholder="Search name or address"
+    placeholder={t("maptable.search_name_or_address")}
     bind:value={search}
-    aria-label="Search writable registers"
+    aria-label={t("mapwritelist.search_writable_registers")}
   />
 </div>
 
@@ -250,7 +251,7 @@
           tpl = null;
           undo = null;
           tplNote = null;
-        }}>Close</button
+        }}>{t("mapexplorer.close")}</button
       >
     </div>
     <p class="tpl-sum">
@@ -278,13 +279,13 @@
     {/if}
     {#if !bench.mapResults.size}
       <p class="dim">
-        Nothing has been read yet, so every value counts as changed.
+        {t("mapwritelist.nothing_has_been_read")}
       </p>
     {/if}
     <div class="tpl-actions">
       <label class="check"
-        ><input type="checkbox" bind:checked={onlyChanged} /> Only values that differ
-        from the device</label
+        ><input type="checkbox" bind:checked={onlyChanged} />
+        {t("mapwritelist.only_values_that_differ")}</label
       >
       <span class="spacer"></span>
       {#if tplNote}<span class:good={tplNote.ok} class:bad={!tplNote.ok}
@@ -292,7 +293,7 @@
         >{/if}
       {#if undo?.length}
         <button class="btn" disabled={applying} onclick={undoTemplate}
-          >Undo</button
+          >{t("mapwritelist.undo")}</button
         >
       {/if}
       <button
@@ -311,10 +312,10 @@
   <table>
     <thead>
       <tr>
-        <th class="addr">Address</th>
-        <th class="name-col">Name</th>
-        <th class="cur">Current value</th>
-        <th>New value</th>
+        <th class="addr">{t("req.address")}</th>
+        <th class="name-col">{t("computedform.name")}</th>
+        <th class="cur">{t("mapwritelist.current_value")}</th>
+        <th>{t("maptable.new_value")}</th>
       </tr>
     </thead>
     <tbody>
@@ -331,7 +332,8 @@
             {#if reg.description}<div class="desc">{reg.description}</div>{/if}
           </td>
           <td class="cur mono">
-            {#if reg.access === "W"}<span class="dim">write only</span
+            {#if reg.access === "W"}<span class="dim"
+                >{t("maptable.write_only")}</span
               >{:else if r?.sentinel}<span class="dim">{r.sentinel}</span
               >{:else}{formatValue(reg, r?.value ?? null)}
               {#if r?.value !== null && r?.value !== undefined && reg.unit}<span
@@ -361,7 +363,7 @@
                   bind:value={drafts[index]}
                   width="260px"
                   label="Value for {reg.name}"
-                  placeholder="Choose…"
+                  placeholder={t("maptable.choose")}
                   options={[
                     ...reg.enum.map(([v, l]) => ({
                       value: l,
@@ -377,7 +379,8 @@
                 />
                 <button
                   class="btn accent"
-                  disabled={busy !== null || !drafts[index]}>Write</button
+                  disabled={busy !== null || !drafts[index]}
+                  >{t("maptable.write2")}</button
                 >
               {:else}
                 <input
@@ -395,21 +398,24 @@
                 <span class="dim unit">{reg.unit}</span>
                 <button
                   class="btn accent"
-                  disabled={busy !== null || !drafts[index]}>Write</button
+                  disabled={busy !== null || !drafts[index]}
+                  >{t("maptable.write2")}</button
                 >
                 {#if reg.enum.length}
                   <button
                     type="button"
                     class="btn ghost"
-                    title="Pick one of the map's values again"
+                    title={t("maptable.pick_one_of_the")}
                     onclick={() => {
                       custom[index] = false;
                       drafts[index] = "";
-                    }}>Options</button
+                    }}>{t("maptable.options")}</button
                   >
                 {/if}
               {/if}
-              {#if busy === index}<span class="dim">Writing…</span>{/if}
+              {#if busy === index}<span class="dim"
+                  >{t("mapwritelist.writing")}</span
+                >{/if}
               {#if note}<span class:good={note.ok} class:bad={!note.ok}
                   >{note.text}</span
                 >{/if}

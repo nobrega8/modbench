@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { api, errorText } from "#lib/api.ts";
   import { headerRows } from "#lib/map-header.ts";
   import { modelMatches } from "#lib/search.ts";
@@ -250,9 +251,9 @@
       <button
         class="btn back"
         onclick={back}
-        title="Back to all vendors (Esc)"
+        title={t("onlinelibrary.back_to_all_vendors")}
         in:fade={{ duration: 160 }}
-        ><Icon name="back" size={16} />Vendors</button
+        ><Icon name="back" size={16} />{t("onlinelibrary.vendors")}</button
       >
     {/if}
     <div class="heading">
@@ -260,10 +261,10 @@
         <div in:slideIn={{ dir }}>
           {#if vendor !== null}
             <h2 id="online-title">{vendorName}</h2>
-            <p>Online library</p>
+            <p>{t("onlinelibrary.online_library")}</p>
           {:else}
-            <h2 id="online-title">Online library</h2>
-            <p>Maps shared on GitHub.</p>
+            <h2 id="online-title">{t("onlinelibrary.online_library")}</h2>
+            <p>{t("onlinelibrary.maps_shared_on_github")}</p>
           {/if}
         </div>
       {/key}
@@ -285,11 +286,13 @@
       {#key view}
         <div in:slideIn={{ dir }}>
           {#if loading}
-            <p class="note">Loading the online library…</p>
+            <p class="note">{t("onlinelibrary.loading_the_online_library")}</p>
           {:else if loadError}
             <div class="note">
               <p class="bad">{loadError}</p>
-              <button class="btn" onclick={load}>Try again</button>
+              <button class="btn" onclick={load}
+                >{t("onlinelibrary.try_again")}</button
+              >
             </div>
           {:else if vendor === null}
             {#each vendors as g (g.name.toLowerCase())}
@@ -344,7 +347,7 @@
                 <button
                   class="btn small icon ghost info-btn"
                   class:on={infoPath === e.path}
-                  title="Map details"
+                  title={t("onlinelibrary.map_details")}
                   aria-label="Details of {e.model}"
                   aria-expanded={infoPath === e.path}
                   onclick={(ev) => toggleInfo(e, ev.currentTarget)}
@@ -354,7 +357,7 @@
                   <button
                     class="btn ghost small"
                     disabled={busy}
-                    title="Download it again and replace the copy in your library"
+                    title={t("onlinelibrary.download_it_again_and")}
                     onclick={() => add(e)}
                     >{busy ? "Downloading…" : "Replace"}</button
                   >
@@ -397,7 +400,7 @@
       <h3 class="pop-title">{e.vendor} {e.model}</h3>
 
       {#if !d}
-        <p class="muted">Loading the map…</p>
+        <p class="muted">{t("onlinelibrary.loading_the_map")}</p>
       {:else if "error" in d}
         <p class="bad">{d.error}</p>
       {:else if !d.map}
@@ -415,7 +418,7 @@
           {/each}
         </dl>
         {#if d.map.meta.sources?.length}
-          <h4>Sources</h4>
+          <h4>{t("mapexplorer.sources")}</h4>
           <ul>
             {#each d.map.meta.sources as src, i (i)}
               <li>
@@ -428,7 +431,7 @@
           </ul>
         {/if}
         {#if d.map.meta.notes?.length}
-          <h4>Notes</h4>
+          <h4>{t("mapexplorer.notes")}</h4>
           <ul>
             {#each d.map.meta.notes as note, i (i)}
               <li>{note}</li>
@@ -440,10 +443,10 @@
   </div>
 
   <footer>
-    <span class="hint"
-      >Check maps against the vendor's manual before writing.</span
+    <span class="hint">{t("onlinelibrary.check_maps_against_the")}</span>
+    <button class="btn" onclick={() => (open = false)}
+      >{t("onlinelibrary.done")}</button
     >
-    <button class="btn" onclick={() => (open = false)}>Done</button>
   </footer>
 </dialog>
 

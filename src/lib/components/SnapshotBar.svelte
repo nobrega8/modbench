@@ -4,6 +4,7 @@
   snapshot, and show only what differs.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
   import { clock } from "#lib/format.ts";
@@ -106,8 +107,8 @@
 <button
   class="btn small"
   aria-haspopup="menu"
-  title="Keep the values shown now, to compare with later values or with another snapshot"
-  onclick={menu}>Snapshot…</button
+  title={t("snapshotbar.keep_the_values_shown")}
+  onclick={menu}>{t("snapshotbar.snapshot")}</button
 >
 {#if bench.snapshot && fits(bench.snapshot) && differences !== null}
   <span class="snap" role="status">
@@ -123,7 +124,7 @@
   </span>
   <label class="only">
     <input type="checkbox" bind:checked={bench.onlyDifferences} />
-    Only differences
+    {t("snapshotbar.only_differences")}
   </label>
 {/if}
 {#if note}<span class="note" class:bad={!note.ok}>{note.text}</span>{/if}

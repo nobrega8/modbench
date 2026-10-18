@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { popIn, popOut } from "#lib/motion.ts";
   import { open as openDialog } from "@tauri-apps/plugin-dialog";
   import { errorText } from "#lib/api.ts";
@@ -258,10 +259,13 @@
         {/if}
       </span>
     </span>
-    {#if it.current}<span class="tag">Current</span>{/if}
-    {#if it.last && !it.current}<span class="tag soft">Last used</span>{/if}
+    {#if it.current}<span class="tag">{t("mappicker.current")}</span>{/if}
+    {#if it.last && !it.current}<span class="tag soft"
+        >{t("mappicker.last_used")}</span
+      >{/if}
     {#if !it.error}<span class="count"
-        >{it.registers} <span class="unit">registers</span></span
+        >{it.registers}
+        <span class="unit">{t("mappicker.registers")}</span></span
       >{/if}
   </button>
 {/snippet}
@@ -298,8 +302,8 @@
       </span>
     {:else}
       <span class="txt">
-        <span class="model">Choose a map</span>
-        <span class="sub">From your library, a file or the online library</span>
+        <span class="model">{t("mappicker.choose_a_map")}</span>
+        <span class="sub">{t("mappicker.from_your_library_a")}</span>
       </span>
     {/if}
     <svg class="chev" viewBox="0 0 10 6" aria-hidden="true"
@@ -330,16 +334,16 @@
         bind:this={search}
         class="input find"
         type="search"
-        placeholder="Search vendor, model or file"
+        placeholder={t("mappicker.search_vendor_model_or")}
         bind:value={query}
-        aria-label="Search maps"
+        aria-label={t("mappicker.search_maps")}
         autocomplete="off"
         spellcheck="false"
       />
 
-      <div class="list" role="listbox" aria-label="Device maps">
+      <div class="list" role="listbox" aria-label={t("mappicker.device_maps")}>
         {#if shownOpen.length}
-          <div class="key head">Open</div>
+          <div class="key head">{t("mappicker.open")}</div>
           {#each shownOpen as it (it.key)}{@render row(it, true)}{/each}
         {/if}
 
@@ -362,10 +366,10 @@
 
       <div class="foot">
         <button type="button" class="btn" onclick={chooseFile}
-          >Open file…</button
+          >{t("mappicker.open_file")}</button
         >
         <button type="button" class="btn ghost" onclick={browseOnline}
-          >Online library…</button
+          >{t("mappicker.online_library")}</button
         >
       </div>
     </div>

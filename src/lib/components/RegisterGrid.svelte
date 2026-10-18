@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import Select from "./Select.svelte";
   import { areaAccess, formatAddress, hex } from "#lib/format.ts";
   import { slidePill } from "#lib/motion.ts";
@@ -337,19 +338,19 @@
 <div class="toolbar">
   {#if read?.data.kind !== "bits"}
     <label class="inline">
-      <span>Show as</span>
+      <span>{t("registergrid.show_as")}</span>
       <Select
         bind:value={bench.gridFormat}
-        label="Show as"
+        label={t("registergrid.show_as")}
         options={formats.map((f) => ({ value: f.id, label: f.label }))}
       />
     </label>
     {#if wide}
       <label class="inline">
-        <span>Byte order</span>
+        <span>{t("req.byteOrder")}</span>
         <Select
           bind:value={bench.gridOrder}
-          label="Byte order"
+          label={t("req.byteOrder")}
           options={orders.map((o) => ({ value: o, label: o }))}
         />
       </label>
@@ -357,20 +358,25 @@
   {/if}
   <AddressFormat />
   {#if !bitView}
-    <div class="segmented" role="tablist" aria-label="Layout" use:slidePill>
+    <div
+      class="segmented"
+      role="tablist"
+      aria-label={t("registergrid.layout")}
+      use:slidePill
+    >
       <button
         role="tab"
         aria-selected={list}
         class:on={list}
-        title="One row per value, with its address"
-        onclick={() => setLayout("list")}>List</button
+        title={t("registergrid.one_row_per_value")}
+        onclick={() => setLayout("list")}>{t("registergrid.list")}</button
       >
       <button
         role="tab"
         aria-selected={!list}
         class:on={!list}
-        title="Ten values per row: the row's first address plus the column"
-        onclick={() => setLayout("grid")}>Grid</button
+        title={t("registergrid.ten_values_per_row")}
+        onclick={() => setLayout("grid")}>{t("registergrid.grid")}</button
       >
     </div>
   {/if}
@@ -381,7 +387,7 @@
     differences={snap ? different.size : null}
   />
   <button class="btn" disabled={!read} onclick={() => bench.copyReadToWrite()}
-    >Copy data to write values</button
+    >{t("registergrid.copy_data_to_write")}</button
   >
 </div>
 
@@ -417,7 +423,7 @@
     <div class="bits">
       <span></span>
       {#each Array(16) as _, k (k)}<span class="colhead">{15 - k}</span>{/each}
-      <span class="colhead">Hex</span>
+      <span class="colhead">{t("registergrid.hex")}</span>
       {#each read.data.values as w, i (i)}
         <span class="rowhead">{addr(r.address + i)}</span>
         {#each Array(16) as _, k (k)}
@@ -459,8 +465,7 @@
   </div>
 {:else if !read}
   <p class="empty">
-    Values read from the device appear here. Choose a read command in step 2 and
-    press Start.
+    {t("registergrid.values_read_from_the")}
   </p>
 {:else if list}
   {@const r = read}
@@ -469,10 +474,12 @@
     <table class="regs" class:writable={access?.writable}>
       <thead>
         <tr>
-          <th class="addr">Address</th>
-          <th class="val">Value</th>
-          {#if r.data.kind === "registers"}<th class="hex">Raw</th>{/if}
-          {#if snap}<th class="val">Snapshot</th>{/if}
+          <th class="addr">{t("req.address")}</th>
+          <th class="val">{t("maptable.value")}</th>
+          {#if r.data.kind === "registers"}<th class="hex"
+              >{t("maptable.raw")}</th
+            >{/if}
+          {#if snap}<th class="val">{t("maptable.snapshot")}</th>{/if}
         </tr>
       </thead>
       <tbody>

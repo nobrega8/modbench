@@ -56,7 +56,7 @@
 
 <div class="tools" class:alone={only}>
   {#if !only}
-    <nav aria-label="Tools">
+    <nav aria-label={t("nav.tools")}>
       {#each sections as s (s.title)}
         <h2 class="key">{t(s.title)}</h2>
         {#each s.tools as tool (tool.id)}

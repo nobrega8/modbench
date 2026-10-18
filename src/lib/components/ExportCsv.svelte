@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
 
@@ -33,8 +34,8 @@
 <button
   class="btn"
   {disabled}
-  title="Save the results shown as a CSV file"
-  onclick={exportCsv}>Export CSV…</button
+  title={t("exportcsv.save_the_results_shown")}
+  onclick={exportCsv}>{t("exportcsv.export_csv")}</button
 >
 {#if error}
   <span class="bad" role="alert">{error}</span>

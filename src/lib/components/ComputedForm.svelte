@@ -4,6 +4,7 @@
   registers added by hand; the file is not changed.
 -->
 <script lang="ts">
+  import { t } from "#lib/i18n.svelte.ts";
   import { computedRegister } from "#lib/computed.ts";
   import { formulaProblem, plainName } from "#lib/formula.ts";
   import { bench, type OpenMap } from "#lib/state.svelte.ts";
@@ -46,7 +47,7 @@
   }}
 >
   <div class="head">
-    <strong>Add a computed value</strong>
+    <strong>{t("computedform.add_a_computed_value")}</strong>
     <span class="dim"
       >Worked out every cycle from the values read. Name registers with
       underscores for spaces{sample.length ? ` (${sample.join(", ")})` : ""}, or
@@ -56,15 +57,15 @@
   </div>
   <div class="fields">
     <label class="field">
-      <span>Name</span>
+      <span>{t("computedform.name")}</span>
       <input class="input" bind:value={name} placeholder="Power L1" />
     </label>
     <label class="field">
-      <span>Unit</span>
+      <span>{t("computedform.unit")}</span>
       <input class="input short" bind:value={unit} placeholder="kW" />
     </label>
     <label class="field grow">
-      <span>Formula</span>
+      <span>{t("computedform.formula")}</span>
       <input
         class="input mono"
         bind:value={formula}
@@ -72,8 +73,10 @@
         placeholder="Voltage_L1 * Current_L1 / 1000"
       />
     </label>
-    <button class="btn accent" type="submit">Add</button>
-    <button class="btn" type="button" onclick={onclose}>Cancel</button>
+    <button class="btn accent" type="submit">{t("computedform.add")}</button>
+    <button class="btn" type="button" onclick={onclose}
+      >{t("computedform.cancel")}</button
+    >
   </div>
   {#if problem && (tried || formula.trim())}
     <p class="bad" role="alert">{problem}</p>
