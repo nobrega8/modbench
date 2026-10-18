@@ -20,8 +20,9 @@ pub struct OnlineEntry {
     pub path: String,
     pub vendor: String,
     pub model: String,
-    /// Every model name or code the map applies to; searched too.
-    #[serde(default)]
+    /// Every model name or code the map applies to; searched too. The index
+    /// says `null` for maps without a `models` list.
+    #[serde(default, deserialize_with = "null_as_empty")]
     pub models: Vec<String>,
     pub description: Option<String>,
     pub vendor_website: Option<String>,
@@ -29,6 +30,11 @@ pub struct OnlineEntry {
     #[serde(default)]
     pub status: Option<String>,
     pub registers: usize,
+}
+
+/// A list that may be missing or `null`, read as empty.
+fn null_as_empty<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<String>, D::Error> {
+    Ok(Option::<Vec<String>>::deserialize(d)?.unwrap_or_default())
 }
 
 #[derive(Deserialize)]
@@ -398,13 +404,29 @@ mod tests {
                 {"path": "maps/a/b.mbmap.json", "vendor": "A", "model": "B", "description": null,
                  "vendor_website": null, "registers": 1, "models": ["B", "B-MID"]},
                 {"path": "maps/a/c.mbmap.json", "vendor": "A", "model": "C", "description": null,
-                 "vendor_website": null, "registers": 1}
+                 "vendor_website": null, "registers": 1},
+                {"path": "maps/a/d.mbmap.json", "vendor": "A", "model": "D", "description": null,
+                 "vendor_website": null, "registers": 1, "models": null}
             ]}"#,
         )
         .unwrap();
         assert_eq!(index.maps[0].models, ["B", "B-MID"]);
-        // Older indexes have no `models`.
+        // Older indexes have no `models`; the index says null for maps
+        // without one.
         assert!(index.maps[1].models.is_empty());
+        assert!(index.maps[2].models.is_empty());
+    }
+
+    #[test]
+    fn the_library_index_parses() {
+        // The real index, as the online library downloads it.
+        let body = std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../vendor/mbmap-library/index.json"
+        ))
+        .unwrap();
+        let index: Index = serde_json::from_slice(&body).unwrap();
+        assert!(index.maps.len() > 100);
     }
 
     #[test]
