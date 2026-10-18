@@ -1,13 +1,16 @@
 <!--
   A read-only look at a library map: what it says about the device and its
-  registers, without opening it on the Main page.
+  registers, without opening it on the Main page. The registers scroll; the
+  map's header stays beside them.
 -->
 <script lang="ts">
   import { api, errorText } from "#lib/api.ts";
   import { AREA_TAG, formatAddress } from "#lib/format.ts";
   import { settings } from "#lib/settings.svelte.ts";
+  import { extraRows, headerRows, mapStatusOf } from "#lib/map-header.ts";
   import type { DeviceMap } from "#lib/types.ts";
   import Icon from "./Icon.svelte";
+  import MapStatus, { mapStatus } from "./MapStatus.svelte";
 
   interface Props {
     /** The map file to show, or null when closed. */
@@ -63,6 +66,23 @@
     ].filter((f): f is string => !!f);
   });
 
+  /** The header of the map for the side panel; the description is already
+      under the title. */
+  const header = $derived(
+    map
+      ? headerRows(map.meta, map.registers.length).filter(
+          ([label]) => label !== "Description",
+        )
+      : [],
+  );
+
+  const STATUS_TEXT: Record<string, string> = {
+    verified: "Verified on a device",
+    official: "Official: from the manufacturer's documentation",
+    unofficial: "Unofficial: not checked against the documentation",
+  };
+  const status = $derived(map ? mapStatus(mapStatusOf(map.meta)) : null);
+
   const shown = $derived.by(() => {
     const q = search.trim().toLowerCase();
     const regs = map?.registers ?? [];
@@ -105,52 +125,115 @@
     >
   </header>
 
-  <div class="list">
-    {#if problem}
-      <p class="note bad">{problem}</p>
-    {:else if !map}
-      <p class="note">Loading…</p>
-    {:else}
-      <table class="data">
-        <thead>
-          <tr>
-            <th>Address</th>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Unit</th>
-            <th>Access</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each shown as r, i (i)}
-            <tr title={r.description || undefined}>
-              <td class="mono"
-                ><span class="tag">{AREA_TAG[r.area]}</span>{formatAddress(
-                  r.address,
-                  settings.addressFormat,
-                  r.area,
-                )}</td
-              >
-              <td
-                >{r.name}{#if r.group}<span class="group">{r.group}</span
-                  >{/if}</td
-              >
-              <td class="mono">{r.type}</td>
-              <td>{r.unit}</td>
-              <td>{r.access}</td>
+  <div class="body">
+    <div class="list">
+      {#if problem}
+        <p class="note bad">{problem}</p>
+      {:else if !map}
+        <p class="note">Loading…</p>
+      {:else}
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Unit</th>
+              <th>Access</th>
             </tr>
-          {:else}
-            <tr><td colspan="5" class="note">No registers match.</td></tr>
+          </thead>
+          <tbody>
+            {#each shown as r, i (i)}
+              <tr title={r.description || undefined}>
+                <td class="mono"
+                  ><span class="tag">{AREA_TAG[r.area]}</span>{formatAddress(
+                    r.address,
+                    settings.addressFormat,
+                    r.area,
+                  )}</td
+                >
+                <td
+                  >{r.name}{#if r.group}<span class="group">{r.group}</span
+                    >{/if}</td
+                >
+                <td class="mono">{r.type}</td>
+                <td>{r.unit}</td>
+                <td>{r.access}</td>
+              </tr>
+            {:else}
+              <tr><td colspan="5" class="note">No registers match.</td></tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </div>
+
+    {#if map}
+      {@const m = map.meta}
+      <aside aria-label="Map properties">
+        {#if status}
+          <p class="status">
+            <MapStatus {status} />{STATUS_TEXT[status] ?? status}
+          </p>
+        {/if}
+        <dl>
+          {#each header as [label, value] (label)}
+            <dt>{label}</dt>
+            <dd>{value}</dd>
           {/each}
-        </tbody>
-      </table>
+          {#if m.enums.length}
+            <dt>Translation tables</dt>
+            <dd>{m.enums.map(([name]) => name).join(", ")}</dd>
+          {/if}
+          {#if m.sentinels.length}
+            <dt>Sentinels</dt>
+            <dd>
+              {m.sentinels
+                .map(
+                  ([type, values]) =>
+                    `${type}: ${values.map(([, label]) => label).join(", ")}`,
+                )
+                .join("; ")}
+            </dd>
+          {/if}
+          {#each extraRows(m) as [key, value] (key)}
+            <dt class="mono">{key}</dt>
+            <dd>{value}</dd>
+          {/each}
+        </dl>
+
+        {#if m.sources?.length}
+          <h3>Sources</h3>
+          <ul>
+            {#each m.sources as src, i (i)}
+              <li>
+                <span class="title">{src.title}</span>
+                {#if src.version || src.date}
+                  <span class="sub"
+                    >{[src.version, src.date].filter(Boolean).join(" · ")}</span
+                  >
+                {/if}
+                {#if src.url}<span class="url">{src.url}</span>{/if}
+                {#if src.note}<span class="sub">{src.note}</span>{/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        {#if m.notes?.length}
+          <h3>Notes</h3>
+          <ul>
+            {#each m.notes as note, i (i)}<li>{note}</li>{/each}
+          </ul>
+        {/if}
+      </aside>
     {/if}
   </div>
 </dialog>
 
 <style>
   dialog {
-    width: min(820px, calc(100vw - 48px));
+    width: min(1120px, calc(100vw - 48px));
     height: min(640px, calc(100vh - 80px));
     padding: 0;
     border: 0;
@@ -222,11 +305,84 @@
     flex: none;
   }
 
-  .list {
+  .body {
     flex: 1;
     min-height: 0;
+    display: flex;
+  }
+
+  .list {
+    flex: 1;
+    min-width: 0;
     overflow: auto;
     padding: 0 12px 12px;
+  }
+
+  /* Beside the table and outside its scroll: always in view. */
+  aside {
+    flex: none;
+    width: 300px;
+    overflow-y: auto;
+    padding: 2px 18px 16px 16px;
+    border-left: 1px solid var(--border);
+    font-size: 12.5px;
+    user-select: text;
+  }
+
+  aside .status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 10px;
+    color: var(--text-2);
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 5px 12px;
+    margin: 0;
+  }
+
+  dt {
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  h3 {
+    margin: 16px 0 6px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  aside ul {
+    margin: 0;
+    padding-left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  aside li span {
+    display: block;
+  }
+
+  .sub {
+    color: var(--text-2);
+  }
+
+  .url {
+    color: var(--text-2);
+    font-size: 11.5px;
+    overflow-wrap: anywhere;
   }
 
   table {
