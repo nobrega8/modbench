@@ -1,0 +1,78 @@
+name: CodeQL
+
+# Code scanning, replacing GitHub's default setup so that it can be told when
+# to run: the JavaScript/TypeScript and GitHub Actions scans take under a
+# minute and run on every pull request; the Rust scan takes about eight
+# minutes, so it runs on main and once a week, not on every pull request.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "manual/**"
+      - "site/**"
+      - "assets/**"
+      - "LICENSE"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "manual/**"
+      - "site/**"
+      - "assets/**"
+      - "LICENSE"
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  analyze-rust:
+    name: Analyze (rust)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: rust
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:rust"
