@@ -41,7 +41,7 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
 
 - **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or UDP, or RTU over TCP or UDP.
 - **Address notations**: show addresses 0-based, 1-based, in hex, in Modicon (`400101`) or IEC 61131-3 (`%MW100`) notation. Address fields take the last two as typed, and switch to their area.
-- **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
+- **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. The FC column shows the function code each register is read with, and a right-click reads one with the other function (FC03 or FC04) when a device only answers one. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
 - **Checks the device**: reference values catch a wrong address or byte order, and a map can declare which models and firmware versions it fits.
 - **Write safely**: typed controls for writable registers, limits from the map, optional confirmation, and a read-only mode that blocks every write.
 - **Chart, raw bytes and log**: plot map registers, or addresses of a manual read, over time and save the charts as PNG or SVG, see the exact frames, export values or record every cycle to CSV.
@@ -66,7 +66,7 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
 <details>
 <summary>What Modbench remembers</summary>
 
-Everything stays on this computer. The last connection is filled in again on start. For each device (map + connection + unit ID), the registers you switched off, the byte order override and Loop come back; restoring them never writes or starts a test. Both can be turned off, and saved device choices forgotten, in Settings.
+Everything stays on this computer. The last connection is filled in again on start. For each device (map + connection + unit ID), the registers you switched off, the function codes you forced, the byte order override and Loop come back; restoring them never writes or starts a test. Both can be turned off, and saved device choices forgotten, in Settings.
 </details>
 
 ## User manual

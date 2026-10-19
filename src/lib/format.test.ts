@@ -4,7 +4,9 @@ import {
   areaOfFunction,
   formatAddress,
   formatValue,
+  otherReadArea,
   parseAddress,
+  READ_FUNCTION,
   valueTitle,
 } from "./format";
 import type { Register } from "./types";
@@ -130,5 +132,23 @@ describe("area access", () => {
     });
     expect(areaAccess("input", false).text).toBe("Input registers · read only");
     expect(areaAccess("discrete", false).writable).toBe(false);
+  });
+});
+
+describe("read function", () => {
+  it("names the function code of each area", () => {
+    expect(READ_FUNCTION).toEqual({
+      coil: 1,
+      discrete: 2,
+      holding: 3,
+      input: 4,
+    });
+  });
+
+  it("swaps words with words and bits with bits", () => {
+    expect(otherReadArea("holding")).toBe("input");
+    expect(otherReadArea("input")).toBe("holding");
+    expect(otherReadArea("coil")).toBe("discrete");
+    expect(otherReadArea("discrete")).toBe("coil");
   });
 });

@@ -3,7 +3,7 @@
 import { t } from "./i18n.svelte.ts";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorText } from "./api";
-import { FUNCTION_NAME } from "./format";
+import { FUNCTION_NAME, otherReadArea } from "./format";
 import {
   appliesTo,
   identify,
@@ -54,6 +54,8 @@ import {
   loadMapDefault,
   loadProfile,
   profileKey,
+  readAsIds,
+  readAsIndexes,
   saveMapDefault,
   saveProfile,
 } from "./profiles";
@@ -194,6 +196,8 @@ class Bench {
   orderOverride = $state<ByteOrder | null>(null);
   /** Registers of the active map that are not read (by index). */
   skipped = $state.raw<Set<number>>(new Set());
+  /** Registers read with the other function code than their area's (by index). */
+  readAs = $state.raw<Map<number, Area>>(new Map());
   library = $state.raw<LibraryEntry[]>([]);
   libraryFolder = $state("");
   /** Path of the map used last time, offered first in the picker. */
@@ -566,6 +570,7 @@ class Bench {
     this.lastCycle = null;
     if (!settings.rememberDevices) {
       this.skipped = new Set();
+      this.readAs = new Map();
       this.orderOverride = null;
       return;
     }
@@ -574,12 +579,14 @@ class Bench {
     const profile = loadProfile(key);
     if (profile) {
       this.skipped = indexesOf(profile.skipped, registers);
+      this.readAs = readAsIndexes(profile.readAs, registers);
       this.orderOverride = profile.order;
       this.loop = profile.loop;
       return;
     }
     const seed = loadMapDefault(open.path, registers);
     this.skipped = seed ? indexesOf(seed, registers) : new Set();
+    this.readAs = new Map();
     this.orderOverride = null;
   }
 
@@ -594,6 +601,7 @@ class Bench {
       skipped: ids,
       order: this.orderOverride,
       loop: this.loop,
+      readAs: readAsIds(this.readAs, open.map.registers),
     });
     saveMapDefault(open.path, ids);
   }
@@ -606,6 +614,23 @@ class Bench {
 
   setOrderOverride(order: ByteOrder | null) {
     this.orderOverride = order;
+    this.persistDevice();
+    this.refreshPolling();
+  }
+
+  /**
+   * Reads one register with the other function code (FC03 instead of FC04 or
+   * the other way round, FC01 instead of FC02), or back with its own area's
+   * when `area` is null. Writes keep using the register's own area.
+   */
+  setReadArea(index: number, area: Area | null) {
+    const reg = this.map?.map.registers[index];
+    if (!reg) return;
+    const next = new Map(this.readAs);
+    if (area === null || area === reg.area) next.delete(index);
+    else if (area === otherReadArea(reg.area)) next.set(index, area);
+    else return;
+    this.readAs = next;
     this.persistDevice();
     this.refreshPolling();
   }
@@ -851,7 +876,10 @@ class Bench {
           !isComputed(all[i]) &&
           appliesTo(all[i], version),
       );
-    const registers = indexes.map((i) => all[i]);
+    const registers = indexes.map((i) => {
+      const area = this.readAs.get(i);
+      return area ? { ...all[i], area } : all[i];
+    });
     // Scale factors of read registers are read too, even when switched off.
     const names = new Set(registers.map((r) => r.name));
     const scale_registers = [];
@@ -1506,6 +1534,7 @@ class Bench {
     this.skipped = new Set(
       [...this.skipped].filter((i) => i !== index).map(shift),
     );
+    this.readAs = rekey(this.readAs);
     this.mapResults = rekey(this.mapResults);
     this.history = rekey(this.history);
     this.chartSeries = this.chartSeries

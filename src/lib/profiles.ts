@@ -9,7 +9,8 @@
 // (area, address, type, bit, name), not by their position, so editing a map
 // file does not switch the wrong registers off.
 
-import type { ByteOrder, Register } from "./types";
+import { otherReadArea } from "./format";
+import type { Area, ByteOrder, Register } from "./types";
 
 /** Where choices are kept: the webview's localStorage, or a stand-in in tests. */
 export type KeyValueStore = Pick<
@@ -24,6 +25,8 @@ export interface DeviceProfile {
   /** Byte order forced for every value, or null to use the map's. */
   order: ByteOrder | null;
   loop: boolean;
+  /** Registers read with the other function code, by id: the area used. */
+  readAs: Record<string, Area>;
 }
 
 const PROFILE_PREFIX = "modbench.device:";
@@ -77,6 +80,30 @@ export function indexesOf(ids: string[], registers: Register[]): Set<number> {
   return out;
 }
 
+/** Read-as choices by register position; ids that do not apply are dropped. */
+export function readAsIndexes(
+  ids: Record<string, Area>,
+  registers: Register[],
+): Map<number, Area> {
+  const out = new Map<number, Area>();
+  registers.forEach((r, i) => {
+    const area = ids[registerId(r)];
+    if (area !== undefined && area === otherReadArea(r.area)) out.set(i, area);
+  });
+  return out;
+}
+
+export function readAsIds(
+  chosen: Map<number, Area>,
+  registers: Register[],
+): Record<string, Area> {
+  const out: Record<string, Area> = {};
+  for (const [i, area] of chosen) {
+    if (i >= 0 && i < registers.length) out[registerId(registers[i])] = area;
+  }
+  return out;
+}
+
 export function idsOf(indexes: Set<number>, registers: Register[]): string[] {
   return [...indexes]
     .filter((i) => i >= 0 && i < registers.length)
@@ -117,7 +144,19 @@ export function loadProfile(
         ? p.order
         : null,
     loop: p.loop !== false,
+    readAs: cleanReadAs(p.readAs),
   };
+}
+
+const AREAS: Area[] = ["coil", "discrete", "input", "holding"];
+
+function cleanReadAs(raw: unknown): Record<string, Area> {
+  const out: Record<string, Area> = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [id, area] of Object.entries(raw)) {
+    if (AREAS.includes(area as Area)) out[id] = area as Area;
+  }
+  return out;
 }
 
 export function saveProfile(

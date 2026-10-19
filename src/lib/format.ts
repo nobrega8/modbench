@@ -122,6 +122,27 @@ const IEC_PREFIX: Record<Area, string> = {
   holding: "%MW",
 };
 
+/** The function code that reads each area. */
+export const READ_FUNCTION: Record<Area, number> = {
+  coil: 1,
+  discrete: 2,
+  holding: 3,
+  input: 4,
+};
+
+/**
+ * The other area a register can be read from: holding and input registers
+ * hold words, coils and discrete inputs hold bits, so those pairs swap.
+ */
+export function otherReadArea(area: Area): Area {
+  return {
+    coil: "discrete",
+    discrete: "coil",
+    holding: "input",
+    input: "holding",
+  }[area] as Area;
+}
+
 /** The area a function code reads or writes, or null for other functions. */
 export function areaOfFunction(fc: number): Area | null {
   if (fc === 1 || fc === 5 || fc === 15) return "coil";
