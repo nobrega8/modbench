@@ -11,6 +11,7 @@ import type {
   FunctionCheck,
   ReadLimit,
   DeviceMap,
+  Diagnostic,
   Generator,
   ImportResult,
   LibraryEntry,
@@ -157,6 +158,12 @@ export const api = {
   simInfo: () => invoke<SimInfo>("sim_info"),
   /** Shows the simulator in a window of its own, or brings it to the front. */
   simOpenWindow: () => invoke<void>("sim_open_window"),
+  /** Shows the map builder in a window of its own, or brings it to the front. */
+  builderOpenWindow: () => invoke<void>("builder_open_window"),
+  builderCloseWindow: () => invoke<void>("builder_close_window"),
+  /** Checks a map that is being built, with the rules a file gets. */
+  validateMap: (map: DeviceMap) =>
+    invoke<Diagnostic[]>("validate_map", { map }),
   simCloseWindow: () => invoke<void>("sim_close_window"),
   simRead: (device: number, area: Area, address: number, count: number) =>
     invoke<SimView>("sim_read", { device, area, address, count }),

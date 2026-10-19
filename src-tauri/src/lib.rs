@@ -142,6 +142,9 @@ pub fn run() {
             commands::sim_info,
             commands::sim_open_window,
             commands::sim_close_window,
+            commands::builder_open_window,
+            commands::builder_close_window,
+            commands::validate_map,
             commands::sim_values,
             commands::sim_set_value,
             commands::sim_load,
@@ -158,10 +161,12 @@ pub fn run() {
                 commands::SIM_WINDOW => {
                     let _ = app.emit("sim-window", false);
                 }
-                // The simulator's window does not outlive the app's.
+                // The tool windows do not outlive the app's.
                 "main" => {
-                    if let Some(sim) = app.get_webview_window(commands::SIM_WINDOW) {
-                        let _ = sim.close();
+                    for label in [commands::SIM_WINDOW, commands::BUILDER_WINDOW] {
+                        if let Some(window) = app.get_webview_window(label) {
+                            let _ = window.close();
+                        }
                     }
                 }
                 _ => {}

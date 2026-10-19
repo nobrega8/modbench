@@ -224,6 +224,12 @@
       ><Icon name="plus" />{current.map.meta.model}</button
     >
   {/if}
+  <button
+    class="btn"
+    title={t("builder.open_hint")}
+    onclick={() => api.builderOpenWindow().catch(() => {})}
+    ><Icon name="plus" />{t("builder.title")}</button
+  >
   {#if bench.libraryFolder}
     <button
       class="btn icon"
