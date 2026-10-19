@@ -213,3 +213,15 @@ jobs:
           jq --arg notes "$SUMMARY" '.notes = $notes' latest.json > notes.json
           mv notes.json latest.json
           gh release upload "$TAG" latest.json --clobber -R "$GITHUB_REPOSITORY"
+
+      # The app reads the signatures from latest.json, not from the .sig
+      # files, which only clutter the release's assets.
+      - name: Remove the .sig files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.notes.outputs.tag }}
+        run: |
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name | select(endswith(".sig"))' |
+            while read -r name; do
+              gh release delete-asset "$TAG" "$name" -y -R "$GITHUB_REPOSITORY"
+            done
