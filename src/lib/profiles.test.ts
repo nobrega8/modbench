@@ -7,6 +7,8 @@ import {
   loadMapDefault,
   loadProfile,
   profileKey,
+  readAsIds,
+  readAsIndexes,
   registerId,
   saveMapDefault,
   saveProfile,
@@ -106,7 +108,13 @@ describe("profiles", () => {
     const two = profileKey("m", "tcp:a:502", 2);
     saveProfile(
       one,
-      { v: 1, skipped: ["x"], order: "CDAB", loop: false },
+      {
+        v: 1,
+        skipped: ["x"],
+        order: "CDAB",
+        loop: false,
+        readAs: { "holding:1:uint16:::A": "input" },
+      },
       store,
     );
     expect(loadProfile(one, store)).toEqual({
@@ -114,6 +122,7 @@ describe("profiles", () => {
       skipped: ["x"],
       order: "CDAB",
       loop: false,
+      readAs: { "holding:1:uint16:::A": "input" },
     });
     expect(loadProfile(two, store)).toBeNull();
   });
@@ -133,13 +142,31 @@ describe("profiles", () => {
       skipped: ["a"],
       order: null,
       loop: true,
+      readAs: {},
     });
+  });
+
+  it("keep only valid read-as areas", () => {
+    const store = new MemoryStore();
+    store.setItem(
+      "k",
+      JSON.stringify({
+        v: 1,
+        skipped: [],
+        readAs: { a: "input", b: "nonsense", c: 4 },
+      }),
+    );
+    expect(loadProfile("k", store)?.readAs).toEqual({ a: "input" });
   });
 
   it("work without storage", () => {
     expect(loadProfile("k", null)).toBeNull();
     expect(() =>
-      saveProfile("k", { v: 1, skipped: [], order: null, loop: true }, null),
+      saveProfile(
+        "k",
+        { v: 1, skipped: [], order: null, loop: true, readAs: {} },
+        null,
+      ),
     ).not.toThrow();
   });
 });
@@ -164,7 +191,7 @@ describe("forgetting", () => {
     const store = new MemoryStore();
     saveProfile(
       profileKey("m", "tcp:a:502", 1),
-      { v: 1, skipped: [], order: null, loop: true },
+      { v: 1, skipped: [], order: null, loop: true, readAs: {} },
       store,
     );
     saveMapDefault("m", ["a"], store);
@@ -175,5 +202,37 @@ describe("forgetting", () => {
       "modbench.connection",
       "modbench.settings",
     ]);
+  });
+});
+
+describe("read-as areas", () => {
+  const list = [
+    reg("A", 0),
+    reg("B", 1, { area: "input" }),
+    reg("C", 2, { area: "coil", type: "bool" }),
+  ];
+
+  it("go from positions to ids and back", () => {
+    const chosen = new Map<number, "input" | "holding" | "discrete">([
+      [0, "input"],
+      [1, "holding"],
+      [2, "discrete"],
+    ]);
+    const ids = readAsIds(chosen, list);
+    expect(readAsIndexes(ids, list)).toEqual(chosen);
+  });
+
+  it("drop a choice that is not the register's other area", () => {
+    const ids = {
+      [registerId(list[0])]: "coil" as const,
+      [registerId(list[1])]: "input" as const,
+    };
+    expect(readAsIndexes(ids, list).size).toBe(0);
+  });
+
+  it("follow a register that moved", () => {
+    const ids = readAsIds(new Map([[0, "input" as const]]), list);
+    const moved = [reg("X", 9), ...list];
+    expect(readAsIndexes(ids, moved)).toEqual(new Map([[1, "input"]]));
   });
 });

@@ -7,6 +7,8 @@
   import {
     AREA_TAG,
     AREA_NAME,
+    READ_FUNCTION,
+    otherReadArea,
     formatAddress,
     formatRaw,
     formatValue,
@@ -257,6 +259,15 @@
     bench.page = "tools";
   }
 
+  /** The function code a register is read with, and the map's own one. */
+  function readFc(reg: Register, index: number) {
+    const area = bench.readAs.get(index) ?? reg.area;
+    return { fc: READ_FUNCTION[area], own: READ_FUNCTION[reg.area] };
+  }
+
+  const fcText = (n: number) => String(n).padStart(2, "0");
+  const otherFc = (reg: Register) => READ_FUNCTION[otherReadArea(reg.area)];
+
   /** What a right-click on a register offers. */
   function rowMenu(reg: Register, index: number): MenuEntry[] {
     const r = bench.mapResults.get(index);
@@ -279,6 +290,22 @@
           : t("maptable.stop_reading_it"),
         action: () => bench.toggleRead(index),
       },
+      readable &&
+        formulaOf(reg) === null &&
+        (bench.readAs.has(index)
+          ? {
+              label: t("maptable.read_with_map_fc", {
+                fc: fcText(readFc(reg, index).own),
+              }),
+              action: () => bench.setReadArea(index, null),
+            }
+          : {
+              label: t("maptable.read_with_fc", {
+                fc: fcText(otherFc(reg)),
+                area: AREA_NAME[otherReadArea(reg.area)],
+              }),
+              action: () => bench.setReadArea(index, otherReadArea(reg.area)),
+            }),
       readable &&
         reg.type !== "string" &&
         (charted
@@ -569,6 +596,7 @@
       <tr>
         <th class="read">{t("maptable.read")}</th>
         <th class="addr">{t("req.address")}</th>
+        <th class="fc" title={t("maptable.fc_title")}>{t("maptable.fc")}</th>
         <th>{t("computedform.name")}</th>
         <th>{t("customregisterform.type")}</th>
         <th class="val">{t("maptable.value")}</th>
@@ -641,6 +669,27 @@
                 reg.area,
               )}{/if}</td
           >
+          <td class="fc mono">
+            {#if reg.access === "W" || formulaOf(reg) !== null}<span class="dim"
+                >–</span
+              >{:else}
+              {@const f = readFc(reg, index)}
+              {#if f.fc === f.own}<span
+                  title={t("maptable.fc_map", { fc: fcText(f.fc) })}
+                  >{fcText(f.fc)}</span
+                >{:else}<span
+                  class="forced"
+                  title={t("maptable.fc_forced", {
+                    fc: fcText(f.fc),
+                    map: fcText(f.own),
+                  })}
+                  aria-label={t("maptable.fc_forced", {
+                    fc: fcText(f.fc),
+                    map: fcText(f.own),
+                  })}>{fcText(f.fc)}*</span
+                >{/if}
+            {/if}
+          </td>
           <td class="name" title={reg.description || undefined}
             >{reg.name}{#if reg.group && !group}<span class="grp"
                 >{reg.group}</span
@@ -1051,11 +1100,21 @@
     width: 104px;
   }
 
-  th:nth-child(3) {
-    width: 30%;
+  .fc {
+    width: 52px;
+    text-align: center;
+  }
+
+  .fc .forced {
+    color: var(--accent);
+    font-weight: 700;
   }
 
   th:nth-child(4) {
+    width: 30%;
+  }
+
+  th:nth-child(5) {
     width: 150px;
   }
 
@@ -1063,12 +1122,12 @@
     width: 170px;
   }
 
-  th:nth-child(6) {
+  th:nth-child(7) {
     width: 64px;
   }
 
   /* Raw takes whatever width is left, so values sit next to their names */
-  th:nth-child(7) {
+  th:nth-child(8) {
     width: auto;
   }
 
