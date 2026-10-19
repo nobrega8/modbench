@@ -1,9 +1,33 @@
 name: CI
 
+# What runs where:
+# - the web checks (formatting, types, unit tests) run once, on Linux: they do
+#   not depend on the system;
+# - the Rust checks (clippy, tests) run on Windows, Linux and macOS, since the
+#   app is built for all three;
+# - a change that only touches documentation, the website or images does not
+#   build the app.
+# A new push to a branch cancels the run still going for it (see concurrency).
+
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "manual/**"
+      - "site/**"
+      - "assets/**"
+      - "LICENSE"
+      - ".github/FUNDING.yml"
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "manual/**"
+      - "site/**"
+      - "assets/**"
+      - "LICENSE"
+      - ".github/FUNDING.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,6 +43,7 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-22.04, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
         with:
@@ -39,17 +64,28 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      # Branches only read the cache that main saved: saving one per branch
+      # takes time and is rarely found again.
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - run: npm ci
-      - run: npm run format:check
-      - run: npm run check
-      - run: npm test
+
+      # The page does not change with the system: checked once.
+      - name: Web checks
+        if: runner.os == 'Linux'
+        run: |
+          npm run format:check
+          npm run check
+          npm test
+
+      # The Rust side needs the built page (tauri embeds it).
       - run: npm run build
 
       - name: cargo fmt
+        if: runner.os == 'Linux'
         working-directory: src-tauri
         run: cargo fmt --check
       - name: cargo clippy
