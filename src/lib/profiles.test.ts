@@ -6,6 +6,10 @@ import {
   indexesOf,
   loadMapDefault,
   loadProfile,
+  loadWordMarks,
+  marksIds,
+  marksIndexes,
+  saveWordMarks,
   profileKey,
   readAsIds,
   readAsIndexes,
@@ -114,6 +118,8 @@ describe("profiles", () => {
         order: "CDAB",
         loop: false,
         readAs: { "holding:1:uint16:::A": "input" },
+        marks: { "holding:1:uint16:::A": 2 },
+        marksView: "first",
       },
       store,
     );
@@ -123,6 +129,8 @@ describe("profiles", () => {
       order: "CDAB",
       loop: false,
       readAs: { "holding:1:uint16:::A": "input" },
+      marks: { "holding:1:uint16:::A": 2 },
+      marksView: "first",
     });
     expect(loadProfile(two, store)).toBeNull();
   });
@@ -143,6 +151,8 @@ describe("profiles", () => {
       order: null,
       loop: true,
       readAs: {},
+      marks: {},
+      marksView: "all",
     });
   });
 
@@ -164,7 +174,15 @@ describe("profiles", () => {
     expect(() =>
       saveProfile(
         "k",
-        { v: 1, skipped: [], order: null, loop: true, readAs: {} },
+        {
+          v: 1,
+          skipped: [],
+          order: null,
+          loop: true,
+          readAs: {},
+          marks: {},
+          marksView: "all",
+        },
         null,
       ),
     ).not.toThrow();
@@ -191,7 +209,15 @@ describe("forgetting", () => {
     const store = new MemoryStore();
     saveProfile(
       profileKey("m", "tcp:a:502", 1),
-      { v: 1, skipped: [], order: null, loop: true, readAs: {} },
+      {
+        v: 1,
+        skipped: [],
+        order: null,
+        loop: true,
+        readAs: {},
+        marks: {},
+        marksView: "all",
+      },
       store,
     );
     saveMapDefault("m", ["a"], store);
@@ -234,5 +260,48 @@ describe("read-as areas", () => {
     const ids = readAsIds(new Map([[0, "input" as const]]), list);
     const moved = [reg("X", 9), ...list];
     expect(readAsIndexes(ids, moved)).toEqual(new Map([[1, "input"]]));
+  });
+});
+
+describe("highlights", () => {
+  const list = [reg("A", 0), reg("B", 1), reg("C", 2)];
+
+  it("go from positions to ids and back, dropping unknown colours", () => {
+    const chosen = new Map<number, 1 | 2 | 3 | 4>([
+      [0, 1],
+      [2, 4],
+    ]);
+    const ids = marksIds(chosen, list);
+    expect(marksIndexes(ids, list)).toEqual(chosen);
+    expect(
+      marksIndexes({ ...ids, [registerId(list[1])]: 9 as 1 }, list),
+    ).toEqual(chosen);
+  });
+
+  it("follow a register that moved", () => {
+    const ids = marksIds(new Map([[0, 3 as const]]), list);
+    expect(marksIndexes(ids, [reg("X", 9), ...list])).toEqual(
+      new Map([[1, 3]]),
+    );
+  });
+
+  it("are kept for the words of a manual read, per device", () => {
+    const store = new MemoryStore();
+    saveWordMarks("tcp:a:502|1", new Map([["holding:40", 2 as const]]), store);
+    expect(loadWordMarks("tcp:a:502|1", store)).toEqual(
+      new Map([["holding:40", 2]]),
+    );
+    expect(loadWordMarks("tcp:a:502|2", store).size).toBe(0);
+    saveWordMarks("tcp:a:502|1", new Map(), store);
+    expect(store.length).toBe(0);
+  });
+
+  it("are forgotten with the other device choices", () => {
+    const store = new MemoryStore();
+    saveWordMarks("k", new Map([["input:1", 1 as const]]), store);
+    store.setItem("modbench.settings", "{}");
+    forgetAll(store);
+    expect(store.getItem("modbench.settings")).toBe("{}");
+    expect(loadWordMarks("k", store).size).toBe(0);
   });
 });

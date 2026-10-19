@@ -4,6 +4,7 @@ import { t } from "./i18n.svelte.ts";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorText } from "./api";
 import { FUNCTION_NAME, otherReadArea } from "./format";
+import type { Mark, MarksView } from "./highlights";
 import {
   appliesTo,
   identify,
@@ -53,6 +54,8 @@ import {
   indexesOf,
   loadMapDefault,
   loadProfile,
+  marksIds,
+  marksIndexes,
   profileKey,
   readAsIds,
   readAsIndexes,
@@ -198,6 +201,10 @@ class Bench {
   skipped = $state.raw<Set<number>>(new Set());
   /** Registers read with the other function code than their area's (by index). */
   readAs = $state.raw<Map<number, Area>>(new Map());
+  /** Highlighted registers of the active map (by index): their colour. */
+  marks = $state.raw<Map<number, Mark>>(new Map());
+  /** Whether the Device map lists all registers, the highlighted first, or only them. */
+  marksView = $state<MarksView>("all");
   library = $state.raw<LibraryEntry[]>([]);
   libraryFolder = $state("");
   /** Path of the map used last time, offered first in the picker. */
@@ -571,6 +578,8 @@ class Bench {
     if (!settings.rememberDevices) {
       this.skipped = new Set();
       this.readAs = new Map();
+      this.marks = new Map();
+      this.marksView = "all";
       this.orderOverride = null;
       return;
     }
@@ -580,6 +589,8 @@ class Bench {
     if (profile) {
       this.skipped = indexesOf(profile.skipped, registers);
       this.readAs = readAsIndexes(profile.readAs, registers);
+      this.marks = marksIndexes(profile.marks, registers);
+      this.marksView = profile.marksView;
       this.orderOverride = profile.order;
       this.loop = profile.loop;
       return;
@@ -587,6 +598,8 @@ class Bench {
     const seed = loadMapDefault(open.path, registers);
     this.skipped = seed ? indexesOf(seed, registers) : new Set();
     this.readAs = new Map();
+    this.marks = new Map();
+    this.marksView = "all";
     this.orderOverride = null;
   }
 
@@ -602,6 +615,8 @@ class Bench {
       order: this.orderOverride,
       loop: this.loop,
       readAs: readAsIds(this.readAs, open.map.registers),
+      marks: marksIds(this.marks, open.map.registers),
+      marksView: this.marksView,
     });
     saveMapDefault(open.path, ids);
   }
@@ -633,6 +648,22 @@ class Bench {
     this.readAs = next;
     this.persistDevice();
     this.refreshPolling();
+  }
+
+  /** Highlights a register in a colour, or removes its highlight. */
+  setMark(index: number, mark: Mark | null) {
+    const next = new Map(this.marks);
+    if (mark === null) next.delete(index);
+    else next.set(index, mark);
+    this.marks = next;
+    // With nothing left to show, "only highlighted" would show an empty list.
+    if (next.size === 0) this.marksView = "all";
+    this.persistDevice();
+  }
+
+  setMarksView(view: MarksView) {
+    this.marksView = this.marks.size === 0 ? "all" : view;
+    this.persistDevice();
   }
 
   setLoop(on: boolean) {
@@ -1535,6 +1566,7 @@ class Bench {
       [...this.skipped].filter((i) => i !== index).map(shift),
     );
     this.readAs = rekey(this.readAs);
+    this.marks = rekey(this.marks);
     this.mapResults = rekey(this.mapResults);
     this.history = rekey(this.history);
     this.chartSeries = this.chartSeries

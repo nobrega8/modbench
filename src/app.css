@@ -150,6 +150,11 @@
   --rx: rgb(var(--rx-rgb));
   --ok: rgb(var(--rx-rgb));
   --live: rgb(var(--rx-rgb));
+  /* highlighted registers: amber, green, blue, pink */
+  --hl-1: 217 164 6;
+  --hl-2: 34 160 90;
+  --hl-3: 59 130 246;
+  --hl-4: 219 80 160;
   --status-verified: var(--rx);
   --status-official: var(--tx);
   --bad: rgb(var(--alert-rgb));

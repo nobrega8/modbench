@@ -10,6 +10,7 @@
 // file does not switch the wrong registers off.
 
 import { otherReadArea } from "./format";
+import { isMark, isMarksView, type Mark, type MarksView } from "./highlights";
 import type { Area, ByteOrder, Register } from "./types";
 
 /** Where choices are kept: the webview's localStorage, or a stand-in in tests. */
@@ -27,9 +28,15 @@ export interface DeviceProfile {
   loop: boolean;
   /** Registers read with the other function code, by id: the area used. */
   readAs: Record<string, Area>;
+  /** Highlighted registers, by id: the colour. */
+  marks: Record<string, Mark>;
+  /** Whether the list shows all registers, the highlighted first, or only them. */
+  marksView: MarksView;
 }
 
 const PROFILE_PREFIX = "modbench.device:";
+/** Highlighted words of the manual read grid, per connection and unit ID. */
+const WORDS_PREFIX = "modbench.words:";
 /** The registers last used with a map, whichever device: seeds new profiles. */
 const MAP_PREFIX = "modbench.map:";
 /** Older versions stored switched-off register indexes per map file. */
@@ -104,6 +111,68 @@ export function readAsIds(
   return out;
 }
 
+/** Highlight choices by register position; ids that do not apply are dropped. */
+export function marksIndexes(
+  ids: Record<string, Mark>,
+  registers: Register[],
+): Map<number, Mark> {
+  const out = new Map<number, Mark>();
+  registers.forEach((r, i) => {
+    const mark = ids[registerId(r)];
+    if (isMark(mark)) out.set(i, mark);
+  });
+  return out;
+}
+
+export function marksIds(
+  chosen: Map<number, Mark>,
+  registers: Register[],
+): Record<string, Mark> {
+  const out: Record<string, Mark> = {};
+  for (const [i, mark] of chosen) {
+    if (i >= 0 && i < registers.length) out[registerId(registers[i])] = mark;
+  }
+  return out;
+}
+
+function cleanMarks(raw: unknown): Record<string, Mark> {
+  const out: Record<string, Mark> = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [id, mark] of Object.entries(raw)) {
+    if (isMark(mark)) out[id] = mark;
+  }
+  return out;
+}
+
+/** The highlighted words of the manual read grid for one device, by word key. */
+export function loadWordMarks(
+  deviceKey: string,
+  store: KeyValueStore | null = defaultStore(),
+): Map<string, Mark> {
+  const saved = readJson<Record<string, unknown>>(
+    store,
+    WORDS_PREFIX + deviceKey,
+  );
+  return new Map(Object.entries(cleanMarks(saved)));
+}
+
+export function saveWordMarks(
+  deviceKey: string,
+  marks: Map<string, Mark>,
+  store: KeyValueStore | null = defaultStore(),
+) {
+  const key = WORDS_PREFIX + deviceKey;
+  if (marks.size === 0) {
+    try {
+      store?.removeItem(key);
+    } catch {
+      // Left in place; it only holds highlights.
+    }
+    return;
+  }
+  writeJson(store, key, Object.fromEntries(marks));
+}
+
 export function idsOf(indexes: Set<number>, registers: Register[]): string[] {
   return [...indexes]
     .filter((i) => i >= 0 && i < registers.length)
@@ -145,6 +214,8 @@ export function loadProfile(
         : null,
     loop: p.loop !== false,
     readAs: cleanReadAs(p.readAs),
+    marks: cleanMarks(p.marks),
+    marksView: isMarksView(p.marksView) ? p.marksView : "all",
   };
 }
 
@@ -211,6 +282,7 @@ export function forgetAll(
     if (
       k &&
       (k.startsWith(PROFILE_PREFIX) ||
+        k.startsWith(WORDS_PREFIX) ||
         k.startsWith(MAP_PREFIX) ||
         k.startsWith(LEGACY_PREFIX))
     )
