@@ -9,6 +9,8 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::time::{Duration, SystemTime};
 
 use serde::{Deserialize, Serialize};
 
@@ -190,6 +192,76 @@ pub fn upgrade(root: &Path) -> std::io::Result<usize> {
     Ok(converted)
 }
 
+/// The entry of the map file at `path` (in the folder of `vendor`), without
+/// what the origins file says about it.
+fn entry_of(vendor: &Path, path: &Path, bytes: &[u8]) -> LibraryEntry {
+    let parsed = mbmap::parse(bytes);
+    let warnings = parsed
+        .diagnostics
+        .iter()
+        .filter(|d| d.severity == Severity::Warning)
+        .count();
+    let error = parsed.map.is_none().then(|| error_summary(&parsed));
+    match parsed.map {
+        Some(map) => LibraryEntry {
+            path: path.display().to_string(),
+            vendor: map.meta.vendor.clone(),
+            model: map.meta.model.clone(),
+            models: map.meta.models.clone(),
+            description: map.meta.description.clone(),
+            vendor_website: map.meta.vendor_website.clone(),
+            status: map
+                .meta
+                .extra
+                .iter()
+                .find(|(k, _)| k == "x_status")
+                .map(|(_, v)| v.clone()),
+            registers: map.registers.len(),
+            warnings,
+            error: None,
+            origin: None,
+            edited: false,
+        },
+        None => LibraryEntry {
+            path: path.display().to_string(),
+            vendor: vendor
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            model: path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .map(|n| {
+                    n.trim_end_matches(".json")
+                        .trim_end_matches(".mbmap")
+                        .into()
+                })
+                .unwrap_or_default(),
+            models: Vec::new(),
+            description: None,
+            vendor_website: None,
+            status: None,
+            registers: 0,
+            warnings,
+            error,
+            origin: None,
+            edited: false,
+        },
+    }
+}
+
+/// What `list` found in a file the last time, and the file's size and
+/// modification time then: a file that has not changed is not read and parsed
+/// again (the whole library takes close to a second to parse).
+struct Cached {
+    modified: Option<SystemTime>,
+    len: u64,
+    hash: String,
+    entry: LibraryEntry,
+}
+
+static CACHE: Mutex<BTreeMap<PathBuf, Cached>> = Mutex::new(BTreeMap::new());
+
 /// Every map in the library, sorted by vendor and model.
 pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
     let mut entries = Vec::new();
@@ -207,63 +279,45 @@ pub fn list(root: &Path) -> std::io::Result<Vec<LibraryEntry>> {
             if !is_map(&path) {
                 continue;
             }
-            let bytes = std::fs::read(&path)?;
-            let record = key(root, &path).and_then(|k| origins.get(&k));
-            let origin = record.map(|r| r.origin);
-            let edited = record.is_some_and(|r| r.hash != hash(&bytes));
-            let parsed = mbmap::parse(&bytes);
-            let warnings = parsed
-                .diagnostics
-                .iter()
-                .filter(|d| d.severity == Severity::Warning)
-                .count();
-            let error = parsed.map.is_none().then(|| error_summary(&parsed));
-            let entry = match parsed.map {
-                Some(map) => LibraryEntry {
-                    path: path.display().to_string(),
-                    vendor: map.meta.vendor.clone(),
-                    model: map.meta.model.clone(),
-                    models: map.meta.models.clone(),
-                    description: map.meta.description.clone(),
-                    vendor_website: map.meta.vendor_website.clone(),
-                    status: map
-                        .meta
-                        .extra
-                        .iter()
-                        .find(|(k, _)| k == "x_status")
-                        .map(|(_, v)| v.clone()),
-                    registers: map.registers.len(),
-                    warnings,
-                    error: None,
-                    origin,
-                    edited,
-                },
-                None => LibraryEntry {
-                    path: path.display().to_string(),
-                    vendor: vendor
-                        .file_name()
-                        .map(|n| n.to_string_lossy().into_owned())
-                        .unwrap_or_default(),
-                    model: path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().into_owned())
-                        .map(|n| {
-                            n.trim_end_matches(".json")
-                                .trim_end_matches(".mbmap")
-                                .into()
-                        })
-                        .unwrap_or_default(),
-                    models: Vec::new(),
-                    description: None,
-                    vendor_website: None,
-                    status: None,
-                    registers: 0,
-                    warnings,
-                    error,
-                    origin,
-                    edited,
-                },
+            let meta = std::fs::metadata(&path)?;
+            let (modified, len) = (meta.modified().ok(), meta.len());
+            let cached = {
+                let cache = CACHE.lock().unwrap();
+                cache
+                    .get(&path)
+                    .filter(|c| c.modified == modified && c.len == len)
+                    .map(|c| (c.entry.clone(), c.hash.clone()))
             };
+            let (mut entry, file_hash) = match cached {
+                Some(hit) => hit,
+                None => {
+                    let bytes = std::fs::read(&path)?;
+                    let entry = entry_of(&vendor, &path, &bytes);
+                    let file_hash = hash(&bytes);
+                    // A file written a moment ago may be written again within
+                    // the clock's resolution, with the same size: it is not kept.
+                    let settled = modified.is_some_and(|m| {
+                        SystemTime::now()
+                            .duration_since(m)
+                            .is_ok_and(|age| age > Duration::from_secs(2))
+                    });
+                    if settled {
+                        CACHE.lock().unwrap().insert(
+                            path.clone(),
+                            Cached {
+                                modified,
+                                len,
+                                hash: file_hash.clone(),
+                                entry: entry.clone(),
+                            },
+                        );
+                    }
+                    (entry, file_hash)
+                }
+            };
+            let record = key(root, &path).and_then(|k| origins.get(&k));
+            entry.origin = record.map(|r| r.origin);
+            entry.edited = record.is_some_and(|r| r.hash != file_hash);
             entries.push(entry);
         }
     }
