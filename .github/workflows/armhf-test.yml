@@ -18,7 +18,8 @@ jobs:
       # WebKitGTK's -dev packages pull in gobject-introspection, which cannot
       # be installed for armhf next to the x86-64 one, so the armhf libraries
       # go into a sysroot of their own. Only the first debootstrap stage is
-      # run: it unpacks the packages, which is all linking needs.
+      # run, which downloads the packages; they are unpacked here, which is
+      # all linking needs.
       - name: System deps
         run: |
           apt-get update
@@ -27,13 +28,38 @@ jobs:
           debootstrap --foreign --arch=armhf --variant=minbase \
             --include=libwebkit2gtk-4.1-dev,libgtk-3-dev,libayatana-appindicator3-dev,librsvg2-dev,libudev-dev,libssl-dev,libc6-dev,libstdc++-12-dev \
             bookworm /sysroot http://deb.debian.org/debian
-          symlinks -cr /sysroot/usr/lib /sysroot/lib > /dev/null
+          for deb in /sysroot/var/cache/apt/archives/*.deb; do
+            dpkg-deb --fsys-tarfile "$deb" | tar -x -C /sysroot --keep-directory-symlink
+          done
+          symlinks -cr /sysroot/usr/lib > /dev/null
 
-      - name: Probe the sysroot
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-unknown-linux-gnueabihf
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build the .deb
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --target armv7-unknown-linux-gnueabihf --bundles deb
+
+      - name: Show the result
         run: |
-          ls /sysroot
-          ls /sysroot/usr/lib/arm-linux-gnueabihf/pkgconfig | head -20
-          find /sysroot -name "glib-2.0.pc"
-          ls /sysroot/var/cache/apt/archives 2>/dev/null | head -5
-          ls /sysroot/var/cache/apt/archives | wc -l
-          ls /sysroot/var/lib/dpkg/ | head
+          ls -l src-tauri/target/armv7-unknown-linux-gnueabihf/release/bundle/deb/
+          dpkg-deb -I src-tauri/target/armv7-unknown-linux-gnueabihf/release/bundle/deb/*.deb | head -20
+          file src-tauri/target/armv7-unknown-linux-gnueabihf/release/modbench
