@@ -374,6 +374,134 @@
         </select>
       </label>
     </div>
+    <details class="opt">
+      <summary>{t("builder.optional")}</summary>
+      <div class="fields">
+        <label class="field wide">
+          <span>{t("builder.models_hint")}</span>
+          <input
+            class="input"
+            value={(meta.models ?? []).join(", ")}
+            oninput={(e) => {
+              meta.models = e.currentTarget.value
+                .split(",")
+                .map((m) => m.trim())
+                .filter(Boolean);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field wide">
+          <span>{t("hdr.website")}</span>
+          <input
+            class="input"
+            value={meta.vendor_website ?? ""}
+            oninput={(e) => {
+              meta.vendor_website = textOrNull(e.currentTarget.value);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field">
+          <span>{t("hdr.firmware")}</span>
+          <input
+            class="input"
+            value={meta.firmware ?? ""}
+            oninput={(e) => {
+              meta.firmware = textOrNull(e.currentTarget.value);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field">
+          <span>{t("builder.firmware_min")}</span>
+          <input
+            class="input"
+            value={meta.firmware_min ?? ""}
+            oninput={(e) => {
+              meta.firmware_min = textOrNull(e.currentTarget.value);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field">
+          <span>{t("builder.firmware_max")}</span>
+          <input
+            class="input"
+            value={meta.firmware_max ?? ""}
+            oninput={(e) => {
+              meta.firmware_max = textOrNull(e.currentTarget.value);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field">
+          <span>{t("hdr.revision")}</span>
+          <input
+            class="input num"
+            type="number"
+            min="0"
+            value={meta.revision ?? ""}
+            oninput={(e) => {
+              meta.revision = numberOrNull(e.currentTarget.value);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field">
+          <span>{t("builder.revised")}</span>
+          <input
+            class="input"
+            placeholder="YYYY-MM-DD"
+            value={meta.revised ?? ""}
+            oninput={(e) => {
+              meta.revised = textOrNull(e.currentTarget.value);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field">
+          <span>{t("builder.max_regs")}</span>
+          <input
+            class="input num"
+            type="number"
+            min="1"
+            value={meta.max_read_registers ?? ""}
+            oninput={(e) => {
+              meta.max_read_registers = numberOrNull(e.currentTarget.value);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field">
+          <span>{t("builder.max_bits")}</span>
+          <input
+            class="input num"
+            type="number"
+            min="1"
+            value={meta.max_read_bits ?? ""}
+            oninput={(e) => {
+              meta.max_read_bits = numberOrNull(e.currentTarget.value);
+              builder.touch();
+            }}
+          />
+        </label>
+        <label class="field wide">
+          <span>{t("builder.notes")}</span>
+          <textarea
+            class="input"
+            rows="3"
+            value={(meta.notes ?? []).join("\n")}
+            oninput={(e) => {
+              meta.notes = e.currentTarget.value
+                .split("\n")
+                .map((n) => n.trim())
+                .filter(Boolean);
+              builder.touch();
+            }}></textarea>
+        </label>
+      </div>
+    </details>
     {#each builder.sorted.file as d, i (i)}
       <p class="msg" class:warn={d.severity === "warning"}>
         {d.pointer ?? ""}
@@ -813,5 +941,13 @@
 
   [aria-invalid="true"] {
     border-color: var(--bad, #c0392b);
+  }
+  .opt {
+    margin-top: 12px;
+  }
+  .opt > summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 8px;
   }
 </style>
