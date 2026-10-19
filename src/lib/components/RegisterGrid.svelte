@@ -13,9 +13,11 @@
     copy,
     type MenuEntry,
   } from "#lib/contextmenu.svelte.ts";
+  import type { CopyForm } from "#lib/manual-chart.ts";
   import type { ByteOrder } from "#lib/types.ts";
   import {
     chartType,
+    copyForms,
     decodePair,
     type GridFormat as Format,
   } from "#lib/manual-chart.ts";
@@ -240,6 +242,11 @@
     bench.tab = "write";
   }
 
+  /** The name of a way of copying a word, as the grid's formats are named. */
+  function formatLabel(id: CopyForm["id"]): string {
+    return formats.find((f) => f.id === id)?.label ?? id;
+  }
+
   /** What a right-click on a value offers. */
   function cellMenu(c: Cell): MenuEntry[] {
     if (!read) return [];
@@ -276,6 +283,15 @@
             }),
       null,
       { label: t("registergrid.copy_value"), action: () => copy(c.text) },
+      ...(r.data.kind === "registers"
+        ? copyForms(r.data.values, c.offset, c.span === 2 ? 2 : 1, order).map(
+            (f) => ({
+              label: t("registergrid.copy_as", { format: formatLabel(f.id) }),
+              hint: f.text,
+              action: () => copy(f.text),
+            }),
+          )
+        : []),
       { label: t("registergrid.copy_address"), action: () => copy(addr(at)) },
       {
         label: t("registergrid.copy_all_values"),

@@ -637,6 +637,7 @@
   "maptable.set_alarm": "எச்சரிக்கையை அமை…",
   "maptable.copy_value": "மதிப்பை நகலெடு",
   "registergrid.copy_value": "மதிப்பை நகலெடு",
+  "registergrid.copy_as": "{format} ஆக நகலெடு",
   "maptable.copy_raw_value": "மூல மதிப்பை நகலெடு",
   "maptable.copy_address": "முகவரியை நகலெடு",
   "registergrid.copy_address": "முகவரியை நகலெடு",

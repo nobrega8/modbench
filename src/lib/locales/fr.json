@@ -637,6 +637,7 @@
   "maptable.set_alarm": "Définir une alarme…",
   "maptable.copy_value": "Copier la valeur",
   "registergrid.copy_value": "Copier la valeur",
+  "registergrid.copy_as": "Copier en {format}",
   "maptable.copy_raw_value": "Copier la valeur brute",
   "maptable.copy_address": "Copier l’adresse",
   "registergrid.copy_address": "Copier l’adresse",

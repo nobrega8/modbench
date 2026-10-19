@@ -637,6 +637,7 @@
   "maptable.set_alarm": "অ্যালার্ম সেট করুন…",
   "maptable.copy_value": "মান কপি করুন",
   "registergrid.copy_value": "মান কপি করুন",
+  "registergrid.copy_as": "{format} হিসেবে কপি করুন",
   "maptable.copy_raw_value": "র মান কপি করুন",
   "maptable.copy_address": "ঠিকানা কপি করুন",
   "registergrid.copy_address": "ঠিকানা কপি করুন",

@@ -637,6 +637,7 @@
   "maptable.set_alarm": "अलार्म सेट करें…",
   "maptable.copy_value": "मान कॉपी करें",
   "registergrid.copy_value": "मान कॉपी करें",
+  "registergrid.copy_as": "{format} के रूप में कॉपी करें",
   "maptable.copy_raw_value": "कच्चा मान कॉपी करें",
   "maptable.copy_address": "पता कॉपी करें",
   "registergrid.copy_address": "पता कॉपी करें",
