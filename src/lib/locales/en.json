@@ -714,6 +714,7 @@
   "registergrid.add_to_chart": "Add to chart",
   "registergrid.max_at_most": "{max} at most",
   "registergrid.copy_value": "Copy value",
+  "registergrid.copy_as": "Copy as {format}",
   "registergrid.copy_address": "Copy address",
   "registergrid.copy_all_values": "Copy all values",
   "registergrid.write_here": "Write here…",

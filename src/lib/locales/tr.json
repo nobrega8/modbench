@@ -637,6 +637,7 @@
   "maptable.set_alarm": "Alarm ayarla…",
   "maptable.copy_value": "Değeri kopyala",
   "registergrid.copy_value": "Değeri kopyala",
+  "registergrid.copy_as": "{format} olarak kopyala",
   "maptable.copy_raw_value": "Ham değeri kopyala",
   "maptable.copy_address": "Adresi kopyala",
   "registergrid.copy_address": "Adresi kopyala",

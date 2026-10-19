@@ -637,6 +637,7 @@
   "maptable.set_alarm": "알람 설정…",
   "maptable.copy_value": "값 복사",
   "registergrid.copy_value": "값 복사",
+  "registergrid.copy_as": "{format}(으)로 복사",
   "maptable.copy_raw_value": "원시 값 복사",
   "maptable.copy_address": "주소 복사",
   "registergrid.copy_address": "주소 복사",

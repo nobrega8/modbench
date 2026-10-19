@@ -637,6 +637,7 @@
   "maptable.set_alarm": "設定警報…",
   "maptable.copy_value": "複製值",
   "registergrid.copy_value": "複製值",
+  "registergrid.copy_as": "複製為{format}",
   "maptable.copy_raw_value": "複製原始值",
   "maptable.copy_address": "複製位址",
   "registergrid.copy_address": "複製位址",

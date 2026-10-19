@@ -637,6 +637,7 @@
   "maptable.set_alarm": "アラームを設定…",
   "maptable.copy_value": "値をコピー",
   "registergrid.copy_value": "値をコピー",
+  "registergrid.copy_as": "{format}としてコピー",
   "maptable.copy_raw_value": "生の値をコピー",
   "maptable.copy_address": "アドレスをコピー",
   "registergrid.copy_address": "アドレスをコピー",

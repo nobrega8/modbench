@@ -1,6 +1,7 @@
 // The Chart tab of manual reads: addresses of the Read registers grid, each
 // with the type the grid shows it as, plotted while the loop runs.
 
+import { formatRaw } from "./format";
 import { MAX_POINTS, type Sample } from "./trend";
 import type { Area, ByteOrder, RawData } from "./types";
 
@@ -69,6 +70,46 @@ export function decodePair(
   if (type === "int32") return view.getInt32(0);
   if (type === "uint32") return view.getUint32(0);
   return Number(view.getFloat32(0).toPrecision(7));
+}
+
+/** One way of copying a word: which reading, and the text to copy. */
+export interface CopyForm {
+  id: "hex" | "unsigned" | "signed" | "binary" | "int32" | "uint32" | "float32";
+  text: string;
+}
+
+/**
+ * The ways to copy the word at `at` (or the pair of words, when `span` is
+ * 2), whatever format the grid shows. Hex is the text the Device map copies
+ * as a raw value; the 32-bit readings pair the word with the next one, in
+ * the grid's byte order, and are left out at the end of the read.
+ */
+export function copyForms(
+  words: number[],
+  at: number,
+  span: 1 | 2,
+  order: ByteOrder,
+): CopyForm[] {
+  const first = words[at];
+  if (first === undefined) return [];
+  const used = words.slice(at, at + span);
+  const out: CopyForm[] = [
+    { id: "hex", text: formatRaw({ kind: "registers", values: used }) },
+  ];
+  if (span === 1) {
+    out.push(
+      { id: "unsigned", text: String(first) },
+      { id: "signed", text: String(first > 0x7fff ? first - 0x10000 : first) },
+      { id: "binary", text: first.toString(2).padStart(16, "0") },
+    );
+  }
+  const next = words[at + 1];
+  if (next !== undefined) {
+    for (const id of ["int32", "uint32", "float32"] as const) {
+      out.push({ id, text: String(decodePair(first, next, id, order)) });
+    }
+  }
+  return out;
 }
 
 /** Same address, area and reading: the same series. */

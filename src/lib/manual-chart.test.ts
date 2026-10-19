@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addRead,
+  copyForms,
   chartType,
   covers,
   decodePair,
@@ -90,5 +91,57 @@ describe("manual chart", () => {
     expect(seriesName(series(1, "float32", 1, "CDAB"), "1")).toBe(
       "HR 1 · float32 CDAB",
     );
+  });
+});
+
+describe("copyForms", () => {
+  const words = [0xff85, 0x0001, 0x3f80];
+
+  it("copies a word as hex like the Device map's raw value", () => {
+    expect(copyForms(words, 0, 1, "ABCD")[0]).toEqual({
+      id: "hex",
+      text: "FF85",
+    });
+    expect(copyForms(words, 0, 2, "ABCD")[0].text).toBe("FF85 0001");
+  });
+
+  it("offers every reading of a single word", () => {
+    const f = Object.fromEntries(
+      copyForms(words, 0, 1, "ABCD").map((x) => [x.id, x.text]),
+    );
+    expect(f.unsigned).toBe("65413");
+    expect(f.signed).toBe("-123");
+    expect(f.binary).toBe("1111111110000101");
+    expect(f.uint32).toBe("4286906369");
+  });
+
+  it("pairs with the next word in the byte order", () => {
+    const abcd = copyForms([0x3f80, 0x0000], 0, 1, "ABCD");
+    expect(abcd.find((x) => x.id === "float32")?.text).toBe("1");
+    // CDAB reads the second word first, so the same words are not 1.0.
+    const cdab = copyForms([0x3f80, 0x0000], 0, 1, "CDAB");
+    expect(cdab.find((x) => x.id === "float32")?.text).toBe(
+      String(decodePair(0x3f80, 0x0000, "float32", "CDAB")),
+    );
+    expect(cdab.find((x) => x.id === "float32")?.text).not.toBe("1");
+  });
+
+  it("has no 32-bit readings at the end of the read, nor 16-bit for a pair", () => {
+    expect(copyForms(words, 2, 1, "ABCD").map((x) => x.id)).toEqual([
+      "hex",
+      "unsigned",
+      "signed",
+      "binary",
+    ]);
+    expect(copyForms(words, 0, 2, "ABCD").map((x) => x.id)).toEqual([
+      "hex",
+      "int32",
+      "uint32",
+      "float32",
+    ]);
+  });
+
+  it("gives nothing for a word that is not there", () => {
+    expect(copyForms(words, 9, 1, "ABCD")).toEqual([]);
   });
 });
