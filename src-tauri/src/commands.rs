@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 use crate::codec::{self, ByteOrder, DataType, Value};
 use crate::generators::{self, Generator};
 use crate::library::{self, ImportResult, LibraryEntry};
-use crate::mbmap::{self, DeviceMap, Parsed, Register};
+use crate::mbmap::{self, DeviceMap, Diagnostic, Parsed, Register};
 use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
 use crate::online;
 use crate::planner::Area;
@@ -57,6 +57,9 @@ fn sim_changed(app: &AppHandle) {
 
 /// Label of the simulator's own window.
 pub const SIM_WINDOW: &str = "simulator";
+
+/// Label of the map builder's own window.
+pub const BUILDER_WINDOW: &str = "map-builder";
 
 impl AppState {
     fn stop_poller(&self) {
@@ -1213,20 +1216,26 @@ pub fn sim_info(app: AppHandle, state: State<'_, AppState>) -> SimInfo {
     }
 }
 
-/// Shows the simulator in a window of its own (or brings that window to
-/// the front), so it can sit next to the main window.
-// Async: building a window inside a synchronous command deadlocks on Windows.
-#[tauri::command]
-pub async fn sim_open_window(app: AppHandle) -> Result<(), ModbusError> {
-    if let Some(window) = app.get_webview_window(SIM_WINDOW) {
+/// Opens one of the app's tools in a window of its own, or brings that window
+/// to the front when it is open. `query` tells the page which tool to show.
+// Async callers only: building a window inside a synchronous command
+// deadlocks on Windows.
+fn open_tool_window(
+    app: &AppHandle,
+    label: &str,
+    query: &str,
+    title: &str,
+    size: (f64, f64),
+) -> Result<(), ModbusError> {
+    if let Some(window) = app.get_webview_window(label) {
         let _ = window.unminimize();
         let _ = window.set_focus();
         return Ok(());
     }
-    let url = tauri::WebviewUrl::App("?window=simulator".into());
-    let builder = tauri::WebviewWindowBuilder::new(&app, SIM_WINDOW, url)
-        .title("Modbench Simulator")
-        .inner_size(1040.0, 780.0)
+    let url = tauri::WebviewUrl::App(query.into());
+    let builder = tauri::WebviewWindowBuilder::new(app, label, url)
+        .title(title)
+        .inner_size(size.0, size.1)
         .min_inner_size(640.0, 480.0);
     // Like the main window: macOS keeps its own buttons over the content,
     // elsewhere the page draws them.
@@ -1240,6 +1249,20 @@ pub async fn sim_open_window(app: AppHandle) -> Result<(), ModbusError> {
     builder
         .build()
         .map_err(|e| ModbusError::Invalid(format!("could not open the window: {e}")))?;
+    Ok(())
+}
+
+/// Shows the simulator in a window of its own (or brings that window to
+/// the front), so it can sit next to the main window.
+#[tauri::command]
+pub async fn sim_open_window(app: AppHandle) -> Result<(), ModbusError> {
+    open_tool_window(
+        &app,
+        SIM_WINDOW,
+        "?window=simulator",
+        "Modbench Simulator",
+        (1040.0, 780.0),
+    )?;
     let _ = app.emit("sim-window", true);
     Ok(())
 }
@@ -1250,6 +1273,35 @@ pub fn sim_close_window(app: AppHandle) {
     if let Some(window) = app.get_webview_window(SIM_WINDOW) {
         let _ = window.close();
     }
+}
+
+/// Shows the map builder in a window of its own (or brings that window to
+/// the front), so it can sit next to the main window and the manual.
+#[tauri::command]
+pub async fn builder_open_window(app: AppHandle) -> Result<(), ModbusError> {
+    open_tool_window(
+        &app,
+        BUILDER_WINDOW,
+        "?window=builder",
+        "Modbench Map builder",
+        (1180.0, 820.0),
+    )
+}
+
+/// Closes the map builder's own window.
+#[tauri::command]
+pub fn builder_close_window(app: AppHandle) {
+    if let Some(window) = app.get_webview_window(BUILDER_WINDOW) {
+        let _ = window.close();
+    }
+}
+
+/// Checks a map that is being built with the rules a file gets: the map is
+/// written as a version 2 document and read back, so the diagnostics point
+/// into `/registers/N` like a file's do.
+#[tauri::command]
+pub fn validate_map(map: DeviceMap) -> Vec<Diagnostic> {
+    mbmap::parse(mbmap::to_string(&map).as_bytes()).diagnostics
 }
 
 /// Replaces a device's generators. Returns, for each one, why it cannot run
@@ -1360,5 +1412,23 @@ mod tests_demo {
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         let map = parsed.map.unwrap();
         assert!(map.meta.model.contains("simulated"));
+    }
+
+    #[test]
+    fn a_map_being_built_is_checked_like_a_file() {
+        let mut map = super::demo_map().map.unwrap();
+        assert!(super::validate_map(map.clone()).is_empty());
+        // Two registers with the same name: the message points at a row.
+        let first = map.registers[0].clone();
+        map.registers.push(first);
+        let found = super::validate_map(map.clone());
+        let last = map.registers.len() - 1;
+        assert!(
+            found.iter().any(|d| d
+                .pointer
+                .as_deref()
+                .is_some_and(|p| p.starts_with(&format!("/registers/{last}")))),
+            "{found:?}"
+        );
     }
 }
