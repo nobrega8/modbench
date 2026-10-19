@@ -27,6 +27,8 @@
     type MenuEntry,
   } from "#lib/contextmenu.svelte.ts";
   import { registerId } from "#lib/profiles.ts";
+  import { markName, viewName } from "#lib/highlight-names.ts";
+  import { MARKS, MARKS_VIEWS, compareRows, shown } from "#lib/highlights.ts";
   import { MAX_SERIES } from "#lib/trend.ts";
   import AddressFormat from "./AddressFormat.svelte";
   import Icon from "./Icon.svelte";
@@ -127,11 +129,11 @@
             .includes(q)
         );
       })
-      // Registers that are not read go to the end, in map order.
-      .sort(
-        (a, b) =>
-          Number(bench.skipped.has(a.index)) -
-            Number(bench.skipped.has(b.index)) || a.index - b.index,
+      .filter(({ index }) => shown(index, bench.marks, bench.marksView))
+      // Registers that are not read go to the end, in map order; the
+      // highlighted ones come first when asked.
+      .sort((a, b) =>
+        compareRows(a, b, bench.skipped, bench.marks, bench.marksView),
       ),
   );
   const readCount = $derived(open.map.registers.length - bench.skipped.size);
@@ -291,6 +293,16 @@
           : t("maptable.stop_reading_it"),
         action: () => bench.toggleRead(index),
       },
+      ...MARKS.map((m) => ({
+        label: t("maptable.highlight_with", { colour: markName(m) }),
+        disabled: bench.marks.get(index) === m,
+        action: () => bench.setMark(index, m),
+      })),
+      bench.marks.has(index) && {
+        label: t("maptable.highlight_remove"),
+        action: () => bench.setMark(index, null),
+      },
+      null,
       readable &&
         formulaOf(reg) === null &&
         (bench.readAs.has(index)
@@ -530,6 +542,25 @@
     onclick={toggleRecording}
     ><Icon name={recording ? "stoprecord" : "record"} /></button
   >
+  {#if bench.marks.size}
+    <button
+      class="btn icon"
+      class:accent={bench.marksView !== "all"}
+      title={`${t("maptable.marks_view")}: ${viewName(bench.marksView)}`}
+      aria-label={t("maptable.marks_view")}
+      aria-haspopup="menu"
+      onclick={(e) =>
+        contextMenu.show(
+          e,
+          MARKS_VIEWS.map((v) => ({
+            label: viewName(v),
+            hint: bench.marksView === v ? "✓" : undefined,
+            disabled: bench.marksView === v,
+            action: () => bench.setMarksView(v),
+          })),
+        )}><Icon name="bookmark" /></button
+    >
+  {/if}
   <SnapshotBar
     kind="map"
     canTake={bench.mapResults.size > 0}
@@ -652,6 +683,7 @@
           class:err={!!r?.error}
           class:off
           class:diff={different.has(index)}
+          data-mark={bench.marks.get(index)}
           oncontextmenu={(e) => contextMenu.show(e, rowMenu(reg, index))}
         >
           <td class="read">
@@ -713,7 +745,13 @@
             {/if}
           </td>
           <td class="name" title={reg.description || undefined}
-            >{reg.name}{#if reg.group && !group}<span class="grp"
+            >{#if bench.marks.has(index)}<span
+                class="hldot"
+                data-mark={bench.marks.get(index)}
+                title={t("maptable.highlighted")}
+                role="img"
+                aria-label={t("maptable.highlighted")}
+              ></span>{/if}{reg.name}{#if reg.group && !group}<span class="grp"
                 >{reg.group}</span
               >{/if}{#if !fwVersion && (reg.firmware_min || reg.firmware_max)}<span
                 class="grp"
@@ -924,6 +962,42 @@
 <style>
   tr.diff td {
     background: rgb(var(--fg-rgb) / 0.05);
+  }
+
+  /* A highlighted row: a tinted background and a bar on its left edge. */
+  tr[data-mark="1"],
+  .hldot[data-mark="1"] {
+    --hl: var(--hl-1);
+  }
+  tr[data-mark="2"],
+  .hldot[data-mark="2"] {
+    --hl: var(--hl-2);
+  }
+  tr[data-mark="3"],
+  .hldot[data-mark="3"] {
+    --hl: var(--hl-3);
+  }
+  tr[data-mark="4"],
+  .hldot[data-mark="4"] {
+    --hl: var(--hl-4);
+  }
+
+  tr[data-mark] td {
+    background: rgb(var(--hl) / 0.16);
+  }
+
+  tr[data-mark] td:first-child {
+    box-shadow: inset 3px 0 0 rgb(var(--hl));
+  }
+
+  .hldot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 7px;
+    border-radius: 50%;
+    background: rgb(var(--hl));
+    vertical-align: middle;
   }
 
   tr.diff td:first-child {

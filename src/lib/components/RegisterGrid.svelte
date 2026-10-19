@@ -22,6 +22,9 @@
     type GridFormat as Format,
   } from "#lib/manual-chart.ts";
   import { MAX_SERIES } from "#lib/trend.ts";
+  import { markName } from "#lib/highlight-names.ts";
+  import { MARKS, wordKey, type Mark } from "#lib/highlights.ts";
+  import { endpointOf, loadWordMarks, saveWordMarks } from "#lib/profiles.ts";
 
   const formats: { id: Format; label: string }[] = $derived([
     { id: "unsigned", label: t("datadecodertool.unsigned") },
@@ -247,6 +250,29 @@
     return formats.find((f) => f.id === id)?.label ?? id;
   }
 
+  /** The highlighted words, for the device this read comes from. */
+  const deviceKey = $derived(`${endpointOf(bench)}|${bench.unitId}`);
+  let wordMarks = $state.raw<Map<string, Mark>>(new Map());
+  $effect(() => {
+    wordMarks = loadWordMarks(deviceKey);
+  });
+
+  function markAt(offset: number): Mark | undefined {
+    return read
+      ? wordMarks.get(wordKey(read.area, read.address + offset))
+      : undefined;
+  }
+
+  function setWordMark(offset: number, mark: Mark | null) {
+    if (!read) return;
+    const next = new Map(wordMarks);
+    const key = wordKey(read.area, read.address + offset);
+    if (mark === null) next.delete(key);
+    else next.set(key, mark);
+    wordMarks = next;
+    saveWordMarks(deviceKey, next);
+  }
+
   /** What a right-click on a value offers. */
   function cellMenu(c: Cell): MenuEntry[] {
     if (!read) return [];
@@ -281,6 +307,16 @@
                 : undefined,
               action: () => bench.addManualToChart(series),
             }),
+      null,
+      ...MARKS.map((m) => ({
+        label: t("maptable.highlight_with", { colour: markName(m) }),
+        disabled: markAt(c.offset) === m,
+        action: () => setWordMark(c.offset, m),
+      })),
+      markAt(c.offset) !== undefined && {
+        label: t("maptable.highlight_remove"),
+        action: () => setWordMark(c.offset, null),
+      },
       null,
       { label: t("registergrid.copy_value"), action: () => copy(c.text) },
       ...(r.data.kind === "registers"
@@ -515,6 +551,7 @@
             class:diff={different.has(c.offset)}
             class:selected={selected === c.offset}
             aria-selected={selected === c.offset}
+            data-mark={markAt(c.offset)}
             data-offset={c.offset}
             tabindex="-1"
             onclick={(e) => select(c.offset, e)}
@@ -560,6 +597,7 @@
             class:changed={c.changed}
             class:selected={selected === c.offset}
             class:diff={different.has(c.offset)}
+            data-mark={markAt(c.offset)}
             style:grid-column="span {c.span}"
             role="gridcell"
             tabindex="-1"
@@ -620,6 +658,30 @@
     /* Some values stay visible in a short window; the page scrolls */
     min-height: 120px;
     flex: 1;
+  }
+
+  /* A highlighted word: a tinted background and a bar on its left edge. */
+  [data-mark="1"] {
+    --hl: var(--hl-1);
+  }
+  [data-mark="2"] {
+    --hl: var(--hl-2);
+  }
+  [data-mark="3"] {
+    --hl: var(--hl-3);
+  }
+  [data-mark="4"] {
+    --hl: var(--hl-4);
+  }
+
+  .grid .cell[data-mark],
+  .regs tr[data-mark] td {
+    background: rgb(var(--hl) / 0.16);
+  }
+
+  .grid .cell[data-mark],
+  .regs tr[data-mark] td.addr {
+    box-shadow: inset 3px 0 0 rgb(var(--hl));
   }
 
   .grid .cell.diff {
