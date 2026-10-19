@@ -59,10 +59,10 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
           PLATFORMS: ${{ inputs.platforms || 'all' }}
           SUMMARY: ${{ inputs.summary }}
-          DOWNLOAD: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux (`amd64`/`x86_64` for PCs, `arm64`/`aarch64` for the Raspberry Pi and other 64-bit ARM boards), `.dmg` for macOS (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
+          DOWNLOAD: "Download the installer for your system: `-setup.exe` or `.msi` for Windows, `.AppImage` or `.deb` for Linux (`amd64`/`x86_64` for PCs, `arm64`/`aarch64` for the Raspberry Pi and other 64-bit ARM boards, `armhf` for the Raspberry Pi 4 and others on 32-bit Raspberry Pi OS), `.dmg` for macOS (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
           DOWNLOAD_MACOS: "Download the `.dmg` (Apple Silicon and Intel; the first time, right-click the app and choose Open). Installed copies update themselves from here."
           DOWNLOAD_WINDOWS: "Download the `-setup.exe` or the `.msi`. Installed copies update themselves from here."
-          DOWNLOAD_LINUX: "Download the `.AppImage` or the `.deb` (`amd64`/`x86_64` for PCs, `arm64`/`aarch64` for 64-bit ARM). Installed copies update themselves from here."
+          DOWNLOAD_LINUX: "Download the `.AppImage` or the `.deb` (`amd64`/`x86_64` for PCs, `arm64`/`aarch64` for 64-bit ARM, `armhf` for 32-bit Raspberry Pi OS). Installed copies update themselves from here."
         run: |
           tag="$TAG"
           line=$(echo "${tag#v}" | cut -d. -f1,2)
@@ -196,6 +196,63 @@ jobs:
           prerelease: false
           uploadUpdaterJson: true
           args: ${{ matrix.args }}
+
+  # 32-bit Raspberry Pi OS (Raspberry Pi 4 and older): GitHub has no armhf
+  # runner, so this is cross-built in Debian Bookworm, the release those
+  # systems are based on. Tauri 2 needs WebKitGTK 4.1, which Debian Buster
+  # does not have, so Buster cannot run it. Only the .deb is made: AppImage
+  # tooling does not cross-build and the updater does not cover .deb files.
+  build-armhf:
+    needs: [notes, build]
+    if: contains(fromJSON('["all","linux"]'), inputs.platforms || 'all')
+    runs-on: ubuntu-22.04
+    container: debian:bookworm
+    env:
+      TAG: ${{ needs.notes.outputs.tag }}
+      PKG_CONFIG_ALLOW_CROSS: "1"
+      PKG_CONFIG_PATH: /usr/lib/arm-linux-gnueabihf/pkgconfig
+      CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+    steps:
+      - name: System deps
+        run: |
+          apt-get update
+          apt-get install -y ca-certificates curl git build-essential pkg-config patchelf file xz-utils gh
+          dpkg --add-architecture armhf
+          apt-get update
+          apt-get install -y gcc-arm-linux-gnueabihf libwebkit2gtk-4.1-dev:armhf libgtk-3-dev:armhf \
+            libayatana-appindicator3-dev:armhf librsvg2-dev:armhf libudev-dev:armhf libssl-dev:armhf
+
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: armv7-unknown-linux-gnueabihf
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build the .deb
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --target armv7-unknown-linux-gnueabihf --bundles deb
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          gh release upload "$TAG" src-tauri/target/armv7-unknown-linux-gnueabihf/release/bundle/deb/*.deb --clobber -R "$GITHUB_REPOSITORY"
 
   # The app's update banner shows latest.json's notes on one line: give it the
   # summary rather than the release's Markdown.
