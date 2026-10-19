@@ -1084,5 +1084,14 @@
   "builder.row_delete": "Supprimer",
   "builder.empty": "Aucun registre pour l’instant. Ajoutez le premier.",
   "builder.bad_address": "Adresse inférieure à la base ou hors de 0-65535",
-  "builder.bad_labels": "Libellés : saisissez des paires valeur=libellé séparées par des virgules"
+  "builder.bad_labels": "Libellés : saisissez des paires valeur=libellé séparées par des virgules",
+  "builder.edit_register": "Modifier le registre…",
+  "builder.edit_in_builder": "Modifier dans l’éditeur de cartes",
+  "builder.changes": "Modifications par rapport à l’original",
+  "builder.no_changes": "Aucune modification pour l’instant",
+  "builder.change_added": "Ajouté",
+  "builder.change_removed": "Supprimé",
+  "builder.change_changed": "Modifié",
+  "builder.discard": "La carte contient des modifications non enregistrées. Ouvrir une autre carte et les perdre ?",
+  "builder.library_copy": "Cette carte est dans la bibliothèque. « Enregistrer sous… » crée une copie locale et laisse le fichier de la bibliothèque tel quel."
 }

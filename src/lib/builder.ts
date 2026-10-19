@@ -158,3 +158,82 @@ export function mapFileName(meta: Pick<Meta, "vendor" | "model">): string {
   const parts = [slug(meta.vendor), slug(meta.model)].filter(Boolean);
   return `${parts.length ? parts.join("-") : "map"}.mbmap.json`;
 }
+
+/** The fields that make two versions of a register differ. */
+const COMPARED: (keyof Register)[] = [
+  "name",
+  "group",
+  "type",
+  "length",
+  "scale",
+  "scale_factor",
+  "offset",
+  "unit",
+  "access",
+  "write_min",
+  "write_max",
+  "reference",
+  "byte_order",
+  "bits",
+  "enum",
+  "enum_ref",
+  "description",
+  "comment",
+  "firmware_min",
+  "firmware_max",
+  "role",
+  "extra",
+];
+
+/** Where a register is, which is what makes it the same register. */
+const placeOf = (r: Register) => `${r.area}:${r.address}:${r.bit ?? ""}`;
+
+export interface RegisterChange {
+  before: Register;
+  after: Register;
+  /** Names of the fields that differ. */
+  fields: string[];
+}
+
+export interface MapDiff {
+  added: Register[];
+  removed: Register[];
+  changed: RegisterChange[];
+}
+
+/**
+ * What changed between two versions of a map's registers. A register is the
+ * same one when it has the same area, address and bit (several at one place
+ * pair up in order); a change of place shows as one removed and one added.
+ */
+export function diffRegisters(before: Register[], after: Register[]): MapDiff {
+  const pool = new Map<string, Register[]>();
+  for (const r of before) {
+    const key = placeOf(r);
+    pool.set(key, [...(pool.get(key) ?? []), r]);
+  }
+  const diff: MapDiff = { added: [], removed: [], changed: [] };
+  for (const r of after) {
+    const old = pool.get(placeOf(r))?.shift();
+    if (!old) {
+      diff.added.push(r);
+      continue;
+    }
+    const fields = COMPARED.filter(
+      (k) => JSON.stringify(old[k] ?? null) !== JSON.stringify(r[k] ?? null),
+    );
+    if (fields.length > 0) diff.changed.push({ before: old, after: r, fields });
+  }
+  for (const rest of pool.values()) diff.removed.push(...rest);
+  return diff;
+}
+
+/** The position of the register a target names, or -1. */
+export function findRegister(
+  registers: Register[],
+  at: { area: Area; address: number; name: string },
+): number {
+  const same = (r: Register) => r.area === at.area && r.address === at.address;
+  const byName = registers.findIndex((r) => same(r) && r.name === at.name);
+  return byName >= 0 ? byName : registers.findIndex(same);
+}

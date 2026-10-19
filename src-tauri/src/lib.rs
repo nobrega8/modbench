@@ -144,6 +144,7 @@ pub fn run() {
             commands::sim_close_window,
             commands::builder_open_window,
             commands::builder_close_window,
+            commands::builder_take_target,
             commands::validate_map,
             commands::sim_values,
             commands::sim_set_value,

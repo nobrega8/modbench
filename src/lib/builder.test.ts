@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   blankRegister,
+  diffRegisters,
   enumText,
+  findRegister,
   fileAddress,
   mapFileName,
   parseEnum,
@@ -104,5 +106,64 @@ describe("mapFileName", () => {
       "lovato-electric-dcrg8.mbmap.json",
     );
     expect(mapFileName({ vendor: "", model: "" })).toBe("map.mbmap.json");
+  });
+});
+
+describe("diffRegisters", () => {
+  const a = blankRegister({ name: "A", address: 0 });
+  const b = blankRegister({ name: "B", address: 1, unit: "V" });
+
+  it("finds nothing when nothing changed", () => {
+    expect(diffRegisters([a, b], [{ ...a }, { ...b }])).toEqual({
+      added: [],
+      removed: [],
+      changed: [],
+    });
+  });
+
+  it("names the fields that changed", () => {
+    const d = diffRegisters([a, b], [a, { ...b, unit: "A", scale: 0.1 }]);
+    expect(d.changed).toHaveLength(1);
+    expect(d.changed[0].fields).toEqual(["scale", "unit"]);
+  });
+
+  it("finds added and removed registers", () => {
+    const c = blankRegister({ name: "C", address: 5 });
+    const d = diffRegisters([a, b], [a, c]);
+    expect(d.added).toEqual([c]);
+    expect(d.removed).toEqual([b]);
+  });
+
+  it("sees a register that moved as removed and added", () => {
+    const d = diffRegisters([a], [{ ...a, address: 9 }]);
+    expect(d.added).toHaveLength(1);
+    expect(d.removed).toHaveLength(1);
+  });
+
+  it("pairs registers that share a place in order", () => {
+    const x = blankRegister({ name: "X", address: 7 });
+    const y = blankRegister({ name: "Y", address: 7 });
+    const d = diffRegisters([x, y], [x, { ...y, description: "new" }]);
+    expect(d.changed.map((c) => c.after.name)).toEqual(["Y"]);
+  });
+});
+
+describe("findRegister", () => {
+  const list = [
+    blankRegister({ name: "A", address: 3 }),
+    blankRegister({ name: "B", address: 3 }),
+    blankRegister({ name: "C", address: 4, area: "input" }),
+  ];
+
+  it("prefers the name, then the place", () => {
+    expect(findRegister(list, { area: "holding", address: 3, name: "B" })).toBe(
+      1,
+    );
+    expect(findRegister(list, { area: "holding", address: 3, name: "?" })).toBe(
+      0,
+    );
+    expect(findRegister(list, { area: "input", address: 9, name: "C" })).toBe(
+      -1,
+    );
   });
 });

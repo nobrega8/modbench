@@ -470,3 +470,9 @@ export interface MapSearch {
   /** Reads it took: one per distinct identity register. */
   reads: number;
 }
+
+/** A map to open in the map builder, and the register to show in it. */
+export interface BuilderTarget {
+  path: string;
+  register: { area: Area; address: number; name: string } | null;
+}

@@ -1,18 +1,20 @@
 // The map under construction in the map builder's window: its header, its
 // registers, where it was saved, and what the validator says about it.
 
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { ask, open, save } from "@tauri-apps/plugin-dialog";
 import { api, errorText } from "./api";
 import {
   blankMeta,
   blankRegister,
+  diffRegisters,
+  findRegister,
   mapFileName,
   sortDiagnostics,
 } from "./builder";
 import { wordCount } from "./custom-registers";
 import { t } from "./i18n.svelte.ts";
 import { MAP_EXTENSIONS } from "./types";
-import type { Diagnostic, Meta, Register } from "./types";
+import type { BuilderTarget, Diagnostic, Meta, Register } from "./types";
 
 /** This page is the map builder's own window (see `builder_open_window`). */
 export const IN_BUILDER_WINDOW =
@@ -31,12 +33,21 @@ class MapBuilder {
   dirty = $state(false);
   diagnostics = $state.raw<Diagnostic[]>([]);
   checking = $state(false);
+  /** The registers as they were opened, to show what changed. */
+  original = $state.raw<Register[] | null>(null);
+  /** The map is a file of the library, which is not overwritten. */
+  fromLibrary = $state(false);
+  /** The register to scroll to and mark, after a map opened at one. */
+  focus = $state<number | null>(null);
   message = $state<{ ok: boolean; text: string } | null>(null);
 
   private seq = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
 
   readonly sorted = $derived(sortDiagnostics(this.diagnostics));
+  readonly changes = $derived(
+    this.original ? diffRegisters(this.original, this.registers) : null,
+  );
   readonly errors = $derived(
     this.diagnostics.filter((d) => d.severity === "error").length,
   );
@@ -124,13 +135,27 @@ class MapBuilder {
     this.meta = blankMeta();
     this.registers = [];
     this.path = null;
+    this.original = null;
+    this.fromLibrary = false;
+    this.focus = null;
     this.dirty = false;
     this.diagnostics = [];
     this.message = null;
     this.schedule();
   }
 
-  /** Replaces the map with one opened from a file. */
+  /** True when it is fine to replace the map: nothing to lose, or the user agrees. */
+  private async canReplace(): Promise<boolean> {
+    if (!this.dirty) return true;
+    return ask(t("builder.discard"), { kind: "warning" });
+  }
+
+  /** Starts over, unless that would lose changes the user wants to keep. */
+  async startNew() {
+    if (await this.canReplace()) this.reset();
+  }
+
+  /** Asks for a map file and opens it. */
   async openFile() {
     const picked = await open({
       multiple: false,
@@ -139,8 +164,18 @@ class MapBuilder {
       ],
     });
     if (typeof picked !== "string") return;
+    if (await this.canReplace()) await this.load(picked, null);
+  }
+
+  /** Opens what another window asked for (a map, and a register in it). */
+  async openTarget(target: BuilderTarget) {
+    if (await this.canReplace()) await this.load(target.path, target.register);
+  }
+
+  /** Replaces the map with the file at `path`, scrolled to a register. */
+  private async load(path: string, at: BuilderTarget["register"]) {
     try {
-      const parsed = await api.openMap(picked);
+      const parsed = await api.openMap(path);
       if (!parsed.map) {
         this.diagnostics = parsed.diagnostics;
         this.message = { ok: false, text: t("builder.cannot_open") };
@@ -148,10 +183,16 @@ class MapBuilder {
       }
       this.meta = parsed.map.meta;
       this.registers = parsed.map.registers;
-      this.path = picked;
+      this.original = $state.snapshot(parsed.map.registers);
+      this.path = path;
+      this.fromLibrary = await inLibrary(path);
       this.dirty = false;
-      this.message = null;
+      this.message = this.fromLibrary
+        ? { ok: true, text: t("builder.library_copy") }
+        : null;
       this.diagnostics = parsed.diagnostics;
+      const index = at ? findRegister(this.registers, at) : -1;
+      this.focus = index >= 0 ? index : null;
       this.schedule();
     } catch (e) {
       this.message = { ok: false, text: errorText(e) };
@@ -161,7 +202,11 @@ class MapBuilder {
   /** Asks where to save, and writes the map as a version 2 file. */
   async saveAs() {
     const where = await save({
-      defaultPath: this.path ?? mapFileName(this.meta),
+      // A map of the library is saved under another name, so that the
+      // library's own file is not overwritten by accident.
+      defaultPath: this.fromLibrary
+        ? mapFileName(this.meta).replace(".mbmap.json", "-edited.mbmap.json")
+        : (this.path ?? mapFileName(this.meta)),
       filters: [
         { name: t("libraryview.modbus_map"), extensions: MAP_EXTENSIONS },
       ],
@@ -173,6 +218,7 @@ class MapBuilder {
         $state.snapshot({ meta: this.meta, registers: this.registers }),
       );
       this.path = where;
+      this.fromLibrary = await inLibrary(where);
       this.dirty = false;
       this.message = { ok: true, text: t("builder.saved", { path: where }) };
     } catch (e) {
@@ -181,6 +227,16 @@ class MapBuilder {
         text: t("builder.not_saved", { error: errorText(e) }),
       };
     }
+  }
+}
+
+/** Whether a file is inside the library's folder. */
+async function inLibrary(path: string): Promise<boolean> {
+  try {
+    const folder = (await api.libraryFolder()).replaceAll("\\", "/");
+    return path.replaceAll("\\", "/").startsWith(folder + "/");
+  } catch {
+    return false;
   }
 }
 

@@ -5,6 +5,7 @@ import type {
   AddressRange,
   AddressScan,
   Area,
+  BuilderTarget,
   ByteOrder,
   ConnectionConfig,
   DeviceIdentity,
@@ -159,7 +160,10 @@ export const api = {
   /** Shows the simulator in a window of its own, or brings it to the front. */
   simOpenWindow: () => invoke<void>("sim_open_window"),
   /** Shows the map builder in a window of its own, or brings it to the front. */
-  builderOpenWindow: () => invoke<void>("builder_open_window"),
+  builderOpenWindow: (target: BuilderTarget | null = null) =>
+    invoke<void>("builder_open_window", { target }),
+  /** The map the builder was asked to open, once; null when none. */
+  builderTakeTarget: () => invoke<BuilderTarget | null>("builder_take_target"),
   builderCloseWindow: () => invoke<void>("builder_close_window"),
   /** Checks a map that is being built, with the rules a file gets. */
   validateMap: (map: DeviceMap) =>

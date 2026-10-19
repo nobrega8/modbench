@@ -178,6 +178,17 @@
         action: () => (confirm = { path: e.path, kind: "edit" }),
       },
       {
+        label: t("builder.edit_in_builder"),
+        disabled: !!e.error,
+        action: () =>
+          api
+            .builderOpenWindow({
+              path: `${bench.libraryFolder}/${e.path}`,
+              register: null,
+            })
+            .catch(() => {}),
+      },
+      {
         label: t("libraryview.duplicate"),
         disabled: !!e.error,
         action: () => duplicate(e),
