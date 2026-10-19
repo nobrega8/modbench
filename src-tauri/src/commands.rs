@@ -46,6 +46,23 @@ pub struct AppState {
     /// the simulator is stopped.
     sim_devices: SimDevices,
     sim: std::sync::Mutex<Option<simulator::Running>>,
+    /// What the map builder's window should open next; it takes it on load.
+    builder_target: std::sync::Mutex<Option<BuilderTarget>>,
+}
+
+/// A map to open in the map builder, and the register to show in it.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BuilderTarget {
+    pub path: String,
+    /// The register to scroll to, found by area, address and name.
+    pub register: Option<BuilderRegister>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BuilderRegister {
+    pub area: Area,
+    pub address: u16,
+    pub name: String,
 }
 
 /// Tells every window the simulator changed (started, stopped, loaded, new
@@ -1278,14 +1295,31 @@ pub fn sim_close_window(app: AppHandle) {
 /// Shows the map builder in a window of its own (or brings that window to
 /// the front), so it can sit next to the main window and the manual.
 #[tauri::command]
-pub async fn builder_open_window(app: AppHandle) -> Result<(), ModbusError> {
+pub async fn builder_open_window(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    target: Option<BuilderTarget>,
+) -> Result<(), ModbusError> {
+    let open = app.get_webview_window(BUILDER_WINDOW).is_some();
+    *state.builder_target.lock().unwrap() = target;
     open_tool_window(
         &app,
         BUILDER_WINDOW,
         "?window=builder",
         "Modbench Map builder",
         (1180.0, 820.0),
-    )
+    )?;
+    // A window that is already open does not load again: tell it to look.
+    if open {
+        let _ = app.emit_to(BUILDER_WINDOW, "builder-load", ());
+    }
+    Ok(())
+}
+
+/// The map the builder was asked to open, once; None when it was not asked.
+#[tauri::command]
+pub fn builder_take_target(state: State<'_, AppState>) -> Option<BuilderTarget> {
+    state.builder_target.lock().unwrap().take()
 }
 
 /// Closes the map builder's own window.

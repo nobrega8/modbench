@@ -120,6 +120,15 @@
 
   let table: HTMLElement | undefined = $state();
 
+  /** Scrolls to the register a map was opened at, and puts the cursor in it. */
+  $effect(() => {
+    const at = builder.focus;
+    if (at === null || !table) return;
+    const row = table.querySelectorAll<HTMLElement>("tbody tr.row")[at];
+    row?.scrollIntoView({ block: "center" });
+    row?.querySelector<HTMLInputElement>("input")?.focus();
+  });
+
   async function addRegister() {
     const at = builder.addRegister(builder.registers.length - 1);
     await Promise.resolve();
@@ -132,7 +141,7 @@
 
 <div class="builder">
   <div class="toolbar">
-    <button class="btn" onclick={() => builder.reset()}
+    <button class="btn" onclick={() => builder.startNew()}
       ><Icon name="plus" />{t("builder.new")}</button
     >
     <button class="btn" onclick={() => builder.openFile()}
@@ -161,6 +170,37 @@
     </p>
   {/if}
   {#if builder.path}<p class="path dim mono">{builder.path}</p>{/if}
+
+  {#if builder.changes}
+    {@const c = builder.changes}
+    <details class="card">
+      <summary
+        >{t("builder.changes")}
+        <span class="dim"
+          >{c.changed.length + c.added.length + c.removed.length}</span
+        ></summary
+      >
+      {#if c.changed.length + c.added.length + c.removed.length === 0}
+        <p class="dim">{t("builder.no_changes")}</p>
+      {:else}
+        <ul class="changes">
+          {#each c.changed as ch, i (i)}
+            <li>
+              <strong>{t("builder.change_changed")}</strong>
+              {ch.after.name}
+              <span class="dim">({ch.fields.join(", ")})</span>
+            </li>
+          {/each}
+          {#each c.added as r, i (i)}
+            <li><strong>{t("builder.change_added")}</strong> {r.name}</li>
+          {/each}
+          {#each c.removed as r, i (i)}
+            <li><strong>{t("builder.change_removed")}</strong> {r.name}</li>
+          {/each}
+        </ul>
+      {/if}
+    </details>
+  {/if}
 
   <details class="card" open>
     <summary>{t("builder.header")}</summary>
@@ -375,6 +415,7 @@
           {@const bits = isBitArea(reg.area)}
           <tr
             class="row"
+            class:focus={builder.focus === index}
             class:bad={problems.some((p) => p.severity === "error")}
           >
             <td class="name"
@@ -622,6 +663,18 @@
     font-size: 13px;
     color: var(--text-2);
     font-weight: 600;
+  }
+
+  .changes {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    font-size: 13px;
+    max-height: 160px;
+    overflow: auto;
+  }
+
+  tr.row.focus td {
+    background: var(--accent-soft);
   }
 
   .fields {

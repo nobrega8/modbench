@@ -307,6 +307,21 @@
               }),
               action: () => bench.setReadArea(index, otherReadArea(reg.area)),
             }),
+      !isCustom(reg) &&
+        !bench.demo && {
+          label: t("builder.edit_register"),
+          action: () =>
+            api
+              .builderOpenWindow({
+                path: open.path,
+                register: {
+                  area: reg.area,
+                  address: reg.address,
+                  name: reg.name,
+                },
+              })
+              .catch(() => {}),
+        },
       readable &&
         reg.type !== "string" &&
         (charted

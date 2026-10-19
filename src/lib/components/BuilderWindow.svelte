@@ -3,7 +3,9 @@
   manual it is built from.
 -->
 <script lang="ts">
+  import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
+  import { api } from "#lib/api.ts";
   import { t } from "#lib/i18n.svelte.ts";
   import { builder } from "#lib/builder.svelte.ts";
   import MapBuilder from "./MapBuilder.svelte";
@@ -12,8 +14,18 @@
   /** macOS draws its own window buttons at the top left of the title bar. */
   const mac = navigator.userAgent.includes("Mac OS X");
 
+  /** Opens the map another window asked for, if it did. */
+  async function takeTarget() {
+    const target = await api.builderTakeTarget().catch(() => null);
+    if (target) await builder.openTarget(target);
+  }
+
   onMount(() => {
     void builder.check();
+    void takeTarget();
+    // A window that is already open is told when there is a new request.
+    const stop = listen("builder-load", () => void takeTarget());
+    return () => void stop.then((off) => off());
   });
 </script>
 

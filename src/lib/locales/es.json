@@ -1085,5 +1085,14 @@
   "builder.row_delete": "Eliminar",
   "builder.empty": "Todavía no hay registros. Añada el primero.",
   "builder.bad_address": "Dirección por debajo de la base o fuera de 0-65535",
-  "builder.bad_labels": "Etiquetas: escriba pares valor=etiqueta separados por comas"
+  "builder.bad_labels": "Etiquetas: escriba pares valor=etiqueta separados por comas",
+  "builder.edit_register": "Editar registro…",
+  "builder.changes": "Cambios respecto al original",
+  "builder.no_changes": "Aún sin cambios",
+  "builder.change_added": "Añadido",
+  "builder.change_removed": "Eliminado",
+  "builder.change_changed": "Modificado",
+  "builder.discard": "El mapa tiene cambios sin guardar. ¿Abrir otro mapa y perderlos?",
+  "builder.library_copy": "Este mapa está en la biblioteca. «Guardar como…» crea una copia local y deja el archivo de la biblioteca como está.",
+  "builder.edit_as_text": "Abrir en un editor de texto…"
 }

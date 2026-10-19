@@ -1085,5 +1085,14 @@
   "builder.row_delete": "Excluir",
   "builder.empty": "Ainda não há registradores. Adicione o primeiro.",
   "builder.bad_address": "Endereço abaixo da base ou fora de 0-65535",
-  "builder.bad_labels": "Rótulos: escreva pares valor=rótulo separados por vírgulas"
+  "builder.bad_labels": "Rótulos: escreva pares valor=rótulo separados por vírgulas",
+  "builder.edit_register": "Editar registrador…",
+  "builder.changes": "Alterações em relação ao original",
+  "builder.no_changes": "Ainda sem alterações",
+  "builder.change_added": "Adicionado",
+  "builder.change_removed": "Removido",
+  "builder.change_changed": "Alterado",
+  "builder.discard": "O mapa tem alterações não salvas. Abrir outro mapa e perdê-las?",
+  "builder.library_copy": "Este mapa está na biblioteca. «Salvar como…» cria uma cópia local e deixa o arquivo da biblioteca como está.",
+  "builder.edit_as_text": "Abrir em um editor de texto…"
 }
