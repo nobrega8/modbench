@@ -12,6 +12,8 @@
   import ChartExport from "./ChartExport.svelte";
   import MarkerTable from "./MarkerTable.svelte";
   import { Markers } from "#lib/markers.svelte.ts";
+  import { boundsOf, markersRange, type Range } from "#lib/zoom.ts";
+  import Icon from "./Icon.svelte";
 
   let {
     groups,
@@ -55,8 +57,11 @@
 
   const full = $derived(count >= MAX_SERIES);
 
+  /** The span picked by zooming or panning, or null: the time span above. */
+  let zoom = $state.raw<Range | null>(null);
+
   /** The time span every chart shows, ending at the newest sample. */
-  const span = $derived.by(() => {
+  const baseSpan = $derived.by(() => {
     let first = Infinity;
     let last = -Infinity;
     for (const g of groups) {
@@ -70,6 +75,26 @@
     const from = windowMs ? last - windowMs : first;
     return { from, to: Math.max(last, from + 1000) };
   });
+
+  /** What the charts show: the zoomed span, or the chosen time span. */
+  const span = $derived(baseSpan && zoom ? zoom : baseSpan);
+
+  /** What the data covers: how far the charts can zoom and pan. */
+  const bounds = $derived(
+    boundsOf(
+      groups.flatMap((g) =>
+        g.lines.flatMap(({ samples: s }) =>
+          s.length ? [s[0].t, s[s.length - 1].t] : [],
+        ),
+      ),
+    ),
+  );
+
+  function zoomToMarkers() {
+    if (markers.a === null || markers.b === null || !bounds) return;
+    const r = markersRange(markers.a, markers.b, bounds);
+    if (r) zoom = r;
+  }
 
   function add(value: number) {
     onadd(value);
@@ -91,7 +116,22 @@
     bind:value={windowMs}
     label={t("chartview.time_span")}
     options={windows.map((w) => ({ value: w.ms, label: w.label }))}
+    onchange={() => (zoom = null)}
   />
+  <button
+    class="btn icon"
+    title={`${t("chartview.zoom_reset")} (${t("chartview.zoom_help")})`}
+    aria-label={t("chartview.zoom_reset")}
+    disabled={!zoom}
+    onclick={() => (zoom = null)}><Icon name="zoomreset" /></button
+  >
+  <button
+    class="btn icon"
+    title={t("chartview.zoom_markers")}
+    aria-label={t("chartview.zoom_markers")}
+    disabled={markers.a === null || markers.b === null || !bounds}
+    onclick={zoomToMarkers}><Icon name="zoomin" /></button
+  >
   <span class="spacer"></span>
   {#if note}<span class="dim">{note}</span>{/if}
   <ChartExport
@@ -102,8 +142,13 @@
     name="chart"
     disabled={!span || !count}
   />
-  <button class="btn" disabled={!span} onclick={onclear}
-    >{t("chartview.clear")}</button
+  <button
+    class="btn"
+    disabled={!span}
+    onclick={() => {
+      zoom = null;
+      onclear();
+    }}>{t("chartview.clear")}</button
   >
 </div>
 
@@ -125,6 +170,8 @@
         to={span.to}
         {onremove}
         {markers}
+        {bounds}
+        onzoom={(r) => (zoom = r)}
       />
     {/each}
   </div>
