@@ -29,33 +29,11 @@ jobs:
             bookworm /sysroot http://deb.debian.org/debian
           symlinks -cr /sysroot/usr/lib /sysroot/lib > /dev/null
 
-      - uses: actions/checkout@v7
-        with:
-          submodules: true
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: armv7-unknown-linux-gnueabihf
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - run: npm ci
-
-      - name: Build the .deb
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npx tauri build --target armv7-unknown-linux-gnueabihf --bundles deb
-
-      - name: Show the result
+      - name: Probe the sysroot
         run: |
-          ls -l src-tauri/target/armv7-unknown-linux-gnueabihf/release/bundle/deb/
-          dpkg-deb -I src-tauri/target/armv7-unknown-linux-gnueabihf/release/bundle/deb/*.deb | head -20
-          file src-tauri/target/armv7-unknown-linux-gnueabihf/release/modbench
+          ls /sysroot
+          ls /sysroot/usr/lib/arm-linux-gnueabihf/pkgconfig | head -20
+          find /sysroot -name "glib-2.0.pc"
+          ls /sysroot/var/cache/apt/archives 2>/dev/null | head -5
+          ls /sysroot/var/cache/apt/archives | wc -l
+          ls /sysroot/var/lib/dpkg/ | head
