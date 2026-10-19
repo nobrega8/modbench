@@ -20,7 +20,12 @@
   import { bench, type OpenMap } from "#lib/state.svelte.ts";
   import { appliesTo, rangeText, versionText } from "#lib/identity.ts";
   import { byIndex, check, limitsText } from "#lib/alarms.ts";
-  import { diagnosticWhere, type Register } from "#lib/types.ts";
+  import {
+    diagnosticWhere,
+    type CheckReport,
+    type Register,
+    type ReportContext,
+  } from "#lib/types.ts";
   import { isCustom } from "#lib/custom-registers.ts";
   import {
     contextMenu,
@@ -219,6 +224,53 @@
       exportNote = {
         ok: false,
         text: t("maptable.not_saved_error", { error: errorText(e) }),
+      };
+    }
+  }
+
+  /** The last check of the device against this map. */
+  let checking = $state(false);
+  let checked = $state<{
+    path: string;
+    report: CheckReport;
+    context: ReportContext;
+  } | null>(null);
+
+  async function checkDevice() {
+    exportNote = null;
+    checking = true;
+    try {
+      const { report, context } = await bench.checkDevice();
+      checked = { path: open.path, report, context };
+    } catch (e) {
+      exportNote = {
+        ok: false,
+        text: t("check.failed", { error: errorText(e) }),
+      };
+    } finally {
+      checking = false;
+    }
+  }
+
+  async function saveReport() {
+    if (!checked) return;
+    exportNote = null;
+    const name = `${meta.vendor}-${meta.model}`.replace(/[^\w.-]+/g, "_");
+    const path = await save({
+      defaultPath: `${name}-commissioning.html`,
+      filters: [{ name: "HTML", extensions: ["html"] }],
+    });
+    if (!path) return;
+    try {
+      await api.saveText(
+        path,
+        await api.checkHtml(checked.report, checked.context),
+      );
+      exportNote = { ok: true, text: t("check.saved") };
+    } catch (e) {
+      exportNote = {
+        ok: false,
+        text: t("check.not_saved", { error: errorText(e) }),
       };
     }
   }
@@ -557,6 +609,13 @@
     onclick={toggleRecording}
     ><Icon name={recording ? "stoprecord" : "record"} /></button
   >
+  <button
+    class="btn icon"
+    title={t("check.title")}
+    aria-label={t("check.run")}
+    disabled={checking || bench.running}
+    onclick={checkDevice}><Icon name="verified" /></button
+  >
   {#if bench.marks.size}
     <button
       class="btn icon"
@@ -656,6 +715,44 @@
       {/each}
     </ul>
   </details>
+{/if}
+
+{#if checked && checked.path === open.path}
+  {@const failures = [
+    ...checked.report.findings
+      .filter((f) => f.status === "fail")
+      .map((f) => ({ name: f.what, why: f.detail })),
+    ...checked.report.rows
+      .filter((r) => r.status === "fail")
+      .map((r) => ({ name: r.name, why: r.reason ?? "" })),
+  ]}
+  <div class="checked" class:bad={failures.length > 0}>
+    <strong>
+      {t("check.summary", {
+        pass: checked.report.pass,
+        fail: checked.report.fail,
+        not_read: checked.report.not_read,
+      })}
+    </strong>
+    <button class="btn small" onclick={saveReport}>{t("check.save")}</button>
+    <button
+      class="btn ghost small"
+      aria-label={t("check.close")}
+      onclick={() => (checked = null)}>×</button
+    >
+    {#if failures.length === 0}
+      <span class="dim">{t("check.none")}</span>
+    {:else}
+      <ul>
+        {#each failures.slice(0, 20) as f, i (i)}
+          <li><strong>{f.name}</strong> {f.why}</li>
+        {/each}
+        {#if failures.length > 20}<li class="dim">
+            … {failures.length - 20}
+          </li>{/if}
+      </ul>
+    {/if}
+  </div>
 {/if}
 
 <div
@@ -1212,6 +1309,30 @@
 
   tbody tr:hover td {
     background: var(--accent-soft);
+  }
+
+  .checked {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--card);
+  }
+
+  .checked.bad {
+    outline: 1px solid var(--danger, #c0392b);
+  }
+
+  .checked ul {
+    flex-basis: 100%;
+    margin: 0;
+    padding-left: 18px;
+    max-height: 140px;
+    overflow: auto;
+    font-size: 13px;
   }
 
   tr.spacer td {
