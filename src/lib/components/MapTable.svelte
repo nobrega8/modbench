@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { windowOf } from "#lib/virtual.ts";
   import { t } from "#lib/i18n.svelte.ts";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
@@ -136,6 +137,20 @@
         compareRows(a, b, bench.skipped, bench.marks, bench.marksView),
       ),
   );
+  // Long maps render only the rows in view (see virtual.ts).
+  let wrap = $state<HTMLElement>();
+  let scrollTop = $state(0);
+  let viewport = $state(600);
+  let rowHeight = $state(29);
+  const win = $derived(windowOf(rows.length, scrollTop, viewport, rowHeight));
+  const visible = $derived(rows.slice(win.start, win.end));
+  // The height of a row is read from the first one shown.
+  $effect(() => {
+    void visible;
+    const row = wrap?.querySelector<HTMLElement>("tbody tr.reg");
+    const h = row?.getBoundingClientRect().height ?? 0;
+    if (h > 0 && Math.abs(h - rowHeight) > 0.5) rowHeight = h;
+  });
   const readCount = $derived(open.map.registers.length - bench.skipped.size);
 
   /** The map snapshot to compare with, when there is one. */
@@ -643,7 +658,12 @@
   </details>
 {/if}
 
-<div class="table-wrap">
+<div
+  class="table-wrap"
+  bind:this={wrap}
+  bind:clientHeight={viewport}
+  onscroll={(e) => (scrollTop = e.currentTarget.scrollTop)}
+>
   <table>
     <thead>
       <tr>
@@ -670,7 +690,12 @@
       </tr>
     </thead>
     <tbody>
-      {#each rows as { reg, index } (index)}
+      {#if win.before}
+        <tr class="spacer" aria-hidden="true" style:height="{win.before}px"
+          ><td colspan={snap ? 9 : 8}></td></tr
+        >
+      {/if}
+      {#each visible as { reg, index } (index)}
         {@const r = bench.mapResults.get(index)}
         {@const off = bench.skipped.has(index)}
         {@const shown =
@@ -680,6 +705,7 @@
         {@const shownTitle =
           shown === null ? undefined : valueTitle(reg, r?.value ?? null)}
         <tr
+          class="reg"
           class:err={!!r?.error}
           class:off
           class:diff={different.has(index)}
@@ -939,6 +965,11 @@
           >
         </tr>
       {/each}
+      {#if win.after}
+        <tr class="spacer" aria-hidden="true" style:height="{win.after}px"
+          ><td colspan={snap ? 9 : 8}></td></tr
+        >
+      {/if}
       <tr class="add-row">
         <td colspan={snap ? 9 : 8}>
           {#if adding}
@@ -1181,6 +1212,15 @@
 
   tbody tr:hover td {
     background: var(--accent-soft);
+  }
+
+  tr.spacer td {
+    padding: 0;
+    border: 0;
+  }
+
+  tbody tr.spacer:hover td {
+    background: none;
   }
 
   .mono {

@@ -193,7 +193,9 @@ class Bench {
   quantity = $state(10);
   loop = $state(true);
   writeValues = $state<number[]>(Array(10).fill(0));
-  maps = $state<OpenMap[]>([]);
+  /** Raw: a map is only ever replaced, never edited in place, and a deep
+   * proxy over thousands of registers makes every read slow. */
+  maps = $state.raw<OpenMap[]>([]);
   activeMap = $state<number | null>(null);
   mapError = $state<{ path: string; diagnostics: Diagnostic[] } | null>(null);
   orderOverride = $state<ByteOrder | null>(null);
@@ -478,8 +480,10 @@ class Bench {
   openMapObject(map: DeviceMap, path: string) {
     const entry: OpenMap = { path, map, warnings: [], version: 2 };
     const existing = this.maps.findIndex((m) => m.path === path);
-    if (existing >= 0) this.maps[existing] = entry;
-    else this.maps.push(entry);
+    this.maps =
+      existing >= 0
+        ? this.maps.map((m, i) => (i === existing ? entry : m))
+        : [...this.maps, entry];
     this.selectMap(existing >= 0 ? existing : this.maps.length - 1);
   }
 
@@ -487,7 +491,7 @@ class Bench {
   closeMapPath(path: string) {
     const index = this.maps.findIndex((m) => m.path === path);
     if (index < 0) return;
-    this.maps.splice(index, 1);
+    this.maps = this.maps.filter((_, i) => i !== index);
     if (this.activeMap === index) {
       this.activeMap = null;
       this.source = "manual";
@@ -509,8 +513,10 @@ class Bench {
       version: parsed.version,
     };
     const existing = this.maps.findIndex((m) => m.path === path);
-    if (existing >= 0) this.maps[existing] = entry;
-    else this.maps.push(entry);
+    this.maps =
+      existing >= 0
+        ? this.maps.map((m, i) => (i === existing ? entry : m))
+        : [...this.maps, entry];
     this.selectMap(existing >= 0 ? existing : this.maps.length - 1);
     if (!this.running) this.applyDefaults(entry.map);
   }
@@ -525,12 +531,13 @@ class Bench {
     if (!parsed.map) return;
     // The custom registers follow the map to its new file.
     saveCustom(path, old.map.registers);
-    this.maps[index] = {
+    const next: OpenMap = {
       path,
       map: withCustom(parsed.map, path),
       warnings: parsed.diagnostics.filter((d) => d.severity === "warning"),
       version: parsed.version,
     };
+    this.maps = this.maps.map((m, i) => (i === index ? next : m));
     if (this.activeMap === index) this.selectMap(index);
   }
 
@@ -1545,9 +1552,17 @@ class Bench {
   addCustomRegister(reg: Register) {
     const open = this.map;
     if (!open) return;
-    open.map.registers.push(reg);
-    saveCustom(open.path, open.map.registers);
+    const registers = [...open.map.registers, reg];
+    this.setRegisters(open, registers);
+    saveCustom(open.path, registers);
     this.refreshPolling();
+  }
+
+  /** Replaces the registers of an open map (the maps are never edited in
+   * place). */
+  private setRegisters(open: OpenMap, registers: Register[]) {
+    const next: OpenMap = { ...open, map: { ...open.map, registers } };
+    this.maps = this.maps.map((m) => (m === open ? next : m));
   }
 
   /** Removes a register added with addCustomRegister. Everything kept by
@@ -1555,8 +1570,9 @@ class Bench {
   removeCustomRegister(index: number) {
     const open = this.map;
     if (!open || !isCustom(open.map.registers[index])) return;
-    open.map.registers.splice(index, 1);
-    saveCustom(open.path, open.map.registers);
+    const registers = open.map.registers.filter((_, i) => i !== index);
+    this.setRegisters(open, registers);
+    saveCustom(open.path, registers);
     const shift = (i: number) => (i > index ? i - 1 : i);
     const rekey = <T>(m: Map<number, T>) =>
       new Map(
