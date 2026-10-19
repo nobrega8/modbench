@@ -24,6 +24,7 @@
     Parity,
   } from "#lib/types.ts";
   import Icon from "./Icon.svelte";
+  import MapMetaLists from "./MapMetaLists.svelte";
 
   const AREAS: { value: Area; label: string }[] = $derived([
     { value: "holding", label: t("customregisterform.holding_register") },
@@ -530,6 +531,7 @@
             }}></textarea>
         </label>
       </div>
+      <MapMetaLists {meta} ontouch={() => builder.touch()} />
     </details>
     {#each builder.sorted.file as d, i (i)}
       <p class="msg" class:warn={d.severity === "warning"}>
