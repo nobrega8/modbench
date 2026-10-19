@@ -4,7 +4,9 @@
   BuilderWindow) and saves a version 2 .mbmap.json.
 -->
 <script lang="ts">
+  import { tick } from "svelte";
   import { t } from "#lib/i18n.svelte.ts";
+  import { windowOf } from "#lib/virtual.ts";
   import { builder } from "#lib/builder.svelte.ts";
   import {
     enumText,
@@ -120,22 +122,49 @@
 
   let table: HTMLElement | undefined = $state();
 
+  // Long maps render only the rows in view (see virtual.ts).
+  let scrollTop = $state(0);
+  let viewport = $state(600);
+  let rowHeight = $state(36);
+  const win = $derived(
+    windowOf(builder.registers.length, scrollTop, viewport, rowHeight),
+  );
+  const visible = $derived(builder.registers.slice(win.start, win.end));
+  // The height of a row is read from the first one shown.
+  $effect(() => {
+    void visible;
+    const row = table?.querySelector<HTMLElement>("tbody tr.row");
+    const h = row?.getBoundingClientRect().height ?? 0;
+    if (h > 0 && Math.abs(h - rowHeight) > 0.5) rowHeight = h;
+  });
+
+  /** The row of a register, once it is rendered. */
+  async function rowAt(index: number): Promise<HTMLElement | null> {
+    if (!table) return null;
+    // Out of the window: scroll there first, so that the row exists.
+    table.scrollTop = Math.max(0, index * rowHeight - viewport / 2);
+    scrollTop = table.scrollTop;
+    await tick();
+    return table.querySelector<HTMLElement>(
+      `tbody tr.row[data-index="${index}"]`,
+    );
+  }
+
   /** Scrolls to the register a map was opened at, and puts the cursor in it. */
   $effect(() => {
     const at = builder.focus;
     if (at === null || !table) return;
-    const row = table.querySelectorAll<HTMLElement>("tbody tr.row")[at];
-    row?.scrollIntoView({ block: "center" });
-    row?.querySelector<HTMLInputElement>("input")?.focus();
+    void rowAt(at).then((row) => {
+      row?.scrollIntoView({ block: "center" });
+      row?.querySelector<HTMLInputElement>("input")?.focus();
+    });
   });
 
   async function addRegister() {
     const at = builder.addRegister(builder.registers.length - 1);
-    await Promise.resolve();
-    table
-      ?.querySelectorAll<HTMLInputElement>("tbody tr.row")
-      [at]?.querySelector<HTMLInputElement>("input")
-      ?.focus();
+    const row = await rowAt(at);
+    row?.scrollIntoView({ block: "nearest" });
+    row?.querySelector<HTMLInputElement>("input")?.focus();
   }
 </script>
 
@@ -518,7 +547,12 @@
     >
   </div>
 
-  <div class="table-wrap" bind:this={table}>
+  <div
+    class="table-wrap"
+    bind:this={table}
+    bind:clientHeight={viewport}
+    onscroll={(e) => (scrollTop = e.currentTarget.scrollTop)}
+  >
     <table>
       <thead>
         <tr>
@@ -538,11 +572,18 @@
         </tr>
       </thead>
       <tbody>
-        {#each builder.registers as reg, index (reg)}
+        {#if win.before}
+          <tr class="spacer" aria-hidden="true" style:height="{win.before}px"
+            ><td colspan="11"></td></tr
+          >
+        {/if}
+        {#each visible as reg, i (reg)}
+          {@const index = win.start + i}
           {@const problems = builder.sorted.rows.get(index) ?? []}
           {@const bits = isBitArea(reg.area)}
           <tr
             class="row"
+            data-index={index}
             class:focus={builder.focus === index}
             class:bad={problems.some((p) => p.severity === "error")}
           >
@@ -722,6 +763,11 @@
             </tr>
           {/if}
         {/each}
+        {#if win.after}
+          <tr class="spacer" aria-hidden="true" style:height="{win.after}px"
+            ><td colspan="11"></td></tr
+          >
+        {/if}
         {#if builder.registers.length === 0}
           <tr><td colspan="11" class="empty dim">{t("builder.empty")}</td></tr>
         {/if}
@@ -831,6 +877,11 @@
 
   .regs-head .btn {
     margin-left: auto;
+  }
+
+  tr.spacer td {
+    padding: 0;
+    border: 0;
   }
 
   .table-wrap {
