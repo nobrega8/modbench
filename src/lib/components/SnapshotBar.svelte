@@ -16,6 +16,7 @@
     type Snapshot,
   } from "#lib/snapshots.ts";
   import { bench } from "#lib/state.svelte.ts";
+  import Icon from "./Icon.svelte";
 
   let {
     differences,
@@ -113,10 +114,11 @@
 </script>
 
 <button
-  class="btn small"
+  class="btn icon"
   aria-haspopup="menu"
   title={t("snapshotbar.keep_the_values_shown")}
-  onclick={menu}>{t("snapshotbar.snapshot")}</button
+  aria-label={t("snapshotbar.snapshot")}
+  onclick={menu}><Icon name="snapshot" /></button
 >
 {#if bench.snapshot && fits(bench.snapshot) && differences !== null}
   <span class="snap" role="status">

@@ -29,6 +29,7 @@
   import { registerId } from "#lib/profiles.ts";
   import { MAX_SERIES } from "#lib/trend.ts";
   import AddressFormat from "./AddressFormat.svelte";
+  import Icon from "./Icon.svelte";
   import CustomRegisterForm from "./CustomRegisterForm.svelte";
   import ComputedForm from "./ComputedForm.svelte";
   import { formulaOf } from "#lib/computed.ts";
@@ -481,32 +482,38 @@
     })}</span
   >
   <button
-    class="btn small"
+    class="btn icon"
+    title={t("maptable.read_all")}
+    aria-label={t("maptable.read_all")}
     disabled={readCount === open.map.registers.length}
-    onclick={() => bench.setAllRead(true)}>{t("maptable.read_all")}</button
+    onclick={() => bench.setAllRead(true)}><Icon name="readall" /></button
   >
   <button
-    class="btn small"
+    class="btn icon"
+    title={t("maptable.read_none")}
+    aria-label={t("maptable.read_none")}
     disabled={readCount === 0}
-    onclick={() => bench.setAllRead(false)}>{t("maptable.read_none")}</button
+    onclick={() => bench.setAllRead(false)}><Icon name="readnone" /></button
   >
   <button
-    class="btn small"
+    class="btn icon"
     title={t("maptable.save_the_values_shown")}
+    aria-label={t("maptable.export")}
     disabled={!bench.mapResults.size}
-    onclick={exportValues}>{t("maptable.export")}</button
+    onclick={exportValues}><Icon name="export" /></button
   >
   <button
-    class="btn small"
+    class="btn icon"
     class:rec={recording}
     title={recording
-      ? t("maptable.recording_to_path_click", { path: recording.path })
+      ? `${t("maptable.stop_recording_rows", { rows: recording.rows })}: ${t("maptable.recording_to_path_click", { path: recording.path })}`
       : t("maptable.add_one_row_per")}
+    aria-label={recording
+      ? t("maptable.stop_recording_rows", { rows: recording.rows })
+      : t("maptable.record")}
     disabled={!recording && readCount === 0}
     onclick={toggleRecording}
-    >{recording
-      ? t("maptable.stop_recording_rows", { rows: recording.rows })
-      : t("maptable.record")}</button
+    ><Icon name={recording ? "stoprecord" : "record"} /></button
   >
   <SnapshotBar
     kind="map"
