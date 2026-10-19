@@ -125,7 +125,7 @@
   function editInBuilder(path: string) {
     api
       .builderOpenWindow({
-        path: `${bench.libraryFolder}/${path}`,
+        path,
         register: null,
       })
       .catch((e) => (message = { ok: false, text: errorText(e) }));
