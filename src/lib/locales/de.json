@@ -1086,12 +1086,12 @@
   "builder.bad_address": "Adresse unter der Basis oder außerhalb von 0-65535",
   "builder.bad_labels": "Bezeichnungen: Paare Wert=Bezeichnung, durch Kommas getrennt",
   "builder.edit_register": "Register bearbeiten…",
-  "builder.edit_in_builder": "Im Map-Editor bearbeiten",
   "builder.changes": "Änderungen gegenüber dem Original",
   "builder.no_changes": "Noch keine Änderungen",
   "builder.change_added": "Hinzugefügt",
   "builder.change_removed": "Entfernt",
   "builder.change_changed": "Geändert",
   "builder.discard": "Die Map hat ungespeicherte Änderungen. Eine andere Map öffnen und sie verlieren?",
-  "builder.library_copy": "Diese Map liegt in der Bibliothek. „Speichern unter…“ legt eine lokale Kopie an und lässt die Datei der Bibliothek unverändert."
+  "builder.library_copy": "Diese Map liegt in der Bibliothek. „Speichern unter…“ legt eine lokale Kopie an und lässt die Datei der Bibliothek unverändert.",
+  "builder.edit_as_text": "In einem Texteditor öffnen…"
 }

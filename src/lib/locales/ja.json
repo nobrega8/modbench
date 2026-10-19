@@ -1085,12 +1085,12 @@
   "builder.bad_address": "Address below the address base or outside 0-65535",
   "builder.bad_labels": "Labels: write value=label pairs separated by commas",
   "builder.edit_register": "Edit register…",
-  "builder.edit_in_builder": "Edit in the map builder",
   "builder.changes": "Changes from the original",
   "builder.no_changes": "No changes yet",
   "builder.change_added": "Added",
   "builder.change_removed": "Removed",
   "builder.change_changed": "Changed",
   "builder.discard": "The map has unsaved changes. Open another map and lose them?",
-  "builder.library_copy": "This map is in the library. Save as… makes a local copy and leaves the library's file as it is."
+  "builder.library_copy": "This map is in the library. Save as… makes a local copy and leaves the library's file as it is.",
+  "builder.edit_as_text": "Open in a text editor…"
 }

@@ -1086,12 +1086,12 @@
   "builder.bad_address": "Endereço abaixo da base ou fora de 0-65535",
   "builder.bad_labels": "Etiquetas: escreva pares valor=etiqueta separados por vírgulas",
   "builder.edit_register": "Editar registo…",
-  "builder.edit_in_builder": "Editar no construtor de mapas",
   "builder.changes": "Alterações face ao original",
   "builder.no_changes": "Ainda sem alterações",
   "builder.change_added": "Adicionado",
   "builder.change_removed": "Removido",
   "builder.change_changed": "Alterado",
   "builder.discard": "O mapa tem alterações por guardar. Abrir outro mapa e perdê-las?",
-  "builder.library_copy": "Este mapa está na biblioteca. «Guardar como…» cria uma cópia local e deixa o ficheiro da biblioteca como está."
+  "builder.library_copy": "Este mapa está na biblioteca. «Guardar como…» cria uma cópia local e deixa o ficheiro da biblioteca como está.",
+  "builder.edit_as_text": "Abrir num editor de texto…"
 }

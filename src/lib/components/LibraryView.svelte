@@ -121,6 +121,17 @@
     }
   }
 
+  /** Opens a map of the library in the map builder, which edits it. */
+  function editInBuilder(path: string) {
+    api
+      .builderOpenWindow({
+        path: `${bench.libraryFolder}/${path}`,
+        register: null,
+      })
+      .catch((e) => (message = { ok: false, text: errorText(e) }));
+  }
+
+  /** Opens a map of the library in the system's text editor. */
   async function edit(path: string) {
     confirm = null;
     try {
@@ -175,18 +186,12 @@
       { label: t("libraryview.explore"), action: () => (exploring = e.path) },
       {
         label: t("libraryview.edit2"),
-        action: () => (confirm = { path: e.path, kind: "edit" }),
+        disabled: !!e.error,
+        action: () => editInBuilder(e.path),
       },
       {
-        label: t("builder.edit_in_builder"),
-        disabled: !!e.error,
-        action: () =>
-          api
-            .builderOpenWindow({
-              path: `${bench.libraryFolder}/${e.path}`,
-              register: null,
-            })
-            .catch(() => {}),
+        label: t("builder.edit_as_text"),
+        action: () => (confirm = { path: e.path, kind: "edit" }),
       },
       {
         label: t("libraryview.duplicate"),
@@ -395,7 +400,8 @@
                 class="btn small icon ghost"
                 title={t("libraryview.edit")}
                 aria-label={t("libraryview.edit_model", { model: e.model })}
-                onclick={() => (confirm = { path: e.path, kind: "edit" })}
+                disabled={!!e.error}
+                onclick={() => editInBuilder(e.path)}
                 ><Icon name="edit" /></button
               >
               <button

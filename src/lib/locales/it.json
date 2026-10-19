@@ -1086,12 +1086,12 @@
   "builder.bad_address": "Indirizzo sotto la base o fuori da 0-65535",
   "builder.bad_labels": "Etichette: scrivi coppie valore=etichetta separate da virgole",
   "builder.edit_register": "Modifica registro…",
-  "builder.edit_in_builder": "Modifica nell’editor di mappe",
   "builder.changes": "Modifiche rispetto all’originale",
   "builder.no_changes": "Ancora nessuna modifica",
   "builder.change_added": "Aggiunto",
   "builder.change_removed": "Rimosso",
   "builder.change_changed": "Modificato",
   "builder.discard": "La mappa ha modifiche non salvate. Aprire un’altra mappa e perderle?",
-  "builder.library_copy": "Questa mappa è nella libreria. «Salva con nome…» crea una copia locale e lascia il file della libreria com’è."
+  "builder.library_copy": "Questa mappa è nella libreria. «Salva con nome…» crea una copia locale e lascia il file della libreria com’è.",
+  "builder.edit_as_text": "Apri in un editor di testo…"
 }
