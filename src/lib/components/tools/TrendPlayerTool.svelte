@@ -24,6 +24,8 @@
   import ChartExport from "../ChartExport.svelte";
   import MarkerTable from "../MarkerTable.svelte";
   import { Markers } from "#lib/markers.svelte.ts";
+  import { markersRange, type Range } from "#lib/zoom.ts";
+  import Icon from "../Icon.svelte";
 
   const speeds = [1, 2, 4, 8, 16, 60];
   const windows = $derived([
@@ -70,7 +72,27 @@
     return out;
   });
 
+  /** The span picked by zooming or panning, or null: the time span above. */
+  let zoom = $state.raw<Range | null>(null);
+
+  /** What the recording covers: how far the chart can zoom and pan. */
+  const bounds = $derived<Range | null>(
+    recording
+      ? {
+          from: recording.start,
+          to: Math.max(recording.end, recording.start + 1000),
+        }
+      : null,
+  );
+
+  function zoomToMarkers() {
+    if (markers.a === null || markers.b === null || !bounds) return;
+    const r = markersRange(markers.a, markers.b, bounds);
+    if (r) zoom = r;
+  }
+
   const span = $derived.by(() => {
+    if (zoom) return zoom;
     if (!recording) return { from: 0, to: 1 };
     const from = windowMs
       ? Math.max(recording.start, head - windowMs)
@@ -93,6 +115,7 @@
         return;
       }
       playing = false;
+      zoom = null;
       recording = rec;
       fileName = path.split(/[\\/]/).pop() ?? path;
       // Start with the columns that have numbers, up to the chart's limit.
@@ -205,7 +228,22 @@
       bind:value={windowMs}
       label={t("chartview.time_span")}
       options={windows.map((w) => ({ value: w.ms, label: w.label }))}
+      onchange={() => (zoom = null)}
     />
+    <button
+      class="btn icon"
+      title={`${t("chartview.zoom_reset")} (${t("chartview.zoom_help")})`}
+      aria-label={t("chartview.zoom_reset")}
+      disabled={!zoom}
+      onclick={() => (zoom = null)}><Icon name="zoomreset" /></button
+    >
+    <button
+      class="btn icon"
+      title={t("chartview.zoom_markers")}
+      aria-label={t("chartview.zoom_markers")}
+      disabled={markers.a === null || markers.b === null || !bounds}
+      onclick={zoomToMarkers}><Icon name="zoomin" /></button
+    >
     <ChartExport
       {charts}
       {groups}
@@ -228,6 +266,8 @@
           to={span.to}
           onremove={toggle}
           {markers}
+          {bounds}
+          onzoom={(r) => (zoom = r)}
         />
       {/each}
     </div>

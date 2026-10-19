@@ -12,6 +12,13 @@
   } from "#lib/trend.ts";
   import type { Register } from "#lib/types.ts";
   import type { Markers } from "#lib/markers.svelte.ts";
+  import {
+    panRange,
+    selectionRange,
+    wheelFactor,
+    zoomRange,
+    type Range,
+  } from "#lib/zoom.ts";
 
   export interface Line {
     index: number;
@@ -28,6 +35,8 @@
     to,
     onremove,
     markers,
+    bounds,
+    onzoom,
   }: {
     unit: string;
     lines: Line[];
@@ -37,6 +46,10 @@
     onremove: (index: number) => void;
     /** Markers A and B, shared by the charts of one view; none: no markers. */
     markers?: Markers;
+    /** What the data covers: the limits of zooming and panning. */
+    bounds?: Range | null;
+    /** Called with the new time span when the chart is zoomed or panned. */
+    onzoom?: (range: Range) => void;
   } = $props();
 
   /** The marker being dragged. */
@@ -50,25 +63,107 @@
     return from + ((px - M.left) / plotW) * span;
   }
 
-  /** Grabs a marker near the pointer, or places one where it is. */
+  /**
+   * A press that is not on a marker: a click places a marker, a drag pans the
+   * time axis, and Shift + drag picks a range to zoom into.
+   */
+  let gesture = $state<{
+    startX: number;
+    startT: number;
+    from: number;
+    to: number;
+    moved: boolean;
+    select: boolean;
+  } | null>(null);
+  /** The range being picked with Shift + drag, in ms. */
+  let selection = $state<{ a: number; b: number } | null>(null);
+  /** Pixels a press has to move before it is a drag and not a click. */
+  const DRAG_PX = 4;
+
+  /** The time at a pointer position, held inside the plot. */
+  function timeClamped(e: PointerEvent): number {
+    const box = (e.currentTarget as SVGElement).getBoundingClientRect();
+    const px = Math.min(Math.max(e.clientX - box.left, M.left), M.left + plotW);
+    return from + ((px - M.left) / plotW) * span;
+  }
+
+  /** Grabs a marker near the pointer, or starts a click or a drag. */
   function ondown(e: PointerEvent) {
-    if (!markers || e.button !== 0) return;
+    if (e.button !== 0) return;
     const t = timeAt(e);
     if (t === null) return;
     const box = (e.currentTarget as SVGElement).getBoundingClientRect();
     const px = e.clientX - box.left;
     const near = (m: number | null) => m !== null && Math.abs(x(m) - px) <= 6;
-    dragging = near(markers.a) ? "a" : near(markers.b) ? "b" : null;
-    if (dragging)
+    dragging = markers
+      ? near(markers.a)
+        ? "a"
+        : near(markers.b)
+          ? "b"
+          : null
+      : null;
+    if (dragging) {
       (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
-    else markers.place(t);
+      return;
+    }
+    if (!markers && !(onzoom && bounds)) return;
+    gesture = {
+      startX: e.clientX,
+      startT: t,
+      from,
+      to,
+      moved: false,
+      select: e.shiftKey,
+    };
+    (e.currentTarget as SVGElement).setPointerCapture(e.pointerId);
   }
 
   function ondrag(e: PointerEvent) {
     onmove(e);
-    if (!markers || !dragging) return;
-    const t = timeAt(e);
-    if (t !== null) markers.move(dragging, t);
+    if (markers && dragging) {
+      const t = timeAt(e);
+      if (t !== null) markers.move(dragging, t);
+      return;
+    }
+    if (!gesture) return;
+    const dx = e.clientX - gesture.startX;
+    if (!gesture.moved && Math.abs(dx) < DRAG_PX) return;
+    gesture.moved = true;
+    if (gesture.select) {
+      selection = { a: gesture.startT, b: timeClamped(e) };
+    } else if (onzoom && bounds) {
+      const shift = -(dx / plotW) * (gesture.to - gesture.from);
+      onzoom(panRange({ from: gesture.from, to: gesture.to }, shift, bounds));
+    }
+  }
+
+  function onup() {
+    const g = gesture;
+    gesture = null;
+    dragging = null;
+    const picked = selection;
+    selection = null;
+    if (!g) return;
+    if (!g.moved) {
+      // A click places a marker where it was.
+      markers?.place(g.startT);
+    } else if (g.select && picked && onzoom && bounds) {
+      const r = selectionRange(picked.a, picked.b, bounds);
+      if (r) onzoom(r);
+    }
+  }
+
+  /** The wheel zooms around the pointer. */
+  function wheel(node: SVGElement) {
+    const handle = (e: WheelEvent) => {
+      if (!onzoom || !bounds) return;
+      e.preventDefault();
+      const px = e.clientX - node.getBoundingClientRect().left;
+      const at = from + Math.min(1, Math.max(0, (px - M.left) / plotW)) * span;
+      onzoom(zoomRange({ from, to }, at, wheelFactor(e.deltaY), bounds));
+    };
+    node.addEventListener("wheel", handle, { passive: false });
+    return { destroy: () => node.removeEventListener("wheel", handle) };
   }
 
   const M = { top: 10, right: 14, bottom: 24, left: 58 };
@@ -238,9 +333,13 @@
         })}
         onpointermove={ondrag}
         onpointerdown={ondown}
-        onpointerup={() => (dragging = null)}
+        onpointerup={onup}
+        onpointercancel={onup}
         onpointerleave={() => (hoverX = null)}
+        use:wheel
         class:markable={!!markers}
+        class:zoomable={!!(onzoom && bounds)}
+        class:panning={!!gesture?.moved && !gesture.select}
       >
         {#each yTicks as v (v)}
           <line
@@ -303,6 +402,16 @@
           {/each}
         {/each}
 
+        {#if selection}
+          {@const x0 = x(Math.min(selection.a, selection.b))}
+          <rect
+            class="selection"
+            x={x0}
+            y={M.top}
+            width={Math.abs(x(selection.b) - x(selection.a))}
+            height={plotH}
+          />
+        {/if}
         {#if markers}
           {#each [["a", markers.a], ["b", markers.b]] as [name, t] (name)}
             {#if t !== null && typeof t === "number" && t >= from && t <= to}
@@ -480,8 +589,23 @@
     font-size: 11px;
   }
 
+  svg.zoomable {
+    cursor: grab;
+  }
+
   svg.markable {
     cursor: crosshair;
+  }
+
+  svg.panning {
+    cursor: grabbing;
+  }
+
+  .selection {
+    fill: rgb(var(--fg-rgb) / 0.1);
+    stroke: var(--text-3);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
   }
 
   .marker {
