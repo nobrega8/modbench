@@ -215,7 +215,7 @@ jobs:
       # pkg-config links statically when cross-compiling, which does not work
       # for the system's libraries
       PKG_CONFIG_ALL_DYNAMIC: "1"
-      RUSTFLAGS: -C link-arg=--sysroot=/sysroot -C link-arg=-Wl,-rpath-link=/sysroot/usr/lib/arm-linux-gnueabihf:/sysroot/lib/arm-linux-gnueabihf
+      RUSTFLAGS: -C link-arg=--sysroot=/sysroot -C link-arg=-Wl,-rpath-link=/sysroot/usr/lib/arm-linux-gnueabihf:/sysroot/lib/arm-linux-gnueabihf -C link-arg=-l:libsystemd.so.0
       CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
     steps:
       # WebKitGTK's -dev packages pull in gobject-introspection, which cannot
