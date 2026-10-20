@@ -232,7 +232,7 @@
     </details>
   {/if}
 
-  <details class="card" open>
+  <details class="card device" open>
     <summary>{t("builder.header")}</summary>
     <div class="fields">
       <label class="field">
@@ -851,6 +851,14 @@
 
   tr.row.focus td {
     background: var(--accent-soft);
+  }
+
+  /* The device header can be taller than the window (optional fields, sources,
+     notes): it scrolls inside its card and leaves room for the registers. */
+  .device {
+    flex-shrink: 0;
+    max-height: 50vh;
+    overflow: auto;
   }
 
   .fields {
