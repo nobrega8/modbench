@@ -67,3 +67,42 @@ often it changes (\val{every\_ms}, 1000 by default, at least 50):
 (stdio), so an AI assistant such as Claude Code can read devices and check
 maps: \val{read\_map} reads a device with a map, \val{validate\_map} checks a
 map file. Like the command line, it never writes to a device.
+
+\subsection{Letting an assistant drive the window}
+
+The tools above run in their own process. To let an assistant work in the
+Modbench window you are looking at, turn on \emph{Let an assistant control
+Modbench} in Settings, Connection. It is off by default. Modbench then listens
+on a loopback port only, and writes the port and a random token to a file in
+its data folder; \val{modbench-cli mcp} reads that file and forwards the
+\val{gui\_*} tools to the window. Without a running window, or with the setting
+off, those tools say so and the others keep working.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[gui\_get\_state] The visible state as JSON: connection, open maps,
+    registers and their latest values, the screen shown. Read it first.
+  \item[gui\_set\_connection] Transport, host or serial port, port, baud rate,
+    parity, stop bits, unit ID, timeout.
+  \item[gui\_list\_library, gui\_open\_map] Browse the library and open a map.
+  \item[gui\_set\_map\_view] Address notation, byte order, which registers are
+    read.
+  \item[gui\_set\_manual\_read] Function code 1 to 4, address and quantity.
+  \item[gui\_run] Start or stop reading, with Loop and its interval.
+  \item[gui\_chart] The registers on the Chart tab.
+  \item[gui\_navigate] The page, tab or tool shown.
+\end{description}
+
+What you can rely on:
+\begin{itemize}
+  \item Every change happens in the window, so you see it as it is made, and
+    a bar shows that an assistant is connected, with a list of what it did.
+  \item \emph{Pause} turns every request down until you resume it.
+    \emph{Disconnect} drops the assistants and changes the port and token.
+  \item While a test runs, the connection, the map and the manual read cannot
+    be changed; stop the test first.
+  \item It never writes to a device: manual requests are limited to the read
+    function codes, and a manual request that is a write is not started.
+    Read-only mode and the write confirmation are therefore not needed for it,
+    and stay as they are for you.
+  \item Only programs running as your user can read the token file.
+\end{itemize}

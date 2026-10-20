@@ -773,6 +773,94 @@ fn tools() -> Json {
     ])
 }
 
+/// Tools that act on the Modbench window the operator is looking at, through
+/// the GUI control channel (off unless the operator turned it on in Settings;
+/// see `modbench_lib::gui_control`). They never write to a device.
+fn gui_tools() -> Json {
+    let reg_list = json!({"type": "array", "items": {"type": ["string", "integer"]},
+        "description": "Register names, or indexes as get_state lists them"});
+    json!([
+        {
+            "name": "gui_get_state",
+            "description": "The running Modbench window's state as JSON: connection, open maps, the active map's registers and latest values, read settings, the screen shown, and whether the operator paused assistant control. Read it before changing anything.",
+            "inputSchema": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "gui_set_connection",
+            "description": "Change the connection settings in the window (not while a test runs). Only the fields given change.",
+            "inputSchema": {"type": "object", "properties": {
+                "transport": {"type": "string", "enum": ["tcp", "rtuovertcp", "udp", "rtuoverudp", "rtu"]},
+                "host": {"type": "string"},
+                "port": {"type": "integer", "description": "TCP/UDP port"},
+                "serial_port": {"type": "string"},
+                "framing": {"type": "string", "enum": ["rtu", "ascii"], "description": "On a serial port"},
+                "baud": {"type": "integer"},
+                "parity": {"type": "string", "enum": ["N", "E", "O"]},
+                "data_bits": {"type": "integer"},
+                "stop_bits": {"type": "integer"},
+                "unit": {"type": "integer", "description": "Unit / slave ID, 0-255"},
+                "timeout_ms": {"type": "integer"}
+            }}
+        },
+        {
+            "name": "gui_list_library",
+            "description": "The device maps in the operator's library (path, vendor, model).",
+            "inputSchema": {"type": "object", "properties": {"filter": {"type": "string", "description": "Only maps whose vendor or model contains this text"}}}
+        },
+        {
+            "name": "gui_open_map",
+            "description": "Open a device map in the window and make it the active one; the connection settings come from the map (or what was last used with it).",
+            "inputSchema": {"type": "object", "properties": {"path": {"type": "string", "description": "A path from gui_list_library"}}, "required": ["path"]}
+        },
+        {
+            "name": "gui_set_map_view",
+            "description": "Change how the active map is read and shown: the address notation, the byte order, and which registers are read.",
+            "inputSchema": {"type": "object", "properties": {
+                "address_format": {"type": "string", "enum": ["base0", "base1", "hex", "modicon", "iec"]},
+                "byte_order": {"type": "string", "enum": ["map", "ABCD", "DCBA", "BADC", "CDAB"], "description": "\"map\" uses the map's own"},
+                "read_registers": reg_list,
+                "skip_registers": reg_list,
+                "read_all": {"type": "boolean", "description": "Turn reading of every register on (true) or off (false)"}
+            }}
+        },
+        {
+            "name": "gui_set_manual_read",
+            "description": "Set up a manual read (no map) in the window: function code 1-4, address and quantity. Reads only.",
+            "inputSchema": {"type": "object", "properties": {
+                "fc": {"type": "integer", "enum": [1, 2, 3, 4]},
+                "address": {"type": "integer", "minimum": 0, "maximum": 65535},
+                "quantity": {"type": "integer", "minimum": 1, "maximum": 2000}
+            }}
+        },
+        {
+            "name": "gui_run",
+            "description": "Start or stop reading in the window with its current settings (the active map, or the manual read). Loop and its interval can be set.",
+            "inputSchema": {"type": "object", "properties": {
+                "action": {"type": "string", "enum": ["start", "stop"]},
+                "loop": {"type": "boolean"},
+                "interval_ms": {"type": "integer", "minimum": 0, "description": "Time from the start of one cycle to the next; 0 as fast as the delay allows"}
+            }, "required": ["action"]}
+        },
+        {
+            "name": "gui_chart",
+            "description": "Choose the registers of the active map shown on the Chart tab.",
+            "inputSchema": {"type": "object", "properties": {
+                "action": {"type": "string", "enum": ["add", "remove", "clear"]},
+                "registers": reg_list
+            }, "required": ["action"]}
+        },
+        {
+            "name": "gui_navigate",
+            "description": "Switch the screen shown in the window.",
+            "inputSchema": {"type": "object", "properties": {
+                "page": {"type": "string", "enum": ["main", "tools", "library", "settings"]},
+                "tab": {"type": "string", "enum": ["registers", "map", "chart", "write", "raw", "log"]},
+                "tool": {"type": "string", "enum": ["simulator", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "player"]}
+            }}
+        }
+    ])
+}
+
 async fn call_tool(name: &str, args: &Json) -> Result<String, String> {
     let conn: Conn = serde_json::from_value(args.clone()).unwrap_or_default();
     let str_arg = |k: &str| args.get(k).and_then(Json::as_str).map(str::to_string);
@@ -804,6 +892,11 @@ async fn call_tool(name: &str, args: &Json) -> Result<String, String> {
             Ok(id_text(&where_, &id))
         }
         "validate_map" => validate_text(&str_arg("map_path").ok_or("map_path is required")?),
+        // The running window's; without one the read-only tools above still work.
+        _ if name.starts_with("gui_") => {
+            let result = modbench_lib::gui_control::call(&name["gui_".len()..], args).await?;
+            Ok(serde_json::to_string_pretty(&result).unwrap_or_default())
+        }
         _ => Err(format!("unknown tool {name}")),
     }
 }
@@ -819,7 +912,13 @@ async fn handle(msg: &Json) -> Option<Json> {
             "serverInfo": {"name": "modbench", "version": env!("CARGO_PKG_VERSION")}
         }),
         "ping" => json!({}),
-        "tools/list" => json!({"tools": tools()}),
+        "tools/list" => {
+            let mut all = tools();
+            all.as_array_mut()
+                .unwrap()
+                .extend(gui_tools().as_array().unwrap().iter().cloned());
+            json!({"tools": all})
+        }
         "tools/call" => {
             let name = params.get("name").and_then(Json::as_str).unwrap_or("");
             let args = params.get("arguments").cloned().unwrap_or(json!({}));

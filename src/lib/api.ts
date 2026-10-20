@@ -39,7 +39,20 @@ import type {
   Value,
 } from "./types";
 
+/** The GUI control channel (see gui_control.rs). */
+export interface GuiControlStatus {
+  enabled: boolean;
+  port: number | null;
+  clients: number;
+}
+
 export const api = {
+  guiControlEnable: (enabled: boolean) =>
+    invoke<GuiControlStatus>("gui_control_enable", { enabled }),
+  guiControlDisconnect: () =>
+    invoke<GuiControlStatus>("gui_control_disconnect"),
+  guiControlReply: (id: number, ok: boolean, value: unknown) =>
+    invoke<void>("gui_control_reply", { id, ok, value }),
   appVersion: () => invoke<string>("app_version"),
   installedWithApt: () => invoke<boolean>("installed_with_apt"),
   listSerialPorts: () => invoke<string[]>("list_serial_ports"),
