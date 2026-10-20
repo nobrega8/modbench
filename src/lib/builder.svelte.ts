@@ -16,6 +16,8 @@ import { t } from "./i18n.svelte.ts";
 import { MAP_EXTENSIONS } from "./types";
 import type { BuilderTarget, Diagnostic, Meta, Register } from "./types";
 
+export const BUILT_IN_KEY = "x_built_in";
+
 /** This page is the map builder's own window (see `builder_open_window`). */
 export const IN_BUILDER_WINDOW =
   typeof location !== "undefined" &&
@@ -199,6 +201,20 @@ class MapBuilder {
     }
   }
 
+  /** Tags the map with the version that built it (`x_built_in`, a custom key
+   * of the spec); it shows in the header's extra keys, where it can be edited. */
+  private async stamp() {
+    let version: string;
+    try {
+      version = await api.appVersion();
+    } catch {
+      return;
+    }
+    const value = `modbench_v${version}`;
+    const rest = this.meta.extra.filter(([k]) => k !== BUILT_IN_KEY);
+    this.meta.extra = [...rest, [BUILT_IN_KEY, value]];
+  }
+
   /**
    * Saves the map where it belongs: a library map over its own file, a map
    * from another file back to that file, a new map into the library under
@@ -206,6 +222,7 @@ class MapBuilder {
    */
   async save() {
     this.message = null;
+    await this.stamp();
     const snapshot = $state.snapshot({
       meta: this.meta,
       registers: this.registers,
@@ -253,6 +270,7 @@ class MapBuilder {
 
   /** Asks where to save, and writes the map as a version 2 file. */
   async saveAs() {
+    await this.stamp();
     const where = await save({
       defaultPath: this.path ?? mapFileName(this.meta),
       filters: [
