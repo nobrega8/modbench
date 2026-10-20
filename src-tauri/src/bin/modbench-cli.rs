@@ -12,8 +12,8 @@ use serde::Serialize;
 use serde_json::{Value as Json, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-use modbench_lib::codec::Value;
-use modbench_lib::mbmap::{self, DeviceMap, Register, Severity};
+use modbench_lib::check::{self, format_raw, format_value};
+use modbench_lib::mbmap::{self, DeviceMap, Severity};
 use modbench_lib::modbus::{self, ConnectionConfig, Parity, RawData, Session, Transport};
 use modbench_lib::planner::{Area, PlanLimits};
 use modbench_lib::poller::{self, PollRequest};
@@ -57,6 +57,20 @@ enum Command {
         /// Only registers whose name or group contains this text
         #[arg(long)]
         filter: Option<String>,
+        /// Print JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Check a device against its .mbmap: read every register once and
+    /// report pass, fail or not read; exits with 1 when any check fails
+    Check {
+        #[command(flatten)]
+        conn: Conn,
+        /// Path to the .mbmap file
+        map: String,
+        /// Write the report to this HTML file
+        #[arg(long)]
+        report: Option<String>,
         /// Print JSON
         #[arg(long)]
         json: bool,
@@ -464,54 +478,13 @@ struct MapRow {
     reference: Option<&'static str>,
 }
 
-fn format_value(reg: &Register, value: &Value) -> String {
-    let label = |raw: i64| {
-        reg.enum_labels
-            .iter()
-            .find(|(v, _)| *v == raw)
-            .map(|(_, l)| l.clone())
-    };
-    match value {
-        Value::Bool(b) => label(*b as i64).unwrap_or_else(|| if *b { "ON" } else { "OFF" }.into()),
-        Value::Text(t) => t.clone(),
-        Value::Int(i) => label(*i).unwrap_or_else(|| i.to_string()),
-        Value::Uint(u) => label(*u as i64).unwrap_or_else(|| u.to_string()),
-        Value::Float(f) => {
-            let raw = ((f - reg.offset) / reg.scale).round() as i64;
-            if let Some(l) = label(raw) {
-                return l;
-            }
-            let decimals = if reg.scale > 0.0 && reg.scale < 1.0 {
-                (-reg.scale.log10()).ceil().clamp(0.0, 6.0) as usize
-            } else {
-                3
-            };
-            let s = format!("{f:.decimals$}");
-            if s.contains('.') {
-                s.trim_end_matches('0').trim_end_matches('.').to_string()
-            } else {
-                s
-            }
-        }
-    }
-}
-
-fn format_raw(data: &RawData) -> String {
-    match data {
-        RawData::Bits(b) => b.iter().map(|&x| if x { '1' } else { '0' }).collect(),
-        RawData::Registers(w) => w
-            .iter()
-            .map(|w| format!("{w:04X}"))
-            .collect::<Vec<_>>()
-            .join(" "),
-    }
-}
-
-async fn read_map(
+/// Reads the registers of a map once. Returns the map, the connection it
+/// used and what each register gave (by position in the map).
+async fn poll_map(
     conn: &Conn,
     path: &str,
     filter: Option<&str>,
-) -> Result<(String, Vec<MapRow>), String> {
+) -> Result<(DeviceMap, ConnectionConfig, Vec<poller::PointResult>), String> {
     let map = load_map(path)?;
     let q = filter.map(str::to_lowercase);
     let wanted: Vec<usize> = (0..map.registers.len())
@@ -550,6 +523,15 @@ async fn read_map(
     let (mut results, _) = poller::poll_once(&mut session, &request).await;
     session.disconnect().await;
     results.sort_by_key(|r| r.index);
+    Ok((map, cfg, results))
+}
+
+async fn read_map(
+    conn: &Conn,
+    path: &str,
+    filter: Option<&str>,
+) -> Result<(String, Vec<MapRow>), String> {
+    let (map, cfg, results) = poll_map(conn, path, filter).await?;
     let rows = results
         .into_iter()
         .map(|r| {
@@ -571,6 +553,78 @@ async fn read_map(
         })
         .collect();
     Ok((Conn::describe(&cfg), rows))
+}
+
+/// Reads every register of a map, checks the results, and writes the HTML
+/// report when asked. Returns the text to print and whether any check failed.
+async fn check_device(
+    conn: &Conn,
+    path: &str,
+    report_path: Option<&str>,
+    json: bool,
+) -> Result<(String, bool), String> {
+    let (map, cfg, results) = poll_map(conn, path, None).await?;
+    let report = check::evaluate(&map, &results);
+    if let Some(out) = report_path {
+        let identification = match read_id(conn, 1).await {
+            Ok((_, id)) => id
+                .objects
+                .iter()
+                .map(|o| (o.name.to_string(), o.value.clone()))
+                .collect(),
+            Err(_) => Vec::new(),
+        };
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        let ctx = check::ReportContext {
+            map: format!("{} {}", map.meta.vendor, map.meta.model),
+            map_file: path.to_string(),
+            map_revision: map.meta.revision.map(|r| {
+                map.meta
+                    .revised
+                    .as_ref()
+                    .map_or(r.to_string(), |d| format!("{r}, {d}"))
+            }),
+            connection: Conn::describe(&cfg),
+            unit_id: cfg.unit_id,
+            identification,
+            when: check::utc_text(secs),
+        };
+        std::fs::write(out, check::html(&report, &ctx)).map_err(|e| format!("{out}: {e}"))?;
+    }
+    let text = if json {
+        serde_json::to_string_pretty(&report).unwrap()
+    } else {
+        check_text(&Conn::describe(&cfg), path, &report)
+    };
+    Ok((text, report.failed()))
+}
+
+fn check_text(where_: &str, path: &str, report: &check::CheckReport) -> String {
+    use check::Status;
+    let mut out = format!("{where_}  {path}\n");
+    for f in &report.findings {
+        let mark = match f.status {
+            Status::Pass => "pass",
+            Status::Fail => "FAIL",
+            Status::NotRead => "skip",
+        };
+        out.push_str(&format!("  {mark}  {}: {}\n", f.what, f.detail));
+    }
+    for r in report.rows.iter().filter(|r| r.status == Status::Fail) {
+        out.push_str(&format!(
+            "  FAIL  {} (address {}): {}\n",
+            r.name,
+            r.address,
+            r.reason.as_deref().unwrap_or("")
+        ));
+    }
+    out.push_str(&format!(
+        "{} passed, {} failed, {} not read\n",
+        report.pass, report.fail, report.not_read
+    ));
+    out
 }
 
 fn map_text(where_: &str, path: &str, rows: &[MapRow]) -> String {
@@ -979,6 +1033,21 @@ async fn run(cli: Cli) -> Result<(), String> {
                 println!("{}", serde_json::to_string_pretty(&rows).unwrap());
             } else {
                 print!("{}", map_text(&where_, &map, &rows));
+            }
+        }
+        Command::Check {
+            conn,
+            map,
+            report,
+            json,
+        } => {
+            let (text, failed) = check_device(&conn, &map, report.as_deref(), json).await?;
+            print!("{text}");
+            if json {
+                println!();
+            }
+            if failed {
+                return Err("check failed".into());
             }
         }
         Command::Scan {

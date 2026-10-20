@@ -476,3 +476,44 @@ export interface BuilderTarget {
   path: string;
   register: { area: Area; address: number; name: string } | null;
 }
+
+export type CheckStatus = "pass" | "fail" | "not_read";
+
+export interface CheckRow {
+  name: string;
+  group: string;
+  address: number;
+  type: string;
+  unit: string;
+  value: string | null;
+  raw: string | null;
+  status: CheckStatus;
+  reason: string | null;
+}
+
+/** A check that is not about one register: the model or the firmware. */
+export interface CheckFinding {
+  what: string;
+  status: CheckStatus;
+  detail: string;
+}
+
+/** The commissioning check of a device against its map. */
+export interface CheckReport {
+  rows: CheckRow[];
+  findings: CheckFinding[];
+  pass: number;
+  fail: number;
+  not_read: number;
+}
+
+/** What the HTML report says about the run besides the results. */
+export interface ReportContext {
+  map: string;
+  map_file: string;
+  map_revision: string | null;
+  connection: string;
+  unit_id: number;
+  identification: [string, string][];
+  when: string;
+}

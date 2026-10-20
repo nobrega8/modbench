@@ -68,6 +68,7 @@ import type {
   AddressScan,
   Area,
   ByteOrder,
+  CheckReport,
   ConnectionConfig,
   DeviceIdentity,
   FunctionCheck,
@@ -81,6 +82,7 @@ import type {
   PointResult,
   PollCycle,
   RawData,
+  ReportContext,
   Register,
   ScanHit,
   SerialHit,
@@ -899,7 +901,7 @@ class Bench {
     this.refreshPolling();
   }
 
-  private pollRequest() {
+  private pollRequest(ignoreSkipped = false) {
     const open = this.map!;
     const m = open.map.meta;
     const all = $state.snapshot(open.map.registers);
@@ -910,7 +912,7 @@ class Bench {
       .map((_, i) => i)
       .filter(
         (i) =>
-          !this.skipped.has(i) &&
+          (ignoreSkipped || !this.skipped.has(i)) &&
           !isComputed(all[i]) &&
           appliesTo(all[i], version),
       );
@@ -1188,6 +1190,50 @@ class Bench {
       ...this.maps.map((m) => m.path).filter((p) => !p.startsWith("modbench:")),
     ];
     return this.withLink(() => api.findMaps([...new Set(paths)]));
+  }
+
+  /**
+   * Reads every register of the open map once (the ones switched off too)
+   * and checks the results against the map. Nothing is written. Stops short
+   * when the map is being read in a loop, which owns the connection.
+   */
+  async checkDevice(): Promise<{
+    report: CheckReport;
+    context: ReportContext;
+  }> {
+    const open = this.map;
+    if (!open) throw new Error(t("state.choosemap"));
+    if (this.running) throw new Error(t("check.stop_first"));
+    return this.withLink(async () => {
+      const report = await api.checkDevice(
+        $state.snapshot(open.map),
+        this.pollRequest(true),
+      );
+      const identification = await api
+        .readDeviceId(1)
+        .then((id): [string, string][] =>
+          id.objects.map((o) => [o.name, o.value]),
+        )
+        .catch((): [string, string][] => []);
+      const meta = open.map.meta;
+      const connection =
+        this.transport === "rtu"
+          ? `${this.framing === "ascii" ? "ASCII" : "RTU"} ${this.serialPort} ${this.baudrate} ${this.dataBits}${this.parity}${this.stopBits}`
+          : `${this.transport.toUpperCase()} ${this.host.trim()}:${this.tcpPort}`;
+      const context: ReportContext = {
+        map: `${meta.vendor} ${meta.model}`,
+        map_file: open.path,
+        map_revision:
+          meta.revision == null
+            ? null
+            : `${meta.revision}${meta.revised ? `, ${meta.revised}` : ""}`,
+        connection,
+        unit_id: this.unitId,
+        identification,
+        when: new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
+      };
+      return { report, context };
+    });
   }
 
   /** Asks the device to identify itself (FC43): 1 basic, 2 regular, 3 extended. */
