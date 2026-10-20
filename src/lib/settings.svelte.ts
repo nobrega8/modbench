@@ -13,6 +13,7 @@ interface Stored {
   theme: Theme;
   rememberConnection: boolean;
   rememberMapConnection: boolean;
+  assistantControl: boolean;
   rememberDevices: boolean;
   confirmWrites: boolean;
   readOnly: boolean;
@@ -34,6 +35,7 @@ const DEFAULTS: Stored = {
   theme: "system",
   rememberConnection: true,
   rememberMapConnection: true,
+  assistantControl: false,
   rememberDevices: true,
   confirmWrites: false,
   readOnly: false,
@@ -71,6 +73,9 @@ class Settings {
   rememberConnection = $state(true);
   /** Loading a map restores the connection last used with it. */
   rememberMapConnection = $state(true);
+  /** Lets an assistant drive this window through modbench-cli mcp (off
+   * unless turned on here). */
+  assistantControl = $state(false);
   rememberDevices = $state(true);
   confirmWrites = $state(false);
   /** Blocks every write; the backend refuses them while this is on. */
@@ -105,6 +110,7 @@ class Settings {
       theme: this.theme,
       rememberConnection: this.rememberConnection,
       rememberMapConnection: this.rememberMapConnection,
+      assistantControl: this.assistantControl,
       rememberDevices: this.rememberDevices,
       confirmWrites: this.confirmWrites,
       readOnly: this.readOnly,

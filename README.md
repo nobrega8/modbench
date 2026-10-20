@@ -105,6 +105,8 @@ modbench-cli convert old-device.mbmap          # version 1 map -> old-device.mbm
 
 Run `modbench-cli --help` for every command and option. `modbench-cli mcp` serves the same operations over [MCP](https://modelcontextprotocol.io) (stdio), so AI assistants such as Claude Code can read devices; `.mcp.json` registers it for this project.
 
+To let an assistant work in the running window instead (open a map, change the connection, start a loop, show a chart), turn on **Let an assistant control Modbench** in Settings > Connection. It is off by default and local only (loopback port plus a token file); the `gui_*` tools forward to the window, a bar shows what the assistant did and lets you pause or disconnect it, and it never writes to a device. See the manual, chapter *Command line*.
+
 ## Development
 
 Requirements: [Rust](https://rustup.rs), Node.js 22+ and the [Tauri prerequisites](https://tauri.app/start/prerequisites/).

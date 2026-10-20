@@ -19,6 +19,7 @@
   import { viewIn } from "#lib/motion.ts";
   import { api, errorText } from "#lib/api.ts";
   import { bench } from "#lib/state.svelte.ts";
+  import { assistant } from "#lib/gui-control.svelte.ts";
   import { demo } from "#lib/demo.svelte.ts";
   import {
     settings,
@@ -388,6 +389,44 @@
               onchange={changed}
             />
           </label>
+          <label class="setting">
+            <div class="text">
+              <span class="name">{t("settingsview.assistant_control")}</span>
+              <span class="hint"
+                >{t("settingsview.assistant_control_hint")}</span
+              >
+              {#if assistant.error}
+                <span class="hint bad" role="alert">{assistant.error}</span>
+              {:else if settings.assistantControl && assistant.port}
+                <span class="hint"
+                  >{t("settingsview.assistant_listening", {
+                    port: assistant.port,
+                    count: assistant.clients,
+                  })}</span
+                >
+              {/if}
+            </div>
+            <input
+              type="checkbox"
+              class="switch"
+              role="switch"
+              bind:checked={settings.assistantControl}
+              onchange={() => {
+                changed();
+                assistant.apply();
+              }}
+            />
+          </label>
+          {#if settings.assistantControl && assistant.clients > 0}
+            <div class="setting">
+              <div class="text">
+                <span class="name">{t("assistant.connected")}</span>
+              </div>
+              <button class="btn" onclick={() => assistant.disconnect()}
+                >{t("assistant.disconnect")}</button
+              >
+            </div>
+          {/if}
           <label class="setting">
             <div class="text">
               <span class="name"

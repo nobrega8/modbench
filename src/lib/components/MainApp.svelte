@@ -8,6 +8,8 @@
   import TestStep from "#lib/components/TestStep.svelte";
   import UpdateBanner from "#lib/components/UpdateBanner.svelte";
   import DemoBanner from "#lib/components/DemoBanner.svelte";
+  import AssistantBar from "#lib/components/AssistantBar.svelte";
+  import { assistant } from "#lib/gui-control.svelte.ts";
   import LibraryView from "#lib/components/LibraryView.svelte";
   import SettingsView from "#lib/components/SettingsView.svelte";
   import ToolsView from "#lib/components/ToolsView.svelte";
@@ -63,6 +65,12 @@
   });
 
   $effect(() => sim.connect());
+
+  // An assistant driving this window (off unless turned on in Settings).
+  $effect(() => assistant.listen());
+  $effect(() => {
+    if (settings.assistantControl) untrack(() => assistant.apply());
+  });
 
   // The backend enforces read-only mode; keep it in step with the setting.
   $effect(() => {
@@ -134,6 +142,7 @@
     {#if !mac}<WindowControls />{/if}
   </header>
   <UpdateBanner />
+  <AssistantBar />
   {#if bench.page === "tools"}
     <section class="page" in:viewIn><ToolsView /></section>
   {:else if bench.page === "library"}

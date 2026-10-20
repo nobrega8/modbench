@@ -6,6 +6,7 @@ pub mod codec;
 mod commands;
 pub mod firmware;
 pub mod generators;
+pub mod gui_control;
 pub mod library;
 pub mod mapfind;
 pub mod mbmap;
@@ -82,7 +83,12 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(commands::AppState::default())
+        .manage(gui_control::Control::default())
         .invoke_handler(tauri::generate_handler![
+            gui_control::gui_control_enable,
+            gui_control::gui_control_disconnect,
+            gui_control::gui_control_status,
+            gui_control::gui_control_reply,
             commands::app_version,
             commands::installed_with_apt,
             commands::list_serial_ports,
@@ -184,6 +190,7 @@ pub fn run() {
             if let tauri::RunEvent::Exit = event {
                 let state = app.state::<commands::AppState>();
                 tauri::async_runtime::block_on(state.shut_down());
+                gui_control::shut_down(&app.state::<gui_control::Control>(), app);
             }
         });
 }
