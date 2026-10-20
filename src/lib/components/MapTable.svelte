@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { windowOf } from "#lib/virtual.ts";
   import { t } from "#lib/i18n.svelte.ts";
   import { save } from "@tauri-apps/plugin-dialog";
@@ -144,12 +145,18 @@
   let rowHeight = $state(29);
   const win = $derived(windowOf(rows.length, scrollTop, viewport, rowHeight));
   const visible = $derived(rows.slice(win.start, win.end));
-  // The height of a row is read from the first one shown.
+  // The height of a row is the average of the ones shown. Rows differ in
+  // height (a long name or label wraps), so measuring just the first one made
+  // the window and the measurement chase each other; the average and a margin
+  // of a pixel and a half settle.
   $effect(() => {
     void visible;
-    const row = wrap?.querySelector<HTMLElement>("tbody tr.reg");
-    const h = row?.getBoundingClientRect().height ?? 0;
-    if (h > 0 && Math.abs(h - rowHeight) > 0.5) rowHeight = h;
+    const rows = wrap?.querySelectorAll<HTMLElement>("tbody tr.reg");
+    if (!rows?.length) return;
+    let sum = 0;
+    for (const row of rows) sum += row.getBoundingClientRect().height;
+    const h = sum / rows.length;
+    if (h > 0 && Math.abs(h - untrack(() => rowHeight)) > 1.5) rowHeight = h;
   });
   const readCount = $derived(open.map.registers.length - bench.skipped.size);
 
