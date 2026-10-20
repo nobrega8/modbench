@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "更改的值保持高亮多久。",
   "settingsview.remember_the_last_connection": "记住上次的连接",
   "settingsview.step_1_is_filled": "启动时会再次填写第 1 步。",
+  "settingsview.remember_connection_per_map": "记住每个映射的连接",
+  "settingsview.loading_a_map_restores": "加载映射时，恢复上次与其一起使用的端口或主机、波特率、校验、停止位和单元 ID。",
   "settingsview.remember_register_choices_for": "记住每个设备的寄存器选择",
   "settingsview.registers_read_byte_order": "已读寄存器、字节顺序和循环，按映射和站号。",
   "settingsview.forget_saved_device_choices": "忘记已保存的设备选择",

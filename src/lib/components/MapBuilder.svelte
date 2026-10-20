@@ -970,6 +970,11 @@
     text-align: right;
   }
 
+  /* The icon button has no text baseline: align all by their middle. */
+  .act .btn {
+    vertical-align: middle;
+  }
+
   td.type {
     display: flex;
     gap: 4px;

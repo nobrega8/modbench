@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "Per quanto tempo un valore modificato resta evidenziato.",
   "settingsview.remember_the_last_connection": "Ricorda l’ultima connessione",
   "settingsview.step_1_is_filled": "Il passo 1 viene ricompilato all’avvio.",
+  "settingsview.remember_connection_per_map": "Ricorda la connessione di ogni mappa",
+  "settingsview.loading_a_map_restores": "Caricando una mappa si ripristinano porta o host, baud rate, parità, bit di stop e ID unità usati l’ultima volta.",
   "settingsview.remember_register_choices_for": "Ricorda le scelte dei registri per ogni dispositivo",
   "settingsview.registers_read_byte_order": "Registri letti, ordine dei byte e ciclo, per mappa e ID unità.",
   "settingsview.forget_saved_device_choices": "Dimentica le scelte salvate dei dispositivi",

@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "更改的值保持突顯多久。",
   "settingsview.remember_the_last_connection": "記住上次的連線",
   "settingsview.step_1_is_filled": "啟動時會再次填寫第 1 步。",
+  "settingsview.remember_connection_per_map": "記住每個對應表的連線",
+  "settingsview.loading_a_map_restores": "載入對應表時，還原上次搭配它使用的連接埠或主機、鮑率、同位檢查、停止位元與單元 ID。",
   "settingsview.remember_register_choices_for": "記住每個設備的暫存器選擇",
   "settingsview.registers_read_byte_order": "已讀暫存器、位元組順序和迴圈，依映射和站號。",
   "settingsview.forget_saved_device_choices": "忘記已儲存的設備選擇",

@@ -511,9 +511,6 @@
           date: meta.revised ? `, ${meta.revised}` : "",
         })}>{t("maptable.rev_revision", { revision: meta.revision })}</span
       >{/if}
-    {#if meta.description}<span class="desc" title={meta.description}
-        >{meta.description}</span
-      >{/if}
   </div>
   {#if status === "official"}
     <span class="refs" title={t("maptable.written_from_the_manufacturer")}
@@ -1178,16 +1175,10 @@
     text-overflow: ellipsis;
   }
 
-  .title .desc {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   .title strong {
     font-size: 15px;
   }
 
-  .desc,
   .dim {
     color: var(--text-3);
   }

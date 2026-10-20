@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "Değişen bir değerin ne kadar süre vurgulu kaldığı.",
   "settingsview.remember_the_last_connection": "Son bağlantıyı hatırla",
   "settingsview.step_1_is_filled": "1. adım başlangıçta yeniden doldurulur.",
+  "settingsview.remember_connection_per_map": "Her haritanın bağlantısını hatırla",
+  "settingsview.loading_a_map_restores": "Bir harita yüklendiğinde en son kullanılan port veya ana bilgisayar, baud hızı, parite, dur bitleri ve birim kimliği geri yüklenir.",
   "settingsview.remember_register_choices_for": "Her cihaz için yazmaç seçimlerini hatırla",
   "settingsview.registers_read_byte_order": "Okunan yazmaçlar, bayt sırası ve döngü; harita ve birim kimliği başına.",
   "settingsview.forget_saved_device_choices": "Kayıtlı cihaz seçimlerini unut",

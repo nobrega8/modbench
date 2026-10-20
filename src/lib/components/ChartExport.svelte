@@ -100,23 +100,19 @@
     return composeSvg(parts, spanText(from, to), p, measurer());
   }
 
-  /** Draws the SVG at twice its size, for sharp text in reports. */
+  /** Draws the SVG at twice its size, for sharp text in reports. A data URL,
+   * not a blob one: the page's CSP allows images from data: only. */
   async function draw(svg: string, width: number, height: number) {
-    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-    try {
-      const img = new window.Image();
-      img.src = url;
-      await img.decode();
-      const canvas = document.createElement("canvas");
-      canvas.width = width * 2;
-      canvas.height = height * 2;
-      const ctx = canvas.getContext("2d")!;
-      ctx.scale(2, 2);
-      ctx.drawImage(img, 0, 0, width, height);
-      return { canvas, ctx };
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    const img = new window.Image();
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    await img.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(2, 2);
+    ctx.drawImage(img, 0, 0, width, height);
+    return { canvas, ctx };
   }
 
   async function png(svg: string, width: number, height: number) {
@@ -131,8 +127,8 @@
   /** Puts the charts on the clipboard as an image, as the PNG would be. */
   async function copyImage(light: boolean) {
     note = null;
-    const shot = image(light);
     try {
+      const shot = image(light);
       const { canvas, ctx } = await draw(shot.svg, shot.width, shot.height);
       const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const picture = await Image.new(
@@ -154,7 +150,13 @@
   async function exportImage(format: "png" | "svg", light: boolean) {
     note = null;
     // Taken now: the charts keep moving while the dialog is open.
-    const shot = image(light);
+    let shot;
+    try {
+      shot = image(light);
+    } catch (e) {
+      note = { ok: false, text: `Not saved: ${errorText(e)}` };
+      return;
+    }
     const path = await save({
       defaultPath: `${name}.${format}`,
       filters: [{ name: format.toUpperCase(), extensions: [format] }],

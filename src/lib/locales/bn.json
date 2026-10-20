@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "পরিবর্তিত মান কতক্ষণ হাইলাইট থাকে।",
   "settingsview.remember_the_last_connection": "শেষ সংযোগ মনে রাখুন",
   "settingsview.step_1_is_filled": "শুরুতে ধাপ ১ আবার পূরণ হয়।",
+  "settingsview.remember_connection_per_map": "প্রতিটি ম্যাপের সংযোগ মনে রাখুন",
+  "settingsview.loading_a_map_restores": "ম্যাপ লোড করলে তার সঙ্গে শেষবার ব্যবহৃত পোর্ট বা হোস্ট, বড রেট, প্যারিটি, স্টপ বিট ও ইউনিট ID ফিরে আসে।",
   "settingsview.remember_register_choices_for": "প্রতিটি ডিভাইসের জন্য রেজিস্টার বাছাই মনে রাখুন",
   "settingsview.registers_read_byte_order": "পড়া রেজিস্টার, বাইট ক্রম ও লুপ, প্রতি ম্যাপ ও ইউনিট ID অনুযায়ী।",
   "settingsview.forget_saved_device_choices": "সংরক্ষিত ডিভাইস পছন্দ ভুলে যান",

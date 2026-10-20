@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "बदला हुआ मान कितनी देर हाइलाइट रहता है।",
   "settingsview.remember_the_last_connection": "आखिरी कनेक्शन याद रखें",
   "settingsview.step_1_is_filled": "चरण 1 शुरू होने पर फिर से भर जाता है।",
+  "settingsview.remember_connection_per_map": "हर मैप का कनेक्शन याद रखें",
+  "settingsview.loading_a_map_restores": "मैप लोड करने पर उसके साथ आखिरी बार इस्तेमाल हुआ पोर्ट या होस्ट, बॉड रेट, पैरिटी, स्टॉप बिट और यूनिट ID वापस आ जाते हैं।",
   "settingsview.remember_register_choices_for": "हर डिवाइस के लिए रजिस्टर चयन याद रखें",
   "settingsview.registers_read_byte_order": "पढ़े गए रजिस्टर, बाइट क्रम और लूप, प्रति मैप और यूनिट ID।",
   "settingsview.forget_saved_device_choices": "सहेजे गए डिवाइस विकल्प भूलें",
