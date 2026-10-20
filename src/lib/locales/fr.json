@@ -1138,6 +1138,10 @@
   "builder.change_removed": "Supprimé",
   "builder.change_changed": "Modifié",
   "builder.discard": "La carte contient des modifications non enregistrées. Ouvrir une autre carte et les perdre ?",
-  "builder.library_copy": "Cette carte est dans la bibliothèque. « Enregistrer sous… » crée une copie locale et laisse le fichier de la bibliothèque tel quel.",
+  "builder.save_here": "Enregistrer",
+  "builder.library_map": "This map is in the library. Save writes to its file; Save as… makes a copy elsewhere.",
+  "builder.saved_library": "Saved to the library: {path}",
+  "builder.fix_errors": "Fix the errors before saving to the library.",
+  "builder.replace_in_library": "The library already has a map for {vendor} {model}. Replace it?",
   "builder.edit_as_text": "Ouvrir dans un éditeur de texte…"
 }

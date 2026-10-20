@@ -177,7 +177,10 @@
     <button class="btn" onclick={() => builder.openFile()}
       ><Icon name="folder" />{t("builder.open_file")}</button
     >
-    <button class="btn accent" onclick={() => builder.saveAs()}
+    <button class="btn accent" onclick={() => builder.save()}
+      >{t("builder.save_here")}</button
+    >
+    <button class="btn" onclick={() => builder.saveAs()}
       >{t("builder.save")}</button
     >
     <span class="state" aria-live="polite">

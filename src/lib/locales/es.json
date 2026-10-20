@@ -1138,6 +1138,10 @@
   "builder.change_removed": "Eliminado",
   "builder.change_changed": "Modificado",
   "builder.discard": "El mapa tiene cambios sin guardar. ¿Abrir otro mapa y perderlos?",
-  "builder.library_copy": "Este mapa está en la biblioteca. «Guardar como…» crea una copia local y deja el archivo de la biblioteca como está.",
+  "builder.save_here": "Guardar",
+  "builder.library_map": "This map is in the library. Save writes to its file; Save as… makes a copy elsewhere.",
+  "builder.saved_library": "Saved to the library: {path}",
+  "builder.fix_errors": "Fix the errors before saving to the library.",
+  "builder.replace_in_library": "The library already has a map for {vendor} {model}. Replace it?",
   "builder.edit_as_text": "Abrir en un editor de texto…"
 }

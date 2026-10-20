@@ -686,6 +686,28 @@ pub async fn library_import(
         .map_err(|e| ModbusError::Invalid(e.to_string()))
 }
 
+/// Saves a map from the builder into the library (see `library::save_from_builder`)
+/// and tells the other windows that the library changed.
+#[tauri::command]
+pub async fn library_save_map(
+    app: AppHandle,
+    map: DeviceMap,
+    path: Option<String>,
+    replace: bool,
+) -> Result<library::SaveOutcome, ModbusError> {
+    let root = library_root(&app)?;
+    let outcome = tokio::task::spawn_blocking(move || {
+        library::save_from_builder(&root, &map, path.as_deref(), replace)
+    })
+    .await
+    .map_err(|e| ModbusError::Invalid(e.to_string()))?
+    .map_err(ModbusError::Invalid)?;
+    if !outcome.exists {
+        let _ = app.emit("library-changed", ());
+    }
+    Ok(outcome)
+}
+
 /// Copies a library map as "<model> copy"; returns the new map's path.
 #[tauri::command]
 pub async fn library_duplicate(app: AppHandle, path: String) -> Result<String, ModbusError> {

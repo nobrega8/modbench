@@ -57,6 +57,7 @@
         netScanner.onProgress(e.payload),
       ),
       listen<string>("open-file", (e) => openFile(e.payload)),
+      listen("library-changed", () => bench.refreshLibrary().catch(() => {})),
     ];
     return () => stops.forEach((p) => p.then((stop) => stop()));
   });

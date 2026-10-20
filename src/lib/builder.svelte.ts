@@ -35,7 +35,7 @@ class MapBuilder {
   checking = $state(false);
   /** The registers as they were opened, to show what changed. */
   original = $state.raw<Register[] | null>(null);
-  /** The map is a file of the library, which is not overwritten. */
+  /** The map is a file of the library: Save writes to it in place. */
   fromLibrary = $state(false);
   /** The register to scroll to and mark, after a map opened at one. */
   focus = $state<number | null>(null);
@@ -188,7 +188,7 @@ class MapBuilder {
       this.fromLibrary = await inLibrary(path);
       this.dirty = false;
       this.message = this.fromLibrary
-        ? { ok: true, text: t("builder.library_copy") }
+        ? { ok: true, text: t("builder.library_map") }
         : null;
       this.diagnostics = parsed.diagnostics;
       const index = at ? findRegister(this.registers, at) : -1;
@@ -199,14 +199,62 @@ class MapBuilder {
     }
   }
 
+  /**
+   * Saves the map where it belongs: a library map over its own file, a map
+   * from another file back to that file, a new map into the library under
+   * its vendor and model (asking before it replaces one).
+   */
+  async save() {
+    this.message = null;
+    const snapshot = $state.snapshot({
+      meta: this.meta,
+      registers: this.registers,
+    });
+    try {
+      if (this.path && !this.fromLibrary) {
+        await api.saveMap(this.path, snapshot);
+        this.dirty = false;
+        this.message = {
+          ok: true,
+          text: t("builder.saved", { path: this.path }),
+        };
+        return;
+      }
+      if (this.errors > 0) {
+        this.message = { ok: false, text: t("builder.fix_errors") };
+        return;
+      }
+      let outcome = await api.librarySaveMap(snapshot, this.path, false);
+      if (outcome.exists) {
+        const replace = await ask(
+          t("builder.replace_in_library", {
+            vendor: this.meta.vendor,
+            model: this.meta.model,
+          }),
+          { kind: "warning" },
+        );
+        if (!replace) return;
+        outcome = await api.librarySaveMap(snapshot, null, true);
+      }
+      this.path = outcome.path;
+      this.fromLibrary = true;
+      this.dirty = false;
+      this.message = {
+        ok: true,
+        text: t("builder.saved_library", { path: outcome.path }),
+      };
+    } catch (e) {
+      this.message = {
+        ok: false,
+        text: t("builder.not_saved", { error: errorText(e) }),
+      };
+    }
+  }
+
   /** Asks where to save, and writes the map as a version 2 file. */
   async saveAs() {
     const where = await save({
-      // A map of the library is saved under another name, so that the
-      // library's own file is not overwritten by accident.
-      defaultPath: this.fromLibrary
-        ? mapFileName(this.meta).replace(".mbmap.json", "-edited.mbmap.json")
-        : (this.path ?? mapFileName(this.meta)),
+      defaultPath: this.path ?? mapFileName(this.meta),
       filters: [
         { name: t("libraryview.modbus_map"), extensions: MAP_EXTENSIONS },
       ],
