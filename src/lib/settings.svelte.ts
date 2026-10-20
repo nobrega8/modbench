@@ -12,6 +12,7 @@ export type RegisterLayout = "list" | "grid";
 interface Stored {
   theme: Theme;
   rememberConnection: boolean;
+  rememberMapConnection: boolean;
   rememberDevices: boolean;
   confirmWrites: boolean;
   readOnly: boolean;
@@ -32,6 +33,7 @@ const KEY = "modbench.settings";
 const DEFAULTS: Stored = {
   theme: "system",
   rememberConnection: true,
+  rememberMapConnection: true,
   rememberDevices: true,
   confirmWrites: false,
   readOnly: false,
@@ -67,6 +69,8 @@ function load(): Stored {
 class Settings {
   theme = $state<Theme>("system");
   rememberConnection = $state(true);
+  /** Loading a map restores the connection last used with it. */
+  rememberMapConnection = $state(true);
   rememberDevices = $state(true);
   confirmWrites = $state(false);
   /** Blocks every write; the backend refuses them while this is on. */
@@ -100,6 +104,7 @@ class Settings {
     const data: Stored = {
       theme: this.theme,
       rememberConnection: this.rememberConnection,
+      rememberMapConnection: this.rememberMapConnection,
       rememberDevices: this.rememberDevices,
       confirmWrites: this.confirmWrites,
       readOnly: this.readOnly,

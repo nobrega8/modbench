@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "Durée pendant laquelle une valeur modifiée reste en évidence.",
   "settingsview.remember_the_last_connection": "Mémoriser la dernière connexion",
   "settingsview.step_1_is_filled": "L’étape 1 est préremplie au démarrage.",
+  "settingsview.remember_connection_per_map": "Mémoriser la connexion de chaque carte",
+  "settingsview.loading_a_map_restores": "Charger une carte rétablit le port ou l’hôte, la vitesse, la parité, les bits d’arrêt et l’ID d’unité utilisés en dernier.",
   "settingsview.remember_register_choices_for": "Mémoriser les choix de registres pour chaque appareil",
   "settingsview.registers_read_byte_order": "Registres lus, ordre des octets et boucle, par carte et ID d’unité.",
   "settingsview.forget_saved_device_choices": "Oublier les choix d’appareils enregistrés",

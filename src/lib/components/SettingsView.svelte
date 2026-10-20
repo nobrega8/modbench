@@ -374,6 +374,23 @@
           <label class="setting">
             <div class="text">
               <span class="name"
+                >{t("settingsview.remember_connection_per_map")}</span
+              >
+              <span class="hint"
+                >{t("settingsview.loading_a_map_restores")}</span
+              >
+            </div>
+            <input
+              type="checkbox"
+              class="switch"
+              role="switch"
+              bind:checked={settings.rememberMapConnection}
+              onchange={changed}
+            />
+          </label>
+          <label class="setting">
+            <div class="text">
+              <span class="name"
                 >{t("settingsview.remember_register_choices_for")}</span
               >
               <span class="hint"

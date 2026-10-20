@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "Wie lange ein geänderter Wert hervorgehoben bleibt.",
   "settingsview.remember_the_last_connection": "Letzte Verbindung merken",
   "settingsview.step_1_is_filled": "Schritt 1 wird beim Start wieder ausgefüllt.",
+  "settingsview.remember_connection_per_map": "Verbindung je Karte merken",
+  "settingsview.loading_a_map_restores": "Beim Laden einer Karte werden Port oder Host, Baudrate, Parität, Stoppbits und Unit-ID der letzten Verwendung wiederhergestellt.",
   "settingsview.remember_register_choices_for": "Registerauswahl für jedes Gerät merken",
   "settingsview.registers_read_byte_order": "Gelesene Register, Byte-Reihenfolge und Wiederholung, pro Karte und Unit-ID.",
   "settingsview.forget_saved_device_choices": "Gespeicherte Geräteauswahl vergessen",

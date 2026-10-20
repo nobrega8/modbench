@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "変更された値がハイライトされる時間。",
   "settingsview.remember_the_last_connection": "最後の接続を記憶",
   "settingsview.step_1_is_filled": "起動時に手順 1 が再び入力されます。",
+  "settingsview.remember_connection_per_map": "マップごとに接続を記憶",
+  "settingsview.loading_a_map_restores": "マップを読み込むと、前回そのマップで使ったポートまたはホスト、ボーレート、パリティ、ストップビット、ユニット ID を復元します。",
   "settingsview.remember_register_choices_for": "デバイスごとにレジスタの選択を記憶",
   "settingsview.registers_read_byte_order": "読み取るレジスタ、バイト順、ループ (マップとユニット ID ごと)。",
   "settingsview.forget_saved_device_choices": "保存したデバイスの選択を忘れる",

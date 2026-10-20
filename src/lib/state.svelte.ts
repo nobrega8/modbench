@@ -153,6 +153,20 @@ export const CONNECTION_FIELDS = [
   "maxRegisters",
   "unitId",
 ] as const;
+/** The part of the connection that belongs to a device, kept per map. */
+const MAP_CONNECTION_FIELDS = [
+  "transport",
+  "host",
+  "tcpPort",
+  "serialPort",
+  "framing",
+  "baudrate",
+  "parity",
+  "dataBits",
+  "stopBits",
+  "unitId",
+] as const;
+const MAP_CONNECTION_KEY = "modbench.mapConnections";
 const RAW_LIMIT = 200;
 
 const LAST_MAP_KEY = "modbench.lastMap";
@@ -375,14 +389,57 @@ class Bench {
 
   /** Remembers the connection settings used for the last test. */
   private saveConnection() {
-    if (!settings.rememberConnection || this.demo) return;
-    const data: Record<string, unknown> = {};
-    for (const field of CONNECTION_FIELDS) data[field] = this[field];
+    if (this.demo) return;
+    if (settings.rememberConnection) {
+      const data: Record<string, unknown> = {};
+      for (const field of CONNECTION_FIELDS) data[field] = this[field];
+      try {
+        localStorage.setItem(CONNECTION_KEY, JSON.stringify(data));
+      } catch {
+        // Storage unavailable: nothing to remember.
+      }
+    }
+    this.saveMapConnection();
+  }
+
+  private mapConnections(): Record<string, Record<string, unknown>> {
     try {
-      localStorage.setItem(CONNECTION_KEY, JSON.stringify(data));
+      const saved = JSON.parse(
+        localStorage.getItem(MAP_CONNECTION_KEY) ?? "{}",
+      );
+      return saved && typeof saved === "object" ? saved : {};
+    } catch {
+      return {};
+    }
+  }
+
+  /** Remembers the connection used with the active map. */
+  private saveMapConnection() {
+    const path = this.source === "map" ? this.map?.path : undefined;
+    if (!path || !settings.rememberMapConnection) return;
+    const data: Record<string, unknown> = {};
+    for (const field of MAP_CONNECTION_FIELDS) data[field] = this[field];
+    try {
+      localStorage.setItem(
+        MAP_CONNECTION_KEY,
+        JSON.stringify({ ...this.mapConnections(), [path]: data }),
+      );
     } catch {
       // Storage unavailable: nothing to remember.
     }
+  }
+
+  /** Restores the connection last used with a map; false when there is none
+   * (or the setting is off), so the map's own defaults apply. */
+  private restoreMapConnection(path: string): boolean {
+    if (!settings.rememberMapConnection) return false;
+    const saved = this.mapConnections()[path];
+    if (!saved) return false;
+    for (const field of MAP_CONNECTION_FIELDS) {
+      if (field in saved)
+        (this as Record<string, unknown>)[field] = saved[field];
+    }
+    return true;
   }
 
   /** The connected device checked against the open map (from its identity
@@ -520,7 +577,8 @@ class Bench {
         ? this.maps.map((m, i) => (i === existing ? entry : m))
         : [...this.maps, entry];
     this.selectMap(existing >= 0 ? existing : this.maps.length - 1);
-    if (!this.running) this.applyDefaults(entry.map);
+    if (!this.running && !(!this.demo && this.restoreMapConnection(path)))
+      this.applyDefaults(entry.map);
   }
 
   /** Converts an open version 1 map to version 2 and opens the new file in

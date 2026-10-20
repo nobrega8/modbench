@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "Jak długo zmieniona wartość pozostaje wyróżniona.",
   "settingsview.remember_the_last_connection": "Zapamiętaj ostatnie połączenie",
   "settingsview.step_1_is_filled": "Krok 1 jest ponownie wypełniany przy starcie.",
+  "settingsview.remember_connection_per_map": "Zapamiętaj połączenie każdej mapy",
+  "settingsview.loading_a_map_restores": "Wczytanie mapy przywraca ostatnio użyty port lub host, prędkość, parzystość, bity stopu i ID jednostki.",
   "settingsview.remember_register_choices_for": "Zapamiętaj wybór rejestrów dla każdego urządzenia",
   "settingsview.registers_read_byte_order": "Odczytane rejestry, kolejność bajtów i pętla, dla mapy i ID jednostki.",
   "settingsview.forget_saved_device_choices": "Zapomnij zapisane wybory urządzeń",

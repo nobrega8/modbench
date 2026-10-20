@@ -378,6 +378,8 @@
   "settingsview.how_long_a_changed": "변경된 값이 강조되는 시간.",
   "settingsview.remember_the_last_connection": "마지막 연결 기억",
   "settingsview.step_1_is_filled": "시작할 때 1단계가 다시 채워집니다.",
+  "settingsview.remember_connection_per_map": "맵별 연결 기억",
+  "settingsview.loading_a_map_restores": "맵을 불러오면 그 맵으로 마지막에 사용한 포트 또는 호스트, 보율, 패리티, 정지 비트, 유닛 ID를 복원합니다.",
   "settingsview.remember_register_choices_for": "장치별 레지스터 선택 기억",
   "settingsview.registers_read_byte_order": "읽는 레지스터, 바이트 순서, 반복 (맵과 유닛 ID별).",
   "settingsview.forget_saved_device_choices": "저장된 장치 선택 지우기",
