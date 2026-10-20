@@ -2,6 +2,8 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  CheckReport,
+  ReportContext,
   AddressRange,
   AddressScan,
   Area,
@@ -76,6 +78,10 @@ export const api = {
   stopPolling: () => invoke<void>("stop_polling"),
   pollMapOnce: (request: PollRequest) =>
     invoke<PollCycle>("poll_map_once", { request }),
+  checkDevice: (map: DeviceMap, request: PollRequest) =>
+    invoke<CheckReport>("check_device", { map, request }),
+  checkHtml: (report: CheckReport, context: ReportContext) =>
+    invoke<string>("check_html", { report, context }),
   writeMapValue: (
     register: Register,
     byteOrder: ByteOrder,

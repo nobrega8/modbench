@@ -17,7 +17,7 @@ fn help_lists_the_commands() {
         let text = String::from_utf8_lossy(&out.stdout);
         // "modbench-cli.exe" on Windows
         assert!(text.contains("Usage: modbench-cli"), "{text}");
-        for command in ["ports", "read", "map", "scan", "validate"] {
+        for command in ["ports", "read", "map", "check", "scan", "validate"] {
             assert!(text.contains(command), "{command} missing from {text}");
         }
     }

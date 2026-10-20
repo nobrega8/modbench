@@ -6,6 +6,7 @@ use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::Mutex;
 
+use crate::check;
 use crate::codec::{self, ByteOrder, DataType, Value};
 use crate::generators::{self, Generator};
 use crate::library::{self, ImportResult, LibraryEntry};
@@ -308,6 +309,26 @@ pub async fn poll_map_once(
         requests,
         results,
     })
+}
+
+/// Reads every register of a map once and checks the results (see
+/// `check`). Nothing is written to the device.
+#[tauri::command]
+pub async fn check_device(
+    state: State<'_, AppState>,
+    map: DeviceMap,
+    request: PollRequest,
+) -> Result<check::CheckReport, ModbusError> {
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    let (results, _) = poller::poll_once(session, &request).await;
+    Ok(check::evaluate(&map, &results))
+}
+
+/// The commissioning report as one HTML page.
+#[tauri::command]
+pub fn check_html(report: check::CheckReport, context: check::ReportContext) -> String {
+    check::html(&report, &context)
 }
 
 #[tauri::command]

@@ -1,6 +1,7 @@
 use tauri::{Emitter, Manager};
 
 pub mod ascii;
+pub mod check;
 pub mod codec;
 mod commands;
 pub mod firmware;
@@ -102,6 +103,8 @@ pub fn run() {
             commands::start_polling,
             commands::stop_polling,
             commands::poll_map_once,
+            commands::check_device,
+            commands::check_html,
             commands::write_map_value,
             commands::save_text,
             commands::save_bytes,

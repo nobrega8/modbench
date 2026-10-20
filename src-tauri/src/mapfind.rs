@@ -49,7 +49,7 @@ fn identity_registers(map: &DeviceMap) -> Vec<&Register> {
 }
 
 /// A decoded value as text, with its enum label when it has one.
-fn text_of(reg: &Register, v: &Value) -> String {
+pub(crate) fn text_of(reg: &Register, v: &Value) -> String {
     let n = match v {
         Value::Int(n) => Some(i128::from(*n)),
         Value::Uint(n) => Some(i128::from(*n)),
