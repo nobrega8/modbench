@@ -15,6 +15,7 @@ import type {
   Diagnostic,
   Generator,
   ImportResult,
+  SaveOutcome,
   LibraryEntry,
   LocalInterface,
   MapSearch,
@@ -89,6 +90,10 @@ export const api = {
     }),
   libraryFolder: () => invoke<string>("library_folder"),
   libraryList: () => invoke<LibraryEntry[]>("library_list"),
+  /** Saves a builder map into the library: over the library file `path`, or
+   * under its vendor and model (`exists` when `replace` is needed). */
+  librarySaveMap: (map: DeviceMap, path: string | null, replace: boolean) =>
+    invoke<SaveOutcome>("library_save_map", { map, path, replace }),
   libraryImport: (paths: string[]) =>
     invoke<ImportResult[]>("library_import", { paths }),
   libraryDelete: (path: string) => invoke<void>("library_delete", { path }),

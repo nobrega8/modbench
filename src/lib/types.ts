@@ -376,6 +376,14 @@ export interface OnlineEntry {
   registers: number;
 }
 
+/** What saving a map from the builder into the library did. */
+export interface SaveOutcome {
+  /** Where the map is now; empty when nothing was written. */
+  path: string;
+  /** The library has a map for this vendor and model, and nothing was written. */
+  exists: boolean;
+}
+
 export interface ImportResult {
   source: string;
   stored: string | null;

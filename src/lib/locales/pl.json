@@ -1129,6 +1129,10 @@
   "builder.change_removed": "Removed",
   "builder.change_changed": "Changed",
   "builder.discard": "The map has unsaved changes. Open another map and lose them?",
-  "builder.library_copy": "This map is in the library. Save as… makes a local copy and leaves the library's file as it is.",
+  "builder.save_here": "Zapisz",
+  "builder.library_map": "This map is in the library. Save writes to its file; Save as… makes a copy elsewhere.",
+  "builder.saved_library": "Saved to the library: {path}",
+  "builder.fix_errors": "Fix the errors before saving to the library.",
+  "builder.replace_in_library": "The library already has a map for {vendor} {model}. Replace it?",
   "builder.edit_as_text": "Open in a text editor…"
 }

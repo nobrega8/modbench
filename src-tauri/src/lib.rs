@@ -120,6 +120,7 @@ pub fn run() {
             commands::library_folder,
             commands::library_list,
             commands::library_import,
+            commands::library_save_map,
             commands::library_delete,
             commands::library_open_folder,
             commands::library_edit,

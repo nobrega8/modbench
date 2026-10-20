@@ -417,6 +417,52 @@ pub fn duplicate(root: &Path, path: &str) -> Result<String, String> {
     write_map(root, &map, Origin::Imported)
 }
 
+/// What saving a map from the builder did.
+#[derive(Debug, Clone, Serialize)]
+pub struct SaveOutcome {
+    /// Where the map is now; empty when nothing was written.
+    pub path: String,
+    /// A map for this vendor and model is already in the library and
+    /// `replace` was not set: nothing was written.
+    pub exists: bool,
+}
+
+/// Saves a map from the builder into the library. With `path` (a file of the
+/// library, the one the builder opened) that file is written in place and its
+/// origin record is kept, so the Library shows the map as edited. Without it
+/// the map goes to `<vendor>/<model>.mbmap.json`, as a map the user added; an
+/// existing map there is only replaced when `replace` is set. A map the
+/// validator finds errors in is refused.
+pub fn save_from_builder(
+    root: &Path,
+    map: &DeviceMap,
+    path: Option<&str>,
+    replace: bool,
+) -> Result<SaveOutcome, String> {
+    let text = mbmap::to_string(map);
+    read_valid(text.as_bytes()).map_err(|e| format!("the map has errors: {e}"))?;
+    if let Some(path) = path {
+        let target = library_map(root, path).map_err(|e| e.to_string())?;
+        std::fs::write(&target, &text).map_err(|e| e.to_string())?;
+        // The path as it was given: the canonical one has a `\?\` prefix on Windows.
+        return Ok(SaveOutcome {
+            path: path.to_string(),
+            exists: false,
+        });
+    }
+    if path_for(root, map).exists() && !replace {
+        return Ok(SaveOutcome {
+            path: String::new(),
+            exists: true,
+        });
+    }
+    let stored = write_map(root, map, Origin::Imported)?;
+    Ok(SaveOutcome {
+        path: stored,
+        exists: false,
+    })
+}
+
 /// Deletes a map, refusing anything outside the library folder.
 pub fn delete(root: &Path, path: &str) -> std::io::Result<()> {
     let target = library_map(root, path)?;
@@ -575,5 +621,59 @@ mod tests {
         store(&root, MAP.as_bytes(), Origin::Imported).unwrap();
         assert!(!dir.join("pm-200-b.mbmap").exists());
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn builder_saves_new_maps_by_vendor_and_model() {
+        let root = temp_root("builder-new");
+        let map = read_valid(
+            br#"{"mbmap":2,"vendor":"Acme Meters","model":"PM 200","registers":[{"name":"V","area":"input","address":0,"type":"float32"}]}"#,
+        )
+        .unwrap();
+        let first = save_from_builder(&root, &map, None, false).unwrap();
+        assert!(!first.exists);
+        assert!(first.path.ends_with("pm-200.mbmap.json"));
+        assert!(root.join("acme-meters").join("pm-200.mbmap.json").exists());
+        // The second save finds the map and writes nothing until told to.
+        let again = save_from_builder(&root, &map, None, false).unwrap();
+        assert!(again.exists && again.path.is_empty());
+        let replaced = save_from_builder(&root, &map, None, true).unwrap();
+        assert!(!replaced.exists);
+        let entries = list(&root).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].origin, Some(Origin::Imported));
+        assert!(!entries[0].edited);
+    }
+
+    #[test]
+    fn builder_saves_over_a_library_file_and_marks_it_edited() {
+        let root = temp_root("builder-edit");
+        let bytes = br#"{"mbmap":2,"vendor":"Acme Meters","model":"PM 200","registers":[{"name":"V","area":"input","address":0,"type":"float32"}]}"#;
+        let stored = store(&root, bytes, Origin::Online).unwrap();
+        let mut map = read_valid(bytes).unwrap();
+        map.meta.description = Some("Edited".into());
+        let saved = save_from_builder(&root, &map, Some(&stored), false).unwrap();
+        assert_eq!(saved.path, stored);
+        let entries = list(&root).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].description.as_deref(), Some("Edited"));
+        assert_eq!(entries[0].origin, Some(Origin::Online));
+        assert!(entries[0].edited);
+    }
+
+    #[test]
+    fn builder_refuses_other_folders_and_maps_with_errors() {
+        let root = temp_root("builder-refuse");
+        let outside = temp_root("builder-outside").join("x.mbmap.json");
+        std::fs::write(&outside, "{}").unwrap();
+        let map = read_valid(
+            br#"{"mbmap":2,"vendor":"A","model":"B","registers":[{"name":"V","area":"input","address":0,"type":"float32"}]}"#,
+        )
+        .unwrap();
+        assert!(save_from_builder(&root, &map, outside.to_str(), false).is_err());
+        let mut bad = map.clone();
+        bad.registers[0].name = String::new();
+        assert!(save_from_builder(&root, &bad, None, false).is_err());
+        assert!(list(&root).unwrap().is_empty());
     }
 }
