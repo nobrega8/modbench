@@ -2,6 +2,7 @@
 // follow the function code, from typed fields or from hex.
 
 import { parseHex } from "./frames";
+import { td, t } from "./i18n.svelte.ts";
 
 /** Whether a request only reads (as the backend decides; see modbus.rs). */
 export function onlyReads(fc: number, data: number[]): boolean {
@@ -25,132 +26,101 @@ export interface FunctionSpec {
   fields: RequestField[];
 }
 
+/** A field whose label and hint are looked up when read, so they follow the language. */
+const field = (
+  key: string,
+  label: string,
+  kind: RequestField["kind"],
+  initial: string,
+  hint?: string,
+): RequestField => ({
+  key,
+  get label() {
+    return td(label);
+  },
+  kind,
+  initial,
+  get hint() {
+    return hint ? td(hint) : undefined;
+  },
+});
+
 const word = (key: string, label: string, initial = "0", hint?: string) =>
-  ({ key, label, kind: "word", initial, hint }) as RequestField;
+  field(key, label, "word", initial, hint);
+
+const spec = (fc: number, fields: RequestField[]): FunctionSpec => ({
+  fc,
+  get name() {
+    return td(`fc.${fc}`);
+  },
+  fields,
+});
 
 /** The functions offered, with their fields; others take hex data. */
 export const FUNCTIONS: FunctionSpec[] = [
-  {
-    fc: 1,
-    name: "Read coils",
-    fields: [word("a", "Address"), word("n", "Count", "1")],
-  },
-  {
-    fc: 2,
-    name: "Read discrete inputs",
-    fields: [word("a", "Address"), word("n", "Count", "1")],
-  },
-  {
-    fc: 3,
-    name: "Read holding registers",
-    fields: [word("a", "Address"), word("n", "Count", "1")],
-  },
-  {
-    fc: 4,
-    name: "Read input registers",
-    fields: [word("a", "Address"), word("n", "Count", "1")],
-  },
-  {
-    fc: 5,
-    name: "Write single coil",
-    fields: [
-      word("a", "Address"),
-      word("v", "Value", "0xFF00", "0xFF00 on, 0x0000 off"),
-    ],
-  },
-  {
-    fc: 6,
-    name: "Write single register",
-    fields: [word("a", "Address"), word("v", "Value")],
-  },
-  { fc: 7, name: "Read exception status", fields: [] },
-  {
-    fc: 8,
-    name: "Diagnostics",
-    fields: [
-      word("sub", "Sub-function", "0", "0 returns the data (echo)"),
-      { key: "data", label: "Data (hex)", kind: "hex", initial: "A5 37" },
-    ],
-  },
-  { fc: 11, name: "Get comm event counter", fields: [] },
-  { fc: 12, name: "Get comm event log", fields: [] },
-  {
-    fc: 15,
-    name: "Write multiple coils",
-    fields: [
-      word("a", "Address"),
-      { key: "bits", label: "Values (0/1)", kind: "words", initial: "1 0 1" },
-    ],
-  },
-  {
-    fc: 16,
-    name: "Write multiple registers",
-    fields: [
-      word("a", "Address"),
-      { key: "values", label: "Values", kind: "words", initial: "1 2" },
-    ],
-  },
-  { fc: 17, name: "Report server ID", fields: [] },
-  {
-    fc: 20,
-    name: "Read file record",
-    fields: [
-      word("file", "File", "1"),
-      word("record", "Record"),
-      word("n", "Registers", "1"),
-    ],
-  },
-  {
-    fc: 22,
-    name: "Mask write register",
-    fields: [
-      word("a", "Address"),
-      word("and", "AND mask", "0xFFFF"),
-      word("or", "OR mask", "0x0000"),
-    ],
-  },
-  {
-    fc: 23,
-    name: "Read/write multiple registers",
-    fields: [
-      word("ra", "Read address"),
-      word("rn", "Read count", "1"),
-      word("wa", "Write address"),
-      { key: "values", label: "Write values", kind: "words", initial: "0" },
-    ],
-  },
-  { fc: 24, name: "Read FIFO queue", fields: [word("a", "FIFO address")] },
-  {
-    fc: 43,
-    name: "Read device identification",
-    fields: [
-      {
-        key: "code",
-        label: "Read code",
-        kind: "byte",
-        initial: "1",
-        hint: "1 basic, 2 regular, 3 extended, 4 one object",
-      },
-      { key: "object", label: "Object ID", kind: "byte", initial: "0" },
-    ],
-  },
+  spec(1, [word("a", "reqf.address"), word("n", "reqf.count", "1")]),
+  spec(2, [word("a", "reqf.address"), word("n", "reqf.count", "1")]),
+  spec(3, [word("a", "reqf.address"), word("n", "reqf.count", "1")]),
+  spec(4, [word("a", "reqf.address"), word("n", "reqf.count", "1")]),
+  spec(5, [
+    word("a", "reqf.address"),
+    word("v", "reqf.value", "0xFF00", "reqf.hint.coil"),
+  ]),
+  spec(6, [word("a", "reqf.address"), word("v", "reqf.value")]),
+  spec(7, []),
+  spec(8, [
+    word("sub", "reqf.subfunction", "0", "reqf.hint.echo"),
+    field("data", "reqf.data_hex", "hex", "A5 37"),
+  ]),
+  spec(11, []),
+  spec(12, []),
+  spec(15, [
+    word("a", "reqf.address"),
+    field("bits", "reqf.bits", "words", "1 0 1"),
+  ]),
+  spec(16, [
+    word("a", "reqf.address"),
+    field("values", "reqf.values", "words", "1 2"),
+  ]),
+  spec(17, []),
+  spec(20, [
+    word("file", "reqf.file", "1"),
+    word("record", "reqf.record"),
+    word("n", "reqf.registers", "1"),
+  ]),
+  spec(22, [
+    word("a", "reqf.address"),
+    word("and", "reqf.and_mask", "0xFFFF"),
+    word("or", "reqf.or_mask", "0x0000"),
+  ]),
+  spec(23, [
+    word("ra", "reqf.read_address"),
+    word("rn", "reqf.read_count", "1"),
+    word("wa", "reqf.write_address"),
+    field("values", "reqf.write_values", "words", "0"),
+  ]),
+  spec(24, [word("a", "reqf.fifo_address")]),
+  spec(43, [
+    field("code", "reqf.read_code", "byte", "1", "reqf.hint.read_code"),
+    field("object", "reqf.object_id", "byte", "0"),
+  ]),
 ];
 
 function num(text: string, max: number, label: string): number {
-  const t = text.trim();
-  const n = /^0x[0-9a-f]+$/i.test(t)
-    ? parseInt(t, 16)
-    : /^\d+$/.test(t)
-      ? Number(t)
+  const trimmed = text.trim();
+  const n = /^0x[0-9a-f]+$/i.test(trimmed)
+    ? parseInt(trimmed, 16)
+    : /^\d+$/.test(trimmed)
+      ? Number(trimmed)
       : NaN;
   if (!Number.isInteger(n) || n < 0 || n > max)
-    throw new Error(`${label}: a whole number from 0 to ${max}`);
+    throw new Error(t("reqf.err.number", { label, max }));
   return n;
 }
 
 function list(text: string, max: number, label: string): number[] {
   const parts = text.split(/[\s,;]+/).filter(Boolean);
-  if (!parts.length) throw new Error(`${label}: at least one value`);
+  if (!parts.length) throw new Error(t("reqf.err.list", { label }));
   return parts.map((p) => num(p, max, label));
 }
 
@@ -177,18 +147,19 @@ export function buildData(
       return [...be(w("a")), ...be(w("v"))];
     case 8: {
       const hex = parseHex(v("data"));
-      if (hex === null) throw new Error("Data: hex bytes, e.g. A5 37");
+      if (hex === null)
+        throw new Error(t("reqf.err.hex", { label: td("reqf.data_hex") }));
       return [...be(w("sub")), ...hex];
     }
     case 15: {
-      const bits = list(v("bits"), 1, "Values");
+      const bits = list(v("bits"), 1, td("reqf.values"));
       const bytes = Array.from({ length: Math.ceil(bits.length / 8) }, (_, i) =>
         bits.slice(i * 8, i * 8 + 8).reduce((acc, b, k) => acc | (b << k), 0),
       );
       return [...be(w("a")), ...be(bits.length), bytes.length, ...bytes];
     }
     case 16: {
-      const values = list(v("values"), 0xffff, "Values");
+      const values = list(v("values"), 0xffff, td("reqf.values"));
       return [
         ...be(w("a")),
         ...be(values.length),
@@ -202,7 +173,7 @@ export function buildData(
     case 22:
       return [...be(w("a")), ...be(w("and")), ...be(w("or"))];
     case 23: {
-      const values = list(v("values"), 0xffff, "Write values");
+      const values = list(v("values"), 0xffff, td("reqf.write_values"));
       return [
         ...be(w("ra")),
         ...be(w("rn")),
@@ -217,8 +188,8 @@ export function buildData(
     case 43:
       return [
         14,
-        num(v("code"), 255, "Read code"),
-        num(v("object"), 255, "Object ID"),
+        num(v("code"), 255, td("reqf.read_code")),
+        num(v("object"), 255, td("reqf.object_id")),
       ];
     default:
       return [];

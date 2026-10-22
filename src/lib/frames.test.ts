@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { i18n } from "./i18n.svelte";
 import { crc16, decodeFrame, lrc, parseHex } from "./frames";
 
 const labels = (f: { label: string }[]) => f.map((x) => x.label);
@@ -68,7 +69,7 @@ describe("frames", () => {
       "tcp",
       "response",
     );
-    expect(d.summary).toBe("Exception 2 to read holding registers");
+    expect(d.summary).toBe("Exception 2 (Read holding registers)");
     expect(d.fields.at(-1)!.meaning).toBe("2 = illegal data address");
   });
 
@@ -127,5 +128,18 @@ describe("mask write and read/write frames", () => {
     expect(rw.fields.find((f) => f.label === "Registers")?.meaning).toBe(
       "7, 8",
     );
+  });
+});
+
+describe("frames in another language", () => {
+  it("name the fields and the summary in the current language", () => {
+    i18n.apply("pt-PT");
+    try {
+      const d = decodeFrame([1, 3, 0, 0, 0, 1, 0x84, 0x0a], "rtu", "request");
+      expect(d.summary).toBe("Ler registos de retenção 0 × 1");
+      expect(d.fields[1].label).toBe("Função");
+    } finally {
+      i18n.apply("en");
+    }
   });
 });

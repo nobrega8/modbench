@@ -11,6 +11,7 @@
 // `area address[.bit] = value`; `//` starts a comment.
 
 import { limitError, parseBool, parseInteger } from "./format";
+import { t } from "./i18n.svelte.ts";
 import type { Area, PointResult, Register, Value } from "./types";
 
 export interface TemplateEntry {
@@ -123,23 +124,26 @@ export function parse(text: string): ParsedTemplate {
     if (!m || !area) {
       out.errors.push({
         line,
-        message: "Expected `holding 16 = 25.5` (area, address, value).",
+        message: t("tpl.err.line"),
       });
       return;
     }
     const address = parseInteger(m[2]);
     if (address === null || address < 0 || address > 65535) {
-      out.errors.push({ line, message: `Bad address ${m[2]}.` });
+      out.errors.push({ line, message: t("tpl.err.address", { v: m[2] }) });
       return;
     }
     const bit = m[3] === undefined ? null : Number(m[3]);
     if (bit !== null && bit > 15) {
-      out.errors.push({ line, message: `Bad bit ${bit} (0-15).` });
+      out.errors.push({ line, message: t("tpl.err.bit", { v: bit }) });
       return;
     }
     const value = parseValue(m[4].trim());
     if (value === null) {
-      out.errors.push({ line, message: `Bad value ${m[4].trim()}.` });
+      out.errors.push({
+        line,
+        message: t("tpl.err.value", { v: m[4].trim() }),
+      });
       return;
     }
     out.entries.push({ area, address, bit, value, name: comment });
@@ -191,9 +195,10 @@ export function plan(
     const r = results.get(index);
     const current = r && !r.error && !r.sentinel ? r.value : null;
     let problem: string | null;
-    if (register.access === "R") problem = `${register.name} is read-only.`;
+    if (register.access === "R")
+      problem = t("tpl.err.readonly", { name: register.name });
     else if (typeof e.value === "string" && register.type !== "string")
-      problem = `${register.name} does not take text.`;
+      problem = t("tpl.err.notext", { name: register.name });
     else problem = limitError(register, e.value);
     out.writes.push({
       index,

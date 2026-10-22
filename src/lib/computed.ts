@@ -4,6 +4,7 @@
 // cycle works their value out from the values just read.
 
 import { CUSTOM_MARK } from "./custom-registers";
+import { t } from "./i18n.svelte.ts";
 import { FormulaError, evaluate, parse, resolve } from "./formula";
 import type { PointResult, Register } from "./types";
 
@@ -26,7 +27,9 @@ export function computedRegister(
 ): Register {
   return {
     name: name.trim(),
-    group: "Computed",
+    get group() {
+      return t("computed.group");
+    },
     area: "holding",
     address: 0,
     type: "float64",
@@ -58,14 +61,17 @@ export function computedRegister(
 
 /** A register's value as a number for a formula, or why there is none. */
 function numberOf(name: string, r: PointResult | undefined): number {
-  if (!r) throw new FormulaError(`${name} has not been read`);
-  if (r.error) throw new FormulaError(`${name} failed: ${r.error}`);
+  if (!r) throw new FormulaError(t("computed.not_read", { name }));
+  if (r.error)
+    throw new FormulaError(t("computed.failed", { name, error: r.error }));
   if (r.sentinel)
-    throw new FormulaError(`${name} has no value (${r.sentinel})`);
+    throw new FormulaError(
+      t("computed.no_value", { name, sentinel: r.sentinel }),
+    );
   const v = r.value;
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "boolean") return v ? 1 : 0;
-  throw new FormulaError(`${name} is not a number`);
+  throw new FormulaError(t("computed.not_number", { name }));
 }
 
 /**
@@ -111,7 +117,7 @@ export function computeResults(
             reference: null,
             value: null,
             raw: null,
-            error: "no number (division by zero?)",
+            error: t("computed.no_number"),
             sentinel: null,
           };
     } catch (e) {
