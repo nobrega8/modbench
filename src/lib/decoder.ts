@@ -2,6 +2,7 @@
 // floats and text in the four byte orders, and each register on its own.
 
 import { hex } from "./format";
+import { t } from "./i18n.svelte.ts";
 import type { ByteOrder } from "./types";
 
 export const ORDERS: ByteOrder[] = ["ABCD", "CDAB", "BADC", "DCBA"];
@@ -85,15 +86,15 @@ export function wideRows(words: number[]): Row[] {
       ),
     });
   };
-  each("32-bit signed", 2, (v) => String(v.getInt32(0)));
-  each("32-bit unsigned", 2, (v) => String(v.getUint32(0)));
-  each("32-bit float", 2, (v) => float(v.getFloat32(0), 7));
-  each("64-bit signed", 4, (v) => String(v.getBigInt64(0)));
-  each("64-bit unsigned", 4, (v) => String(v.getBigUint64(0)));
-  each("64-bit float", 4, (v) => float(v.getFloat64(0), 15));
+  each(t("decoder.int32"), 2, (v) => String(v.getInt32(0)));
+  each(t("decoder.uint32"), 2, (v) => String(v.getUint32(0)));
+  each(t("decoder.float32"), 2, (v) => float(v.getFloat32(0), 7));
+  each(t("decoder.int64"), 4, (v) => String(v.getBigInt64(0)));
+  each(t("decoder.uint64"), 4, (v) => String(v.getBigUint64(0)));
+  each(t("decoder.float64"), 4, (v) => float(v.getFloat64(0), 15));
   // Text keeps the register order; only the byte swap applies.
   rows.push({
-    label: "Text (ASCII)",
+    label: t("decoder.text"),
     values: ORDERS.map((o) =>
       text(normalize(words, o === "BADC" || o === "DCBA" ? "BADC" : "ABCD")),
     ),

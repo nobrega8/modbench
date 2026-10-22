@@ -3,6 +3,7 @@
 // then the PDU.
 
 import { FUNCTION_NAME, hex } from "./format";
+import { td, t } from "./i18n.svelte.ts";
 
 export type Framing = "tcp" | "rtu" | "ascii";
 export type Direction = "request" | "response";
@@ -24,34 +25,22 @@ export interface Decoded {
   error: string | null;
 }
 
-export const EXCEPTION_NAME: Record<number, string> = {
-  1: "illegal function",
-  2: "illegal data address",
-  3: "illegal data value",
-  4: "server device failure",
-  5: "acknowledge",
-  6: "server device busy",
-  8: "memory parity error",
-  10: "gateway path unavailable",
-  11: "gateway target device failed to respond",
-};
+const EXCEPTION_CODES = [1, 2, 3, 4, 5, 6, 8, 10, 11];
 
-const MORE_FUNCTIONS: Record<number, string> = {
-  7: "Read exception status",
-  8: "Diagnostics",
-  11: "Get comm event counter",
-  12: "Get comm event log",
-  17: "Report server ID",
-  20: "Read file record",
-  21: "Write file record",
-  22: "Mask write register",
-  23: "Read/write multiple registers",
-  24: "Read FIFO queue",
-  43: "Encapsulated interface (device identification)",
-};
+/** What an exception code means, in the current language. */
+export function exceptionName(code: number): string {
+  return EXCEPTION_CODES.includes(code)
+    ? td(`frame.exc.${code}`)
+    : t("frame.exc.unknown");
+}
 
 export function functionName(fc: number): string {
-  return FUNCTION_NAME[fc] ?? MORE_FUNCTIONS[fc] ?? `Function ${fc}`;
+  if (FUNCTION_NAME[fc]) return FUNCTION_NAME[fc];
+  return fc === 43
+    ? t("frame.fc43")
+    : [7, 8, 11, 12, 17, 20, 21, 22, 23, 24].includes(fc)
+      ? td(`fc.${fc}`)
+      : t("frame.function_n", { fc });
 }
 
 /** CRC-16/MODBUS of some bytes. */
@@ -103,7 +92,7 @@ function pdu(
   let error: string | null = null;
   const take = (n: number, label: string, meaning: (x: number[]) => string) => {
     if (at + n > b.length) {
-      error ??= `The frame ends before its ${label.toLowerCase()}.`;
+      error ??= t("frame.ends_before", { label });
       at = b.length;
       return null;
     }
@@ -112,104 +101,115 @@ function pdu(
     fields.push({ label, bytes: hexOf(part), meaning: meaning(part) });
     return part;
   };
-  const fcByte = take(1, "Function", (x) =>
+  const fcByte = take(1, t("frame.function"), (x) =>
     x[0] & 0x80
-      ? `${x[0]} = exception to ${functionName(x[0] & 0x7f).toLowerCase()}`
+      ? t("frame.exception_of", { n: x[0], name: functionName(x[0] & 0x7f) })
       : `${x[0]} = ${functionName(x[0])}`,
   );
-  if (!fcByte) return { fields, summary: "Empty frame", error };
+  if (!fcByte) return { fields, summary: t("frame.empty"), error };
   const fc = fcByte[0] & 0x7f;
   let summary = functionName(fc);
 
   if (fcByte[0] & 0x80) {
     const code = take(
       1,
-      "Exception",
-      (x) => `${x[0]} = ${EXCEPTION_NAME[x[0]] ?? "unknown exception"}`,
+      t("frame.exception"),
+      (x) => `${x[0]} = ${exceptionName(x[0])}`,
     );
-    summary = `Exception ${code?.[0] ?? "?"} to ${summary.toLowerCase()}`;
+    summary = t("frame.exception_sum", {
+      n: code?.[0] ?? "?",
+      name: summary,
+    });
   } else if (direction === "request" && fc >= 1 && fc <= 6) {
-    const a = take(2, "Address", (x) => String(word(x, 0)));
-    const v = take(2, fc <= 4 ? "Quantity" : "Value", (x) =>
+    const a = take(2, t("frame.address"), (x) => String(word(x, 0)));
+    const v = take(2, fc <= 4 ? t("frame.quantity") : t("frame.value"), (x) =>
       fc === 5
         ? word(x, 0) === 0xff00
-          ? "ON"
+          ? t("frame.on")
           : word(x, 0) === 0
-            ? "OFF"
-            : `${word(x, 0)} (not a valid coil value)`
+            ? t("frame.off")
+            : t("frame.bad_coil", { n: word(x, 0) })
         : String(word(x, 0)),
     );
     if (a && v)
       summary += ` ${word(a, 0)}${fc <= 4 ? ` × ${word(v, 0)}` : ` ← ${fields.at(-1)!.meaning}`}`;
   } else if (direction === "request" && (fc === 15 || fc === 16)) {
-    const a = take(2, "Address", (x) => String(word(x, 0)));
-    const q = take(2, "Quantity", (x) => String(word(x, 0)));
-    const n = take(1, "Byte count", (x) => String(x[0]));
+    const a = take(2, t("frame.address"), (x) => String(word(x, 0)));
+    const q = take(2, t("frame.quantity"), (x) => String(word(x, 0)));
+    const n = take(1, t("frame.byte_count"), (x) => String(x[0]));
     if (n) dataFields(fc === 15 ? "bits" : "words", n[0]);
     if (a && q) summary += ` ${word(a, 0)} × ${word(q, 0)}`;
   } else if (direction === "response" && fc >= 1 && fc <= 4) {
-    const n = take(1, "Byte count", (x) => String(x[0]));
+    const n = take(1, t("frame.byte_count"), (x) => String(x[0]));
     if (n) {
       dataFields(fc <= 2 ? "bits" : "words", n[0]);
       summary +=
-        fc <= 2 ? `: ${n[0]} bytes of bits` : `: ${n[0] / 2} registers`;
+        fc <= 2
+          ? t("frame.sum_bits", { count: n[0] })
+          : `: ${td("count.registers", { count: n[0] / 2 })}`;
     }
   } else if (direction === "response" && (fc === 5 || fc === 6)) {
-    take(2, "Address", (x) => String(word(x, 0)));
-    take(2, "Value", (x) =>
-      fc === 5 ? (word(x, 0) ? "ON" : "OFF") : String(word(x, 0)),
+    take(2, t("frame.address"), (x) => String(word(x, 0)));
+    take(2, t("frame.value"), (x) =>
+      fc === 5
+        ? word(x, 0)
+          ? t("frame.on")
+          : t("frame.off")
+        : String(word(x, 0)),
     );
-    summary += " (echo)";
+    summary += ` ${t("frame.echo")}`;
   } else if (direction === "response" && (fc === 15 || fc === 16)) {
-    const a = take(2, "Address", (x) => String(word(x, 0)));
-    const q = take(2, "Quantity", (x) => String(word(x, 0)));
-    if (a && q) summary += ` ${word(a, 0)} × ${word(q, 0)} done`;
+    const a = take(2, t("frame.address"), (x) => String(word(x, 0)));
+    const q = take(2, t("frame.quantity"), (x) => String(word(x, 0)));
+    if (a && q) summary += ` ${word(a, 0)} × ${word(q, 0)} ${t("frame.done")}`;
   } else if (fc === 22) {
     // Same fields both ways: the answer echoes the request
-    const a = take(2, "Address", (x) => String(word(x, 0)));
-    take(2, "AND mask", (x) => `0x${hex(word(x, 0))}`);
-    take(2, "OR mask", (x) => `0x${hex(word(x, 0))}`);
+    const a = take(2, t("frame.address"), (x) => String(word(x, 0)));
+    take(2, t("frame.and_mask"), (x) => `0x${hex(word(x, 0))}`);
+    take(2, t("frame.or_mask"), (x) => `0x${hex(word(x, 0))}`);
     if (a)
-      summary += ` ${word(a, 0)}${direction === "response" ? " (echo)" : ""}`;
+      summary += ` ${word(a, 0)}${direction === "response" ? ` ${t("frame.echo")}` : ""}`;
   } else if (fc === 23 && direction === "request") {
-    const ra = take(2, "Read address", (x) => String(word(x, 0)));
-    const rn = take(2, "Read quantity", (x) => String(word(x, 0)));
-    const wa = take(2, "Write address", (x) => String(word(x, 0)));
-    const wn = take(2, "Write quantity", (x) => String(word(x, 0)));
-    const n = take(1, "Byte count", (x) => String(x[0]));
+    const ra = take(2, t("frame.read_address"), (x) => String(word(x, 0)));
+    const rn = take(2, t("frame.read_quantity"), (x) => String(word(x, 0)));
+    const wa = take(2, t("frame.write_address"), (x) => String(word(x, 0)));
+    const wn = take(2, t("frame.write_quantity"), (x) => String(word(x, 0)));
+    const n = take(1, t("frame.byte_count"), (x) => String(x[0]));
     if (n) dataFields("words", n[0]);
     if (ra && rn && wa && wn)
-      summary += `: read ${word(ra, 0)} × ${word(rn, 0)}, write ${word(wa, 0)} × ${word(wn, 0)}`;
+      summary += t("frame.sum_rw", {
+        ra: word(ra, 0),
+        rn: word(rn, 0),
+        wa: word(wa, 0),
+        wn: word(wn, 0),
+      });
   } else if (fc === 23) {
-    const n = take(1, "Byte count", (x) => String(x[0]));
+    const n = take(1, t("frame.byte_count"), (x) => String(x[0]));
     if (n) {
       dataFields("words", n[0]);
-      summary += `: ${n[0] / 2} registers`;
+      summary += `: ${td("count.registers", { count: n[0] / 2 })}`;
     }
   } else if (fc === 43) {
-    take(1, "MEI type", (x) =>
-      x[0] === 14 ? "14 = read device identification" : String(x[0]),
+    take(1, t("frame.mei_type"), (x) =>
+      x[0] === 14 ? t("frame.mei14") : String(x[0]),
     );
-    take(
-      1,
-      "Read code",
-      (x) =>
-        ["", "1 = basic", "2 = regular", "3 = extended", "4 = one object"][
-          x[0]
-        ] ?? String(x[0]),
+    take(1, t("frame.read_code"), (x) =>
+      x[0] >= 1 && x[0] <= 4 ? td(`frame.code.${x[0]}`) : String(x[0]),
     );
     if (direction === "request") {
-      take(1, "Object ID", (x) => String(x[0]));
+      take(1, t("frame.object_id"), (x) => String(x[0]));
     } else {
-      take(1, "Conformity", (x) => `0x${hex(x[0], 2)}`);
-      take(1, "More follows", (x) => (x[0] ? "yes" : "no"));
-      take(1, "Next object", (x) => String(x[0]));
-      const n = take(1, "Objects", (x) => String(x[0]));
+      take(1, t("frame.conformity"), (x) => `0x${hex(x[0], 2)}`);
+      take(1, t("frame.more_follows"), (x) =>
+        x[0] ? t("frame.yes") : t("frame.no"),
+      );
+      take(1, t("frame.next_object"), (x) => String(x[0]));
+      const n = take(1, t("frame.objects"), (x) => String(x[0]));
       for (let k = 0; n && k < n[0] && at < b.length; k++) {
-        const id = take(1, "Object ID", (x) => String(x[0]));
-        const len = take(1, "Length", (x) => String(x[0]));
+        const id = take(1, t("frame.object_id"), (x) => String(x[0]));
+        const len = take(1, t("frame.length"), (x) => String(x[0]));
         if (!id || !len) break;
-        take(len[0], `Object ${id[0]}`, (x) =>
+        take(len[0], t("frame.object_n", { id: id[0] }), (x) =>
           JSON.stringify(String.fromCharCode(...x)),
         );
       }
@@ -217,30 +217,30 @@ function pdu(
   }
   if (at < b.length)
     fields.push({
-      label: "Data",
+      label: t("frame.data"),
       bytes: hexOf(b.slice(at)),
-      meaning: `${b.length - at} bytes`,
+      meaning: t("frame.bytes_n", { count: b.length - at }),
     });
   return { fields, summary, error };
 
   function dataFields(kind: "bits" | "words", n: number) {
     const data = b.slice(at, at + n);
-    if (data.length < n) error ??= "The frame ends before its data.";
+    if (data.length < n) error ??= t("frame.ends_data");
     at += data.length;
     if (kind === "bits") {
       const bits = data.flatMap((byte) =>
         Array.from({ length: 8 }, (_, i) => (byte >> i) & 1),
       );
       fields.push({
-        label: "Bits",
+        label: t("frame.bits"),
         bytes: hexOf(data),
-        meaning: bits.join("") + " (first bit first)",
+        meaning: t("frame.bits_note", { bits: bits.join("") }),
       });
     } else {
       const words = [];
       for (let i = 0; i + 1 < data.length; i += 2) words.push(word(data, i));
       fields.push({
-        label: "Registers",
+        label: t("frame.registers"),
         bytes: hexOf(data),
         meaning: words.join(", "),
       });
@@ -263,48 +263,52 @@ export function decodeFrame(
     if (bytes.length < 8)
       return {
         fields: [],
-        summary: "Too short for Modbus TCP",
-        error: "A Modbus TCP frame has at least 8 bytes.",
+        summary: t("frame.short_tcp"),
+        error: t("frame.short_tcp_why"),
       };
     const length = word(bytes, 4);
     head.push(
       {
-        label: "Transaction",
+        label: t("frame.transaction"),
         bytes: hexOf(bytes.slice(0, 2)),
         meaning: String(word(bytes, 0)),
       },
       {
-        label: "Protocol",
+        label: t("frame.protocol"),
         bytes: hexOf(bytes.slice(2, 4)),
-        meaning: word(bytes, 2) === 0 ? "0 = Modbus" : String(word(bytes, 2)),
+        meaning:
+          word(bytes, 2) === 0 ? t("frame.modbus") : String(word(bytes, 2)),
         bad: word(bytes, 2) !== 0,
       },
       {
-        label: "Length",
+        label: t("frame.length"),
         bytes: hexOf(bytes.slice(4, 6)),
-        meaning: `${length} bytes follow`,
+        meaning: t("frame.follow", { count: length }),
         bad: length !== bytes.length - 6,
       },
       {
-        label: "Unit ID",
+        label: t("frame.unit_id"),
         bytes: hex(bytes[6], 2),
         meaning: String(bytes[6]),
       },
     );
     if (length !== bytes.length - 6)
-      error = `The header says ${length} bytes follow; ${bytes.length - 6} do.`;
+      error = t("frame.header_length", {
+        said: length,
+        real: bytes.length - 6,
+      });
     body = bytes.slice(7);
   } else if (framing === "rtu") {
     if (bytes.length < 4)
       return {
         fields: [],
-        summary: "Too short for Modbus RTU",
-        error: "A Modbus RTU frame has at least 4 bytes.",
+        summary: t("frame.short_rtu"),
+        error: t("frame.short_rtu_why"),
       };
     head.push({
-      label: "Unit ID",
+      label: t("frame.unit_id"),
       bytes: hex(bytes[0], 2),
-      meaning: bytes[0] === 0 ? "0 = broadcast" : String(bytes[0]),
+      meaning: bytes[0] === 0 ? t("frame.broadcast") : String(bytes[0]),
     });
     const n = bytes.length;
     const sent = bytes[n - 2] | (bytes[n - 1] << 8);
@@ -314,11 +318,11 @@ export function decodeFrame(
       bytes: hexOf(bytes.slice(n - 2)),
       meaning:
         sent === crc
-          ? "OK"
-          : `wrong: expected ${hexOf([crc & 0xff, crc >> 8])}`,
+          ? t("frame.ok")
+          : t("frame.wrong", { expected: hexOf([crc & 0xff, crc >> 8]) }),
       bad: sent !== crc,
     });
-    if (sent !== crc) error = "The CRC does not match: the frame is damaged.";
+    if (sent !== crc) error = t("frame.crc_bad");
     body = bytes.slice(1, n - 2);
   } else {
     const text = String.fromCharCode(...bytes).trim();
@@ -326,11 +330,11 @@ export function decodeFrame(
     if (!raw || raw.length < 3)
       return {
         fields: [],
-        summary: "Not a Modbus ASCII frame",
-        error: "A Modbus ASCII frame is ':' and hex digits, then CR LF.",
+        summary: t("frame.not_ascii"),
+        error: t("frame.not_ascii_why"),
       };
     head.push({
-      label: "Unit ID",
+      label: t("frame.unit_id"),
       bytes: hex(raw[0], 2),
       meaning: String(raw[0]),
     });
@@ -339,10 +343,13 @@ export function decodeFrame(
     tail.push({
       label: "LRC",
       bytes: hex(sent, 2),
-      meaning: sent === sum ? "OK" : `wrong: expected ${hex(sum, 2)}`,
+      meaning:
+        sent === sum
+          ? t("frame.ok")
+          : t("frame.wrong", { expected: hex(sum, 2) }),
       bad: sent !== sum,
     });
-    if (sent !== sum) error = "The LRC does not match: the frame is damaged.";
+    if (sent !== sum) error = t("frame.lrc_bad");
     body = raw.slice(1, -1);
   }
 

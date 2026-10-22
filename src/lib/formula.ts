@@ -8,6 +8,8 @@
 // letters and digits written as "_" (Voltage L1 → Voltage_L1), or by its
 // exact name in brackets: [Voltage L1].
 
+import { t as tr } from "./i18n.svelte.ts";
+
 export type Node =
   | { k: "num"; v: number }
   | { k: "var"; name: string }
@@ -84,12 +86,14 @@ function tokenize(text: string): Token[] {
       const m = /^(0x[0-9a-f]+|0b[01]+|\d*\.?\d+(?:e[+-]?\d+)?)/i.exec(
         text.slice(i),
       );
-      if (!m) throw new FormulaError(`Unexpected "${c}" at ${i + 1}`);
+      if (!m)
+        throw new FormulaError(tr("formula.unexpected", { c, at: i + 1 }));
       out.push({ t: "num", v: m[1], at });
       i += m[1].length;
     } else if (c === "[") {
       const end = text.indexOf("]", i);
-      if (end < 0) throw new FormulaError(`"[" at ${i + 1} is not closed`);
+      if (end < 0)
+        throw new FormulaError(tr("formula.unclosed", { at: i + 1 }));
       out.push({ t: "id", v: text.slice(i + 1, end), at });
       i = end + 1;
     } else if (/[\p{L}_]/u.test(c)) {
@@ -101,7 +105,8 @@ function tokenize(text: string): Token[] {
       i++;
     } else {
       const op = OPS.find((o) => text.startsWith(o, i));
-      if (!op) throw new FormulaError(`Unexpected "${c}" at ${i + 1}`);
+      if (!op)
+        throw new FormulaError(tr("formula.unexpected", { c, at: i + 1 }));
       out.push({ t: "op", v: op, at });
       i += op.length;
     }
@@ -135,7 +140,7 @@ const BINARY: Record<string, number> = {
 
 /** Parses a formula, or throws a FormulaError that says what is wrong. */
 export function parse(text: string): Node {
-  if (!text.trim()) throw new FormulaError("The formula is empty.");
+  if (!text.trim()) throw new FormulaError(tr("formula.empty"));
   const tokens = tokenize(text);
   let p = 0;
   const peek = () => tokens[p];
@@ -161,7 +166,7 @@ export function parse(text: string): Node {
     if (t.t === "num") {
       const v = /^0b/i.test(t.v) ? parseInt(t.v.slice(2), 2) : Number(t.v);
       if (!Number.isFinite(v))
-        throw new FormulaError(`"${t.v}" is not a number`);
+        throw new FormulaError(tr("formula.not_number", { v: t.v }));
       return { k: "num", v };
     }
     if (t.t === "op" && ["-", "+", "~", "!"].includes(t.v))
@@ -169,7 +174,7 @@ export function parse(text: string): Node {
     if (t.t === "(") {
       const inner = expr(0);
       if (next().t !== ")")
-        throw new FormulaError(`")" missing for "(" at ${t.at + 1}`);
+        throw new FormulaError(tr("formula.paren_open", { at: t.at + 1 }));
       return inner;
     }
     if (t.t === "id") {
@@ -177,7 +182,10 @@ export function parse(text: string): Node {
         const fn = t.v.toLowerCase();
         if (!(fn in FUNCTIONS))
           throw new FormulaError(
-            `Unknown function "${t.v}" (there are ${Object.keys(FUNCTIONS).join(", ")})`,
+            tr("formula.unknown_function", {
+              name: t.v,
+              list: Object.keys(FUNCTIONS).join(", "),
+            }),
           );
         next();
         const args: Node[] = [];
@@ -189,26 +197,28 @@ export function parse(text: string): Node {
           }
         }
         if (next().t !== ")")
-          throw new FormulaError(`")" missing after ${t.v}(…`);
+          throw new FormulaError(tr("formula.paren_call", { name: t.v }));
         const [lo, hi] = FUNCTIONS[fn];
         if (args.length < lo || args.length > hi)
           throw new FormulaError(
             lo === hi
-              ? `${fn} takes ${lo} value${lo > 1 ? "s" : ""}`
-              : `${fn} takes ${lo} to ${hi} values`,
+              ? tr("formula.takes", { fn, count: lo })
+              : tr("formula.takes_range", { fn, lo, hi }),
           );
         return { k: "call", fn, args };
       }
       return { k: "var", name: t.v };
     }
-    if (t.t === "end") throw new FormulaError("The formula ends too early.");
-    throw new FormulaError(`Unexpected "${t.v}" at ${t.at + 1}`);
+    if (t.t === "end") throw new FormulaError(tr("formula.too_early"));
+    throw new FormulaError(tr("formula.unexpected", { c: t.v, at: t.at + 1 }));
   }
 
   const node = expr(0);
   const rest = peek();
   if (rest.t !== "end")
-    throw new FormulaError(`Unexpected "${rest.v}" at ${rest.at + 1}`);
+    throw new FormulaError(
+      tr("formula.unexpected", { c: rest.v, at: rest.at + 1 }),
+    );
   return node;
 }
 
@@ -247,13 +257,18 @@ export function resolve(node: Node, registers: string[]): Map<string, string> {
     else if (plain.length === 1) map.set(written, plain[0]);
     else if (plain.length > 1)
       throw new FormulaError(
-        `"${written}" could be ${plain.join(" or ")}: write the name in brackets`,
+        tr("formula.ambiguous", {
+          name: written,
+          list: plain.join(tr("formula.or")),
+        }),
       );
     else unknown.push(written);
   }
   if (unknown.length)
     throw new FormulaError(
-      `No register is called ${unknown.map((u) => `"${u}"`).join(", ")}`,
+      tr("formula.no_register", {
+        names: unknown.map((u) => `"${u}"`).join(", "),
+      }),
     );
   return map;
 }
@@ -324,7 +339,7 @@ export function evaluate(node: Node, value: (name: string) => number): number {
       }
     }
   }
-  throw new FormulaError("Unknown operation");
+  throw new FormulaError(tr("formula.unknown_op"));
 }
 
 /** Checks a formula against the map's registers: null when it is fine. */

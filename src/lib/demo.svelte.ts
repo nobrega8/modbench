@@ -8,7 +8,7 @@ import { settings } from "./settings.svelte";
 import { sim } from "./simulator.svelte";
 import { bench, CONNECTION_FIELDS } from "./state.svelte";
 import type { DeviceMap, Generator } from "./types";
-import { t } from "./i18n.svelte.ts";
+import { t, td } from "./i18n.svelte.ts";
 
 /** The path the demo's map is opened under; no file has it. */
 export const DEMO_PATH = "modbench:demo";
@@ -16,7 +16,7 @@ export const DEMO_PATH = "modbench:demo";
 const PORTS = [5020, 5021, 5022, 5023, 5502];
 
 /** Values that move, so the chart and the table have something to show. */
-export const DEMO_GENERATORS: Generator[] = [
+const GENERATORS: Generator[] = [
   {
     register: "Voltage L1",
     kind: "sine",
@@ -66,6 +66,63 @@ export const DEMO_GENERATORS: Generator[] = [
     every_ms: 1000,
   },
 ];
+
+/** The demo meter's names in English, as its map and generators write them,
+ * with the catalogue keys that translate them. */
+const REGISTER_KEYS: Record<string, string> = {
+  "Voltage L1": "demo.reg.voltage_l1",
+  "Voltage L2": "demo.reg.voltage_l2",
+  "Voltage L3": "demo.reg.voltage_l3",
+  "Current L1": "demo.reg.current_l1",
+  "Active power": "demo.reg.active_power",
+  Frequency: "demo.reg.frequency",
+  Energy: "demo.reg.energy",
+  Temperature: "demo.reg.temperature",
+  State: "demo.reg.state",
+  Setpoint: "demo.reg.setpoint",
+  Relay: "demo.reg.relay",
+};
+const GROUP_KEYS: Record<string, string> = {
+  Voltage: "demo.group.voltage",
+  Current: "demo.group.current",
+  Power: "demo.group.power",
+  Energy: "demo.group.energy",
+  Status: "demo.group.status",
+  Settings: "demo.group.settings",
+};
+const STATE_KEYS: Record<number, string> = {
+  0: "demo.state.stopped",
+  1: "demo.state.running",
+  2: "demo.state.alarm",
+};
+
+/** The name a demo register has in the current language. */
+const registerName = (english: string) =>
+  REGISTER_KEYS[english] ? td(REGISTER_KEYS[english]) : english;
+
+/** Values that move, so the chart and the table have something to show. */
+export function demoGenerators(): Generator[] {
+  return GENERATORS.map((g) =>
+    "register" in g ? { ...g, register: registerName(g.register) } : g,
+  );
+}
+
+/** Puts the demo map's names in the current language (the file is English). */
+function localize(map: DeviceMap) {
+  map.meta.model = t("demo.model");
+  map.meta.description = t("demo.description");
+  const state = (list: [number, string][]) =>
+    list.map(([n, label]): [number, string] => [
+      n,
+      STATE_KEYS[n] ? td(STATE_KEYS[n]) : label,
+    ]);
+  for (const e of map.meta.enums) e[1] = state(e[1]);
+  for (const r of map.registers) {
+    r.name = registerName(r.name);
+    if (GROUP_KEYS[r.group]) r.group = td(GROUP_KEYS[r.group]);
+    r.enum = state(r.enum);
+  }
+}
 
 /** What the demo replaced, to put it back. */
 interface Saved {
@@ -122,8 +179,7 @@ class Demo {
       return;
     }
     if (sim.running) {
-      this.error =
-        "The simulator is running with your own setup. Stop it in Tools › Simulator to try the demo.";
+      this.error = t("demo.simrunning");
       return;
     }
     this.starting = true;
@@ -151,13 +207,14 @@ class Demo {
     bench.demo = true;
     try {
       const parsed = await api.demoMap();
-      if (!parsed.map) throw new Error("The demo map could not be read.");
+      if (!parsed.map) throw new Error(t("demo.mapfail"));
       const map = parsed.map;
+      localize(map);
       sim.kind = "tcp";
       sim.isPublic = false;
       sim.strict = true;
-      await sim.load(map, "Demo meter (simulated)");
-      await sim.setGenerators(DEMO_GENERATORS);
+      await sim.load(map, t("demo.model"));
+      await sim.setGenerators(demoGenerators());
       let port: number | null = null;
       for (const p of PORTS) {
         sim.port = p;
@@ -167,8 +224,7 @@ class Demo {
           break;
         }
       }
-      if (port === null)
-        throw new Error(sim.error ?? "No free port for the simulator.");
+      if (port === null) throw new Error(sim.error ?? t("demo.noport"));
       bench.transport = "tcp";
       bench.host = "127.0.0.1";
       bench.tcpPort = port;
@@ -182,7 +238,9 @@ class Demo {
       bench.page = "main";
       this.active = true;
       await bench.start();
-      const reg = map.registers.findIndex((r) => r.name === "Voltage L1");
+      const reg = map.registers.findIndex(
+        (r) => r.name === registerName("Voltage L1"),
+      );
       if (reg >= 0) bench.addToChart(reg);
       bench.tab = "map";
     } catch (e) {
