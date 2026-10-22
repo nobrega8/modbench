@@ -1335,5 +1335,15 @@
   "formula.takes": {
     "one": "{fn} {count} मान लेता है",
     "other": "{fn} {count} मान लेता है"
-  }
+  },
+  "err.not_connected": "कनेक्ट नहीं है",
+  "err.readonly": "केवल-पढ़ने मोड चालू है: लिखना अवरुद्ध है",
+  "err.timeout": "{ms} ms के बाद समय समाप्त",
+  "err.bad_address": "अमान्य पता “{value}”",
+  "err.io": "I/O त्रुटि: {detail}",
+  "err.serial": "सीरियल पोर्ट त्रुटि: {detail}",
+  "err.protocol": "प्रोटोकॉल त्रुटि: {detail}",
+  "err.exception": "डिवाइस अपवाद 0x{code} ({name}){request}",
+  "err.request": " FC{fc} ({name}) के लिए, यूनिट {unit}",
+  "err.request_range": " FC{fc} ({name}) के लिए, पता {address} से {count}, यूनिट {unit}"
 }

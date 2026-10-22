@@ -1335,5 +1335,15 @@
   "formula.takes": {
     "one": "{fn} {count} değer alır",
     "other": "{fn} {count} değer alır"
-  }
+  },
+  "err.not_connected": "bağlı değil",
+  "err.readonly": "salt okunur mod açık: yazma işlemleri engellendi",
+  "err.timeout": "{ms} ms sonra zaman aşımı",
+  "err.bad_address": "geçersiz adres “{value}”",
+  "err.io": "G/Ç hatası: {detail}",
+  "err.serial": "seri bağlantı noktası hatası: {detail}",
+  "err.protocol": "protokol hatası: {detail}",
+  "err.exception": "cihaz istisnası 0x{code} ({name}){request}",
+  "err.request": " FC{fc} ({name}) isteğine, birim {unit}",
+  "err.request_range": " FC{fc} ({name}) isteğine, {address} adresinden {count} adet, birim {unit}"
 }

@@ -1330,5 +1330,15 @@
   },
   "formula.takes": {
     "other": "{fn} 接受 {count} 个值"
-  }
+  },
+  "err.not_connected": "未连接",
+  "err.readonly": "只读模式已开启：写入被阻止",
+  "err.timeout": "{ms} ms 后超时",
+  "err.bad_address": "地址“{value}”无效",
+  "err.io": "I/O 错误：{detail}",
+  "err.serial": "串口错误：{detail}",
+  "err.protocol": "协议错误：{detail}",
+  "err.exception": "设备异常 0x{code}（{name}）{request}",
+  "err.request": " 对 FC{fc}（{name}），单元 {unit}",
+  "err.request_range": " 对 FC{fc}（{name}），从地址 {address} 起 {count} 个，单元 {unit}"
 }

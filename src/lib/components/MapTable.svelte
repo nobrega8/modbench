@@ -2,6 +2,7 @@
   import { untrack } from "svelte";
   import { windowOf } from "#lib/virtual.ts";
   import { t } from "#lib/i18n.svelte.ts";
+  import { localizeError } from "#lib/errors.ts";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
   import { valuesCsv } from "#lib/csv.ts";
@@ -945,10 +946,12 @@
             >
           {/if}
           <td class="unit">{r?.sentinel ? "" : reg.unit}</td>
-          <td class="raw mono" title={r?.error ?? undefined}>
-            {#if r?.error}<span class="bad">{r.error}</span>{:else}{formatRaw(
-                r?.raw ?? null,
-              )}{/if}
+          <td
+            class="raw mono"
+            title={r?.error ? localizeError(r.error) : undefined}
+          >
+            {#if r?.error}<span class="bad">{localizeError(r.error)}</span
+              >{:else}{formatRaw(r?.raw ?? null)}{/if}
           </td>
           <td class="act">
             {#if reg.access !== "R"}

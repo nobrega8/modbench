@@ -1335,5 +1335,15 @@
   "formula.takes": {
     "one": "{fn} nimmt {count} Wert",
     "other": "{fn} nimmt {count} Werte"
-  }
+  },
+  "err.not_connected": "nicht verbunden",
+  "err.readonly": "Nur-Lese-Modus ist aktiv: Schreibzugriffe sind gesperrt",
+  "err.timeout": "Zeitüberschreitung nach {ms} ms",
+  "err.bad_address": "ungültige Adresse „{value}“",
+  "err.io": "E/A-Fehler: {detail}",
+  "err.serial": "Fehler am seriellen Anschluss: {detail}",
+  "err.protocol": "Protokollfehler: {detail}",
+  "err.exception": "Geräteausnahme 0x{code} ({name}){request}",
+  "err.request": " auf FC{fc} ({name}), Gerät {unit}",
+  "err.request_range": " auf FC{fc} ({name}) für {count} ab Adresse {address}, Gerät {unit}"
 }

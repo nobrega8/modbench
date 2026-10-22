@@ -1335,5 +1335,15 @@
   "formula.takes": {
     "one": "{fn} aceita {count} valor",
     "other": "{fn} aceita {count} valores"
-  }
+  },
+  "err.not_connected": "não ligado",
+  "err.readonly": "o modo só de leitura está ativo: as escritas estão bloqueadas",
+  "err.timeout": "tempo esgotado após {ms} ms",
+  "err.bad_address": "endereço «{value}» inválido",
+  "err.io": "erro de E/S: {detail}",
+  "err.serial": "erro da porta série: {detail}",
+  "err.protocol": "erro de protocolo: {detail}",
+  "err.exception": "exceção do dispositivo 0x{code} ({name}){request}",
+  "err.request": " a FC{fc} ({name}), unidade {unit}",
+  "err.request_range": " a FC{fc} ({name}) para {count} a partir do endereço {address}, unidade {unit}"
 }

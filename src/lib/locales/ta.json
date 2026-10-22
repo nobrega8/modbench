@@ -1335,5 +1335,15 @@
   "formula.takes": {
     "one": "{fn} {count} மதிப்பை ஏற்கும்",
     "other": "{fn} {count} மதிப்புகளை ஏற்கும்"
-  }
+  },
+  "err.not_connected": "இணைக்கப்படவில்லை",
+  "err.readonly": "படிக்க-மட்டும் பயன்முறை இயக்கத்தில் உள்ளது: எழுதுவது தடுக்கப்பட்டுள்ளது",
+  "err.timeout": "{ms} ms க்குப் பிறகு நேரம் முடிந்தது",
+  "err.bad_address": "தவறான முகவரி “{value}”",
+  "err.io": "I/O பிழை: {detail}",
+  "err.serial": "தொடர் போர்ட் பிழை: {detail}",
+  "err.protocol": "நெறிமுறைப் பிழை: {detail}",
+  "err.exception": "சாதன விதிவிலக்கு 0x{code} ({name}){request}",
+  "err.request": " FC{fc} ({name}) க்கு, அலகு {unit}",
+  "err.request_range": " FC{fc} ({name}) க்கு, முகவரி {address} இலிருந்து {count}, அலகு {unit}"
 }

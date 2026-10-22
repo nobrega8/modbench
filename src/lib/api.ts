@@ -1,6 +1,7 @@
 // Typed wrappers around the Tauri commands in src-tauri/src/commands.rs.
 
 import { invoke } from "@tauri-apps/api/core";
+import { localizeError } from "./errors";
 import type {
   CheckReport,
   ReportContext,
@@ -210,5 +211,7 @@ export const api = {
 
 /** Error text from a rejected command (commands reject with a string). */
 export function errorText(e: unknown): string {
-  return typeof e === "string" ? e : e instanceof Error ? e.message : String(e);
+  return localizeError(
+    typeof e === "string" ? e : e instanceof Error ? e.message : String(e),
+  );
 }

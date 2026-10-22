@@ -1335,5 +1335,15 @@
   "formula.takes": {
     "one": "{fn} {count}টি মান নেয়",
     "other": "{fn} {count}টি মান নেয়"
-  }
+  },
+  "err.not_connected": "সংযুক্ত নয়",
+  "err.readonly": "শুধু-পড়ার মোড চালু: লেখা বন্ধ আছে",
+  "err.timeout": "{ms} ms পরে সময় শেষ",
+  "err.bad_address": "অবৈধ ঠিকানা “{value}”",
+  "err.io": "I/O ত্রুটি: {detail}",
+  "err.serial": "সিরিয়াল পোর্ট ত্রুটি: {detail}",
+  "err.protocol": "প্রোটোকল ত্রুটি: {detail}",
+  "err.exception": "ডিভাইস ব্যতিক্রম 0x{code} ({name}){request}",
+  "err.request": " FC{fc} ({name}) এর জন্য, ইউনিট {unit}",
+  "err.request_range": " FC{fc} ({name}) এর জন্য, ঠিকানা {address} থেকে {count}টি, ইউনিট {unit}"
 }

@@ -1330,5 +1330,15 @@
   },
   "formula.takes": {
     "other": "{fn} には {count} 個の値が必要です"
-  }
+  },
+  "err.not_connected": "未接続",
+  "err.readonly": "読み取り専用モードがオンです: 書き込みはブロックされます",
+  "err.timeout": "{ms} ms 後にタイムアウト",
+  "err.bad_address": "アドレス「{value}」が不正です",
+  "err.io": "I/O エラー: {detail}",
+  "err.serial": "シリアルポートエラー: {detail}",
+  "err.protocol": "プロトコルエラー: {detail}",
+  "err.exception": "デバイス例外 0x{code} ({name}){request}",
+  "err.request": " FC{fc} ({name}) に対して、ユニット {unit}",
+  "err.request_range": " FC{fc} ({name}) に対して、アドレス {address} から {count} 個、ユニット {unit}"
 }

@@ -1345,5 +1345,15 @@
     "few": "{fn} przyjmuje {count} wartości",
     "many": "{fn} przyjmuje {count} wartości",
     "other": "{fn} przyjmuje {count} wartości"
-  }
+  },
+  "err.not_connected": "brak połączenia",
+  "err.readonly": "tryb tylko do odczytu jest włączony: zapisy są zablokowane",
+  "err.timeout": "przekroczono czas po {ms} ms",
+  "err.bad_address": "nieprawidłowy adres „{value}”",
+  "err.io": "błąd we/wy: {detail}",
+  "err.serial": "błąd portu szeregowego: {detail}",
+  "err.protocol": "błąd protokołu: {detail}",
+  "err.exception": "wyjątek urządzenia 0x{code} ({name}){request}",
+  "err.request": " na FC{fc} ({name}), jednostka {unit}",
+  "err.request_range": " na FC{fc} ({name}) dla {count} od adresu {address}, jednostka {unit}"
 }

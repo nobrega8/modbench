@@ -1335,5 +1335,15 @@
   "formula.takes": {
     "one": "{fn} takes {count} value",
     "other": "{fn} takes {count} values"
-  }
+  },
+  "err.not_connected": "not connected",
+  "err.readonly": "read-only mode is on: writes are blocked",
+  "err.timeout": "timed out after {ms} ms",
+  "err.bad_address": "invalid address \"{value}\"",
+  "err.io": "I/O error: {detail}",
+  "err.serial": "serial port error: {detail}",
+  "err.protocol": "protocol error: {detail}",
+  "err.exception": "device exception 0x{code} ({name}){request}",
+  "err.request": " to FC{fc} ({name}), unit {unit}",
+  "err.request_range": " to FC{fc} ({name}) for {count} from address {address}, unit {unit}"
 }

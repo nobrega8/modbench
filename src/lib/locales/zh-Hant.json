@@ -1330,5 +1330,15 @@
   },
   "formula.takes": {
     "other": "{fn} 接受 {count} 個值"
-  }
+  },
+  "err.not_connected": "未連線",
+  "err.readonly": "唯讀模式已開啟：寫入已被封鎖",
+  "err.timeout": "{ms} ms 後逾時",
+  "err.bad_address": "位址「{value}」無效",
+  "err.io": "I/O 錯誤：{detail}",
+  "err.serial": "序列埠錯誤：{detail}",
+  "err.protocol": "通訊協定錯誤：{detail}",
+  "err.exception": "裝置例外 0x{code}（{name}）{request}",
+  "err.request": " 對 FC{fc}（{name}），單元 {unit}",
+  "err.request_range": " 對 FC{fc}（{name}），從位址 {address} 起 {count} 個，單元 {unit}"
 }

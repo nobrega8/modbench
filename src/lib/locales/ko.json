@@ -1330,5 +1330,15 @@
   },
   "formula.takes": {
     "other": "{fn}은(는) {count}개의 값을 받습니다"
-  }
+  },
+  "err.not_connected": "연결되지 않음",
+  "err.readonly": "읽기 전용 모드가 켜져 있습니다: 쓰기가 차단됩니다",
+  "err.timeout": "{ms} ms 후 시간 초과",
+  "err.bad_address": "잘못된 주소 “{value}”",
+  "err.io": "I/O 오류: {detail}",
+  "err.serial": "시리얼 포트 오류: {detail}",
+  "err.protocol": "프로토콜 오류: {detail}",
+  "err.exception": "장치 예외 0x{code} ({name}){request}",
+  "err.request": " FC{fc} ({name}) 요청, 유닛 {unit}",
+  "err.request_range": " FC{fc} ({name}) 요청, 주소 {address}부터 {count}개, 유닛 {unit}"
 }

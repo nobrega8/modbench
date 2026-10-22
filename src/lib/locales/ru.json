@@ -1345,5 +1345,15 @@
     "few": "{fn} принимает {count} значения",
     "many": "{fn} принимает {count} значений",
     "other": "{fn} принимает {count} значения"
-  }
+  },
+  "err.not_connected": "нет соединения",
+  "err.readonly": "включён режим только чтения: запись заблокирована",
+  "err.timeout": "тайм-аут через {ms} мс",
+  "err.bad_address": "недопустимый адрес «{value}»",
+  "err.io": "ошибка ввода-вывода: {detail}",
+  "err.serial": "ошибка последовательного порта: {detail}",
+  "err.protocol": "ошибка протокола: {detail}",
+  "err.exception": "исключение устройства 0x{code} ({name}){request}",
+  "err.request": " на FC{fc} ({name}), устройство {unit}",
+  "err.request_range": " на FC{fc} ({name}), {count} с адреса {address}, устройство {unit}"
 }

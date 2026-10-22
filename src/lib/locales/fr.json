@@ -1335,5 +1335,15 @@
   "formula.takes": {
     "one": "{fn} accepte {count} valeur",
     "other": "{fn} accepte {count} valeurs"
-  }
+  },
+  "err.not_connected": "non connecté",
+  "err.readonly": "le mode lecture seule est activé : les écritures sont bloquées",
+  "err.timeout": "délai dépassé après {ms} ms",
+  "err.bad_address": "adresse « {value} » non valide",
+  "err.io": "erreur d'E/S : {detail}",
+  "err.serial": "erreur du port série : {detail}",
+  "err.protocol": "erreur de protocole : {detail}",
+  "err.exception": "exception de l'appareil 0x{code} ({name}){request}",
+  "err.request": " à FC{fc} ({name}), unité {unit}",
+  "err.request_range": " à FC{fc} ({name}) pour {count} depuis l'adresse {address}, unité {unit}"
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "#lib/i18n.svelte.ts";
+  import { localizeError } from "#lib/errors.ts";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
   import {
@@ -154,7 +155,7 @@
             <td class="mono">{addr(row)}</td>
             <td class="mono">{row.count}</td>
             <td class="mono dim">{row.duration_ms.toFixed(1)} ms</td>
-            <td class="res">{row.error ?? "OK"}</td>
+            <td class="res">{row.error ? localizeError(row.error) : "OK"}</td>
           </tr>
         {/if}
       {:else}
