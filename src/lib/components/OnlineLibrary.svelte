@@ -9,6 +9,7 @@
   import { fade } from "svelte/transition";
   import Icon from "./Icon.svelte";
   import MapStatus from "./MapStatus.svelte";
+  import Skeleton from "./Skeleton.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
   interface Props {
@@ -294,7 +295,10 @@
       {#key view}
         <div in:slideIn={{ dir }}>
           {#if loading}
-            <p class="note">{t("onlinelibrary.loading_the_online_library")}</p>
+            <Skeleton
+              icon
+              label={t("onlinelibrary.loading_the_online_library")}
+            />
           {:else if loadError}
             <div class="note">
               <p class="bad">{loadError}</p>

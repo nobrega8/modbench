@@ -183,24 +183,30 @@
         />
         {t("req.loop")}</label
       >
-      {#if bench.loop}
-        <label class="every" in:fieldIn title={t("req.every.hint")}>
-          {t("req.every")}
-          <input
-            class="input num"
-            type="number"
-            min="0"
-            step="100"
-            value={bench.loopMs}
-            onchange={(e) => {
-              bench.setLoopMs(Number(e.currentTarget.value));
-              e.currentTarget.value = String(bench.loopMs);
-            }}
-            aria-label={t("req.every.label")}
-          />
-          {t("req.ms")}
-        </label>
-      {/if}
+      <!-- Always laid out, hidden while the loop is off: the switch keeps its
+           place instead of jumping when the field comes and goes -->
+      <label
+        class="every"
+        class:off={!bench.loop}
+        inert={!bench.loop}
+        aria-hidden={!bench.loop}
+        title={t("req.every.hint")}
+      >
+        {t("req.every")}
+        <input
+          class="input num"
+          type="number"
+          min="0"
+          step="100"
+          value={bench.loopMs}
+          onchange={(e) => {
+            bench.setLoopMs(Number(e.currentTarget.value));
+            e.currentTarget.value = String(bench.loopMs);
+          }}
+          aria-label={t("req.every.label")}
+        />
+        {t("req.ms")}
+      </label>
     </div>
   </div>
   {#if scanOpen}<ScanPanel onclose={() => (scanOpen = false)} />{/if}
@@ -231,6 +237,21 @@
     gap: 6px;
     margin-left: 12px;
     color: var(--text-2);
+    transition:
+      opacity 0.2s var(--ease),
+      transform 0.2s var(--ease);
+  }
+
+  .every.off {
+    opacity: 0;
+    transform: translateX(-4px);
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .every {
+      transition: none;
+    }
   }
 
   .every input {

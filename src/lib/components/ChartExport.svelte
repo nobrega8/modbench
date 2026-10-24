@@ -10,6 +10,7 @@
   import { writeImage } from "@tauri-apps/plugin-clipboard-manager";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
+  import { toasts } from "#lib/toast.svelte.ts";
   import {
     FONT,
     MONO,
@@ -40,8 +41,6 @@
     name: string;
     disabled?: boolean;
   } = $props();
-
-  let note = $state<{ ok: boolean; text: string } | null>(null);
 
   /** The theme's colours; `light` reads them as the light theme has them. */
   function palette(light: boolean): Palette {
@@ -126,7 +125,6 @@
 
   /** Puts the charts on the clipboard as an image, as the PNG would be. */
   async function copyImage(light: boolean) {
-    note = null;
     try {
       const shot = image(light);
       const { canvas, ctx } = await draw(shot.svg, shot.width, shot.height);
@@ -141,20 +139,19 @@
       } finally {
         await picture.close().catch(() => {});
       }
-      note = { ok: true, text: t("chartexport.copied") };
+      toasts.show(t("chartexport.copied"));
     } catch (e) {
-      note = { ok: false, text: `Not copied: ${errorText(e)}` };
+      toasts.fail(`Not copied: ${errorText(e)}`);
     }
   }
 
   async function exportImage(format: "png" | "svg", light: boolean) {
-    note = null;
     // Taken now: the charts keep moving while the dialog is open.
     let shot;
     try {
       shot = image(light);
     } catch (e) {
-      note = { ok: false, text: `Not saved: ${errorText(e)}` };
+      toasts.fail(`Not saved: ${errorText(e)}`);
       return;
     }
     const path = await save({
@@ -166,9 +163,9 @@
       if (format === "svg") await api.saveText(path, shot.svg);
       else
         await api.saveBytes(path, await png(shot.svg, shot.width, shot.height));
-      note = { ok: true, text: t("chartexport.saved") };
+      toasts.show(t("chartexport.saved"));
     } catch (e) {
-      note = { ok: false, text: `Not saved: ${errorText(e)}` };
+      toasts.fail(`Not saved: ${errorText(e)}`);
     }
   }
 
@@ -195,22 +192,6 @@
   }
 </script>
 
-{#if note}
-  <span class="note" class:bad={!note.ok} role={note.ok ? undefined : "alert"}
-    >{note.text}</span
-  >
-{/if}
 <button class="btn" {disabled} aria-haspopup="menu" onclick={menu}
   >{t("chartexport.export_image")}</button
 >
-
-<style>
-  .note {
-    color: var(--text-3);
-    font-size: 12px;
-  }
-
-  .note.bad {
-    color: var(--bad);
-  }
-</style>

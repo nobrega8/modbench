@@ -8,10 +8,12 @@
   import { api, errorText } from "#lib/api.ts";
   import { AREA_TAG, formatAddress } from "#lib/format.ts";
   import { settings } from "#lib/settings.svelte.ts";
+  import { revealIn } from "#lib/motion.ts";
   import { extraRows, headerRows, mapStatusOf } from "#lib/map-header.ts";
   import type { DeviceMap } from "#lib/types.ts";
   import Icon from "./Icon.svelte";
   import MapStatus, { mapStatus } from "./MapStatus.svelte";
+  import Skeleton from "./Skeleton.svelte";
 
   interface Props {
     /** The map file to show, or null when closed. */
@@ -135,9 +137,9 @@
       {#if problem}
         <p class="note bad">{problem}</p>
       {:else if !map}
-        <p class="note">{t("mapexplorer.loading")}</p>
+        <Skeleton rows={8} />
       {:else}
-        <table class="data">
+        <table class="data" in:revealIn>
           <thead>
             <tr>
               <th>{t("req.address")}</th>
