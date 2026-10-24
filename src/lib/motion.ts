@@ -198,6 +198,18 @@ export function popOut(_node: Element): TransitionConfig {
   return { duration: 100, css: (t) => `opacity: ${t}` };
 }
 
+/** Content that replaces its loading placeholder: a fade, a short rise and
+ * an un-blur. */
+export function revealIn(_node: Element): TransitionConfig {
+  if (reduced()) return { duration: 0 };
+  return {
+    duration: 300,
+    easing: cubicOut,
+    css: (t) =>
+      `opacity: ${t}; transform: translateY(${(1 - t) * 6}px); filter: blur(${(1 - t) * 4}px)`,
+  };
+}
+
 /** A view that replaces another (a tab or a page): a quick fade. */
 export function viewIn(_node: Element): TransitionConfig {
   if (reduced()) return { duration: 0 };

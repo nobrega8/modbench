@@ -61,33 +61,39 @@
 
 <StepCard step={3} title={t("step.test")} grow>
   <div class="controls">
+    <!-- One button that turns from Start into Stop: both labels are laid
+         out on top of each other, so it keeps its width in every language.
+         After EasyUI's Morphing Button. -->
     <button
-      class="run start"
-      disabled={bench.running || blocked !== null}
-      title={blocked ?? t("test.start")}
-      onclick={() => bench.start()}
+      class="run"
+      class:stop={bench.running}
+      disabled={!bench.running && blocked !== null}
+      title={bench.running ? t("test.stop") : (blocked ?? t("test.start"))}
+      onclick={() => (bench.running ? bench.stop() : bench.start())}
     >
-      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"
-        ><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg
+      <span
+        class="face"
+        class:shown={!bench.running}
+        aria-hidden={bench.running}
+        ><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"
+          ><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg
+        >{t("test.start")}</span
       >
-      {t("test.start")}
-    </button>
-    <button
-      class="run stop"
-      disabled={!bench.running}
-      onclick={() => bench.stop()}
-    >
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
-        ><rect
-          x="2.5"
-          y="2.5"
-          width="11"
-          height="11"
-          rx="1"
-          fill="currentColor"
-        /></svg
+      <span
+        class="face"
+        class:shown={bench.running}
+        aria-hidden={!bench.running}
+        ><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
+          ><rect
+            x="2.5"
+            y="2.5"
+            width="11"
+            height="11"
+            rx="1"
+            fill="currentColor"
+          /></svg
+        >{t("test.stop")}</span
       >
-      {t("test.stop")}
     </button>
 
     <div class="counters">
@@ -229,20 +235,26 @@
     flex-wrap: wrap;
   }
 
+  /* Start = the ink fill; Stop = a red tint that commits on hover */
   .run {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+    display: inline-grid;
     height: 44px;
     padding: 0 20px;
     border: 0;
     border-radius: 10px;
+    background: var(--accent);
+    color: var(--on-accent);
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     transition:
-      background-color 0.14s var(--ease),
+      background-color 0.24s var(--ease),
+      color 0.24s var(--ease),
       transform 0.1s var(--ease);
+  }
+
+  .run:hover:not(:disabled) {
+    background: rgb(var(--fg-rgb) / 0.84);
   }
 
   .run:active:not(:disabled) {
@@ -254,24 +266,47 @@
     cursor: default;
   }
 
-  /* Start = the ink fill; Stop = a red tint that commits on hover */
-  .start {
-    background: var(--accent);
-    color: var(--on-accent);
-  }
-
-  .start:hover:not(:disabled) {
-    background: rgb(var(--fg-rgb) / 0.84);
-  }
-
-  .stop {
+  .run.stop {
     background: rgb(var(--alert-rgb) / 0.12);
     color: rgb(var(--alert-rgb));
   }
 
-  .stop:hover:not(:disabled) {
+  .run.stop:hover {
     background: rgb(var(--alert-rgb));
     color: rgb(var(--alert-fg-rgb));
+  }
+
+  /* The two labels share one cell; the one not shown slides out of the way */
+  .face {
+    grid-area: 1 / 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+    filter: blur(2px);
+    transition:
+      opacity 0.22s var(--ease),
+      transform 0.28s var(--ease),
+      filter 0.22s var(--ease);
+  }
+
+  .face.shown {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  .face:not(.shown):first-child {
+    transform: translateY(-6px) scale(0.96);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .run,
+    .face {
+      transition: none;
+    }
   }
 
   .counters {

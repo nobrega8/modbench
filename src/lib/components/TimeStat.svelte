@@ -6,6 +6,7 @@
     suggestedTimeout,
     type ResponseTimes,
   } from "#lib/stats.ts";
+  import DigitRoll from "./DigitRoll.svelte";
 
   let {
     times,
@@ -48,7 +49,7 @@
     <span class="lcd">
       {#each cells as c (c.label)}
         <span class="cell" aria-label="{c.label}: {c.value} ms"
-          ><span class="k">{c.label}</span>{c.value}</span
+          ><span class="k">{c.label}</span><DigitRoll text={c.value} /></span
         >
       {/each}
     </span>

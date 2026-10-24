@@ -1,3 +1,11 @@
+<script lang="ts" module>
+  import { SvelteSet } from "svelte/reactivity";
+
+  /** Maps whose delete waits on its note; kept here, not per view, so they
+   * stay hidden when the page is left and opened again meanwhile. */
+  const deleting = new SvelteSet<string>();
+</script>
+
 <script lang="ts">
   import { t } from "#lib/i18n.svelte.ts";
   import { popIn, popOut } from "#lib/motion.ts";
@@ -5,6 +13,7 @@
   import { api, errorText } from "#lib/api.ts";
   import { modelMatches } from "#lib/search.ts";
   import { bench } from "#lib/state.svelte.ts";
+  import { toasts } from "#lib/toast.svelte.ts";
   import { MAP_EXTENSIONS, type LibraryEntry } from "#lib/types.ts";
   import { sim } from "#lib/simulator.svelte.ts";
   import {
@@ -19,10 +28,9 @@
   import VendorIcon from "./VendorIcon.svelte";
 
   let search = $state("");
-  /** A row asking to confirm a delete or an edit. */
-  let confirm = $state<{ path: string; kind: "delete" | "edit" } | null>(null);
+  /** A row asking to confirm an edit. */
+  let confirm = $state<string | null>(null);
   let exploring = $state<string | null>(null);
-  let message = $state<{ ok: boolean; text: string } | null>(null);
   let busy = $state(false);
   let menuOpen = $state(false);
   let onlineOpen = $state(false);
@@ -55,6 +63,7 @@
 
   const shown = $derived(
     bench.library.filter((e) => {
+      if (deleting.has(e.path)) return false;
       const q = search.trim().toLowerCase();
       return (
         !q ||
@@ -77,21 +86,16 @@
       await bench.refreshLibrary();
       const failed = results.filter((r) => r.error);
       const added = results.length - failed.length;
-      message = failed.length
-        ? {
-            ok: false,
-            text:
-              t("libraryview.added_added_not_added", { added }) +
-              failed
-                .map((r) => `${r.source.split(/[\\/]/).pop()} (${r.error})`)
-                .join("; "),
-          }
-        : {
-            ok: true,
-            text: t("libraryview.added_to_the_library", { added }),
-          };
+      if (failed.length)
+        toasts.fail(
+          t("libraryview.added_added_not_added", { added }) +
+            failed
+              .map((r) => `${r.source.split(/[\\/]/).pop()} (${r.error})`)
+              .join("; "),
+        );
+      else toasts.show(t("libraryview.added_to_the_library", { added }));
     } catch (e) {
-      message = { ok: false, text: errorText(e) };
+      toasts.fail(errorText(e));
     } finally {
       busy = false;
     }
@@ -110,15 +114,26 @@
     await importPaths(Array.isArray(picked) ? picked : [picked]);
   }
 
-  async function remove(path: string) {
-    confirm = null;
-    try {
-      await api.libraryDelete(path);
-      await bench.refreshLibrary();
-      message = { ok: true, text: t("libraryview.map_deleted_from_the") };
-    } catch (e) {
-      message = { ok: false, text: errorText(e) };
-    }
+  /** Deletes a map without asking: it leaves the list at once and is
+   * deleted when the note saying so goes, unless the note's Undo puts it
+   * back first. After EasyUI's Undo Toast. */
+  function remove(path: string) {
+    deleting.add(path);
+    toasts.undoable(
+      t("libraryview.map_deleted_from_the"),
+      t("mapwritelist.undo"),
+      async () => {
+        try {
+          await api.libraryDelete(path);
+          await bench.refreshLibrary();
+        } catch (e) {
+          toasts.fail(errorText(e));
+        } finally {
+          deleting.delete(path);
+        }
+      },
+      () => deleting.delete(path),
+    );
   }
 
   /** Opens a map of the library in the map builder, which edits it. */
@@ -128,7 +143,7 @@
         path,
         register: null,
       })
-      .catch((e) => (message = { ok: false, text: errorText(e) }));
+      .catch((e) => toasts.fail(errorText(e)));
   }
 
   /** Opens a map of the library in the system's text editor. */
@@ -136,12 +151,9 @@
     confirm = null;
     try {
       await api.libraryEdit(path);
-      message = {
-        ok: true,
-        text: t("libraryview.opened_in_the_text"),
-      };
+      toasts.show(t("libraryview.opened_in_the_text"));
     } catch (e) {
-      message = { ok: false, text: errorText(e) };
+      toasts.fail(errorText(e));
     }
   }
 
@@ -157,9 +169,9 @@
     try {
       await api.libraryDuplicate(e.path);
       await bench.refreshLibrary();
-      message = { ok: true, text: `${e.vendor} ${e.model} copied.` };
+      toasts.show(`${e.vendor} ${e.model} copied.`);
     } catch (err) {
-      message = { ok: false, text: errorText(err) };
+      toasts.fail(errorText(err));
     }
   }
 
@@ -191,7 +203,7 @@
       },
       {
         label: t("builder.edit_as_text"),
-        action: () => (confirm = { path: e.path, kind: "edit" }),
+        action: () => (confirm = e.path),
       },
       {
         label: t("libraryview.duplicate"),
@@ -217,7 +229,7 @@
       {
         label: t("libraryview.delete2"),
         danger: true,
-        action: () => (confirm = { path: e.path, kind: "delete" }),
+        action: () => remove(e.path),
       },
     ];
   }
@@ -287,16 +299,7 @@
 
 <MapExplorer bind:path={exploring} />
 
-<OnlineLibrary
-  bind:open={onlineOpen}
-  onadded={(text) => (message = { ok: true, text })}
-/>
-
-{#if message}
-  <p class="msg" class:bad={!message.ok} class:good={message.ok} role="status">
-    {message.text}
-  </p>
-{/if}
+<OnlineLibrary bind:open={onlineOpen} onadded={(text) => toasts.show(text)} />
 
 <div class="table-wrap">
   <table>
@@ -361,21 +364,11 @@
           </td>
           <td class="num">{e.error ? "" : e.registers}</td>
           <td class="act">
-            {#if confirm?.path === e.path}
-              <span class="ask"
-                >{confirm.kind === "delete"
-                  ? t("libraryview.delete_this_map")
-                  : t("libraryview.edits_the_library_s")}</span
+            {#if confirm === e.path}
+              <span class="ask">{t("libraryview.edits_the_library_s")}</span>
+              <button class="btn small accent" onclick={() => edit(e.path)}
+                >{t("libraryview.edit")}</button
               >
-              {#if confirm.kind === "delete"}
-                <button class="btn small danger" onclick={() => remove(e.path)}
-                  >{t("libraryview.delete")}</button
-                >
-              {:else}
-                <button class="btn small accent" onclick={() => edit(e.path)}
-                  >{t("libraryview.edit")}</button
-                >
-              {/if}
               <button class="btn small" onclick={() => (confirm = null)}
                 >{t("computedform.cancel")}</button
               >
@@ -417,8 +410,7 @@
                 class="btn small icon ghost del"
                 title={t("libraryview.delete")}
                 aria-label={t("libraryview.delete_model", { model: e.model })}
-                onclick={() => (confirm = { path: e.path, kind: "delete" })}
-                ><Icon name="trash" /></button
+                onclick={() => remove(e.path)}><Icon name="trash" /></button
               >
             {/if}
           </td>
@@ -538,16 +530,8 @@
     vertical-align: middle;
   }
 
-  .msg {
-    margin: 0 0 8px;
-  }
-
   .bad {
     color: var(--bad);
-  }
-
-  .good {
-    color: var(--ok);
   }
 
   .warn {

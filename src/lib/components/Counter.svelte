@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "#lib/i18n.svelte.ts";
+  import DigitRoll from "./DigitRoll.svelte";
   let {
     label,
     value,
@@ -20,9 +21,7 @@
   <span class="label">{label}</span>
   <div class="body">
     <span class="lcd" aria-label="{label}: {value}"
-      ><span class="off">{digits.slice(0, lead)}</span>{digits.slice(
-        lead,
-      )}</span
+      ><DigitRoll text={digits} dim={lead} /></span
     >
     <button
       class="reset"
@@ -102,10 +101,6 @@
   .hot.bad .label,
   .hot.warn .label {
     color: rgb(var(--tint));
-  }
-
-  .off {
-    opacity: 0.25;
   }
 
   .reset {

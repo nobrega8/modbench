@@ -15,6 +15,8 @@
   import ToolsView from "#lib/components/ToolsView.svelte";
   import Icon from "#lib/components/Icon.svelte";
   import WindowControls from "#lib/components/WindowControls.svelte";
+  import Toaster from "#lib/components/Toaster.svelte";
+  import CommandMenu from "#lib/components/CommandMenu.svelte";
   import { slidePill, viewIn } from "#lib/motion.ts";
   import { bench, type Page } from "#lib/state.svelte.ts";
   import { settings } from "#lib/settings.svelte.ts";
@@ -107,6 +109,8 @@
   /** macOS draws its own window buttons at the top left of the title bar. */
   const mac = navigator.userAgent.includes("Mac OS X");
 
+  let commandOpen = $state(false);
+
   /** A file given to Modbench (double-click): a simulator setup opens in
    * the simulator, anything else as a map. */
   function openFile(path: string) {
@@ -139,6 +143,15 @@
       {/each}
     </nav>
     <div class="drag" data-tauri-drag-region></div>
+    <button
+      class="cmd"
+      class:mac
+      title={t("command.open")}
+      onclick={() => (commandOpen = true)}
+      ><Icon name="addresses" size={14} />{t("command.search")}<kbd
+        >{mac ? "⌘K" : "Ctrl K"}</kbd
+      ></button
+    >
     {#if !mac}<WindowControls />{/if}
   </header>
   <UpdateBanner />
@@ -181,6 +194,9 @@
   {/if}
 </div>
 
+<Toaster />
+<CommandMenu bind:open={commandOpen} />
+
 <style>
   /* Top bar on the grey ground: wordmark + pill navigation */
   .topbar {
@@ -207,6 +223,44 @@
   .drag {
     flex: 1;
     align-self: stretch;
+  }
+
+  /* Opens the command menu; the shortcut is shown so it gets learnt */
+  .cmd {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    margin-right: 8px;
+    padding: 0 6px 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: rgb(var(--fg-rgb) / 0.05);
+    color: var(--text-3);
+    font: inherit;
+    cursor: pointer;
+    transition:
+      background-color 0.14s var(--ease),
+      color 0.14s var(--ease);
+  }
+
+  .cmd.mac {
+    margin-right: 12px;
+  }
+
+  .cmd:hover {
+    color: var(--text);
+    background: rgb(var(--fg-rgb) / 0.09);
+  }
+
+  .cmd kbd {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--card);
+    box-shadow: var(--e1);
+    font-family: var(--ui);
+    font-size: 11px;
   }
 
   .brand {
