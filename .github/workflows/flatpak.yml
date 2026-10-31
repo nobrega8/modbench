@@ -43,7 +43,7 @@ jobs:
       - name: Build
         run: |
           # The container has neither a machine id (for D-Bus) nor FUSE
-          dbus-uuidgen --ensure
+          [ -s /etc/machine-id ] || dbus-uuidgen > /etc/machine-id
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak-builder --user --install-deps-from=flathub --force-clean \
             --disable-rofiles-fuse --repo=repo --arch=${{ matrix.arch }} \
