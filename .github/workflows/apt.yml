@@ -54,12 +54,12 @@ jobs:
       - name: Build and sign the repository
         env:
           APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
-          ARCHES: amd64 arm64
+          ARCHES: amd64 arm64 armhf
         working-directory: repo
         run: |
           sudo apt-get install -y apt-utils
-          # One index per architecture: APT on a Raspberry Pi (arm64) must
-          # not see the amd64 package, and the other way round
+          # One index per architecture: APT on a Raspberry Pi (arm64 or armhf)
+          # must not see the amd64 package, and the other way round
           for arch in $ARCHES; do
             mkdir -p dists/stable/main/binary-$arch
             apt-ftparchive --arch "$arch" packages pool > dists/stable/main/binary-$arch/Packages
