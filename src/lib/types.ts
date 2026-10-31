@@ -304,6 +304,30 @@ export interface SimEvent {
   wrote: boolean;
 }
 
+/** One request the gateway passed on (see `gateway.rs`). */
+export interface GatewayEvent {
+  time_ms: number;
+  peer: string;
+  /** The unit ID the client asked for, and the one the request went to. */
+  unit: number;
+  target: number;
+  function: number;
+  address: number | null;
+  count: number | null;
+  /** The exception sent back, if any. */
+  exception: number | null;
+  /** Why, when the gateway made the exception up. */
+  error: string | null;
+  ms: number;
+}
+
+export interface GatewayOptions {
+  listen: Transport;
+  upstream: ConnectionConfig;
+  unit: number | null;
+  read_only: boolean;
+}
+
 /** Values held by the simulator, and which of those addresses exist. */
 export interface SimView {
   data: RawData;

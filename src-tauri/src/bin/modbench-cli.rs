@@ -14,6 +14,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use modbench_lib::check::{self, format_raw, format_value};
 use modbench_lib::export;
+use modbench_lib::gateway;
 use modbench_lib::mbmap::{self, DeviceMap, Severity};
 use modbench_lib::modbus::{self, ConnectionConfig, Parity, RawData, Session, Transport};
 use modbench_lib::planner::{Area, PlanLimits};
@@ -213,6 +214,31 @@ enum Command {
         /// Write to this file instead of printing
         #[arg(long, short)]
         out: Option<String>,
+    },
+    /// Pass requests from clients on one link to a device on another (a
+    /// Modbus gateway), and log each one. The connection options say where
+    /// the device is; --unit sends every request to that unit ID
+    Gateway {
+        #[command(flatten)]
+        conn: Conn,
+        /// Where clients connect: tcp:[HOST:]PORT, udp:[HOST:]PORT,
+        /// rtu-over-tcp:[HOST:]PORT, rtu-over-udp:[HOST:]PORT, rtu:SERIAL or
+        /// ascii:SERIAL (HOST defaults to 127.0.0.1, this computer only;
+        /// 0.0.0.0 listens on every interface)
+        #[arg(long)]
+        listen: String,
+        /// Baud rate when listening on a serial port (default 9600)
+        #[arg(long)]
+        listen_baud: Option<u32>,
+        /// Parity when listening on a serial port: N, E or O (default N)
+        #[arg(long)]
+        listen_parity: Option<String>,
+        /// Stop bits when listening on a serial port (default 1)
+        #[arg(long)]
+        listen_stop_bits: Option<u8>,
+        /// Answer writes with exception 01 instead of passing them on
+        #[arg(long)]
+        read_only: bool,
     },
     /// Run as an MCP server over stdio
     Mcp,
@@ -874,7 +900,7 @@ fn gui_tools() -> Json {
             "inputSchema": {"type": "object", "properties": {
                 "page": {"type": "string", "enum": ["main", "tools", "library", "settings"]},
                 "tab": {"type": "string", "enum": ["registers", "map", "chart", "write", "raw", "log"]},
-                "tool": {"type": "string", "enum": ["simulator", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "player"]}
+                "tool": {"type": "string", "enum": ["simulator", "gateway", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "player"]}
             }}
         }
     ])
@@ -1065,6 +1091,121 @@ async fn simulate(
     // Runs until the process is stopped (Ctrl+C ends it).
     std::future::pending::<()>().await;
     running.stop();
+    Ok(())
+}
+
+/// Where a gateway listens, from `--listen` (see `Command::Gateway`).
+fn parse_listen(
+    spec: &str,
+    baud: Option<u32>,
+    parity: Option<String>,
+    stop_bits: Option<u8>,
+) -> Result<Transport, String> {
+    let (kind, rest) = spec
+        .split_once(':')
+        .ok_or_else(|| format!("--listen needs a kind and a place, like tcp:502, not {spec}"))?;
+    let net = |rest: &str| -> Result<(String, u16), String> {
+        let (host, port) = match rest.rsplit_once(':') {
+            Some((h, p)) => (h.to_string(), p),
+            None => ("127.0.0.1".to_string(), rest),
+        };
+        let port = port
+            .parse()
+            .map_err(|_| format!("not a port number: {port}"))?;
+        Ok((host, port))
+    };
+    let serial = |port: &str| -> Result<Conn, String> {
+        Ok(Conn {
+            rtu: Some(port.to_string()),
+            baud,
+            parity: parity.clone(),
+            stop_bits,
+            ..Conn::default()
+        })
+    };
+    Ok(match kind {
+        "tcp" => {
+            let (host, port) = net(rest)?;
+            Transport::Tcp { host, port }
+        }
+        "udp" => {
+            let (host, port) = net(rest)?;
+            Transport::Udp { host, port }
+        }
+        "rtu-over-tcp" => {
+            let (host, port) = net(rest)?;
+            Transport::RtuOverTcp { host, port }
+        }
+        "rtu-over-udp" => {
+            let (host, port) = net(rest)?;
+            Transport::RtuOverUdp { host, port }
+        }
+        "rtu" => serial(rest)?.config(None)?.transport,
+        "ascii" => match serial(rest)?.config(None)?.transport {
+            Transport::Rtu {
+                port,
+                baudrate,
+                parity,
+                data_bits,
+                stop_bits,
+            } => Transport::Ascii {
+                port,
+                baudrate,
+                parity,
+                data_bits,
+                stop_bits,
+            },
+            other => other,
+        },
+        _ => {
+            return Err(format!(
+                "--listen kind must be tcp, udp, rtu-over-tcp, rtu-over-udp, rtu or ascii, not {kind}"
+            ));
+        }
+    })
+}
+
+/// Runs a gateway until the process is stopped, printing each request.
+async fn gateway(conn: Conn, listen: Transport, read_only: bool) -> Result<(), String> {
+    let upstream = conn.config(None)?;
+    let logger: gateway::GatewayLogger = std::sync::Arc::new(|e| {
+        let what = match (e.address, e.count) {
+            (Some(a), Some(n)) => format!(" {a} x{n}"),
+            _ => String::new(),
+        };
+        let unit = if e.unit == e.target {
+            format!("{:>3}", e.unit)
+        } else {
+            format!("{}->{}", e.unit, e.target)
+        };
+        let result = match (e.exception, &e.error) {
+            (_, Some(why)) => format!("exception {:02X}: {why}", e.exception.unwrap_or(0)),
+            (Some(code), None) => format!("device exception {code:02X}"),
+            (None, None) => "ok".into(),
+        };
+        println!(
+            "{}  unit {unit}  FC{:02}{what}  {result}  {} ms",
+            e.peer, e.function, e.ms
+        );
+    });
+    let to = Conn::describe(&upstream);
+    let options = gateway::Options {
+        listen: listen.clone(),
+        upstream,
+        unit: conn.unit,
+        read_only,
+    };
+    let running = gateway::start(options, Some(logger))
+        .await
+        .map_err(|e| format!("{} -> {to}: {e}", where_listening(&listen)))?;
+    println!(
+        "Gateway from {} to {to}{} (Ctrl+C to stop)",
+        where_listening(&running.listen),
+        if read_only { ", read-only" } else { "" }
+    );
+    // Runs until the process is stopped (Ctrl+C ends it).
+    std::future::pending::<()>().await;
+    drop(running);
     Ok(())
 }
 
@@ -1352,6 +1493,17 @@ async fn run(cli: Cli) -> Result<(), String> {
                 Transport::Tcp { host, port }
             };
             simulate(map, listen, strict, unit, generators).await?
+        }
+        Command::Gateway {
+            conn,
+            listen,
+            listen_baud,
+            listen_parity,
+            listen_stop_bits,
+            read_only,
+        } => {
+            let listen = parse_listen(&listen, listen_baud, listen_parity, listen_stop_bits)?;
+            gateway(conn, listen, read_only).await?
         }
         Command::Mcp => serve_mcp().await,
     }

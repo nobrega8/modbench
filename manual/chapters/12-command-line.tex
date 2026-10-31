@@ -17,6 +17,7 @@ modbench-cli simulate device.mbmap.json --strict
 modbench-cli simulate device.mbmap.json --generators moving.json
 modbench-cli simulate device.mbmap.json --rtu-over-tcp
 modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
+modbench-cli gateway --listen tcp:0.0.0.0:5502 --rtu COM3 --baud 9600
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap
 modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10
@@ -34,6 +35,11 @@ modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10
   \val{id} & Device identification (FC43). \\
   \val{simulate} & A simulated device shaped after a map (port 5020 by
     default); \val{--strict} answers only the map's addresses. \\
+  \val{gateway} & Passes requests from clients on \val{--listen}
+    (\val{tcp:}, \val{udp:}, \val{rtu-over-tcp:}, \val{rtu-over-udp:} and a
+    port, or \val{rtu:} and \val{ascii:} and a serial port) to the device of
+    the connection options, and prints each one; \val{--unit} sends them all
+    to one unit ID, \val{--read-only} refuses writes. \\
   \val{validate} & Checks a map against the format, with the same messages as
     the app. \\
   \val{convert} & Converts a version 1 map to a \file{.mbmap.json} next to it. \\

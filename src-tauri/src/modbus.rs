@@ -787,6 +787,21 @@ pub fn pdu_only_reads(function: u8, data: &[u8]) -> bool {
     }
 }
 
+/// Whether a decoded request can only read (see [`pdu_only_reads`]).
+pub fn request_only_reads(request: &Request<'_>) -> bool {
+    use Request::*;
+    match request {
+        ReadCoils(..)
+        | ReadDiscreteInputs(..)
+        | ReadInputRegisters(..)
+        | ReadHoldingRegisters(..)
+        | ReadDeviceIdentification(..)
+        | ReportServerId => true,
+        Custom(function, data) => pdu_only_reads(*function, data),
+        _ => false,
+    }
+}
+
 /// The largest read a device accepted, from `Session::largest_read`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ReadLimit {
@@ -1333,6 +1348,29 @@ impl Session {
             };
         }
         result.map(|_| ())
+    }
+
+    /// Sends a request as it came, to `unit`, and returns the answer: what a
+    /// gateway does. Writes are refused in read-only mode. Unit 0 is a
+    /// broadcast: devices act and none answers, so the answer is None.
+    pub async fn forward(
+        &mut self,
+        unit: u8,
+        request: Request<'static>,
+    ) -> Result<Option<Response>, ModbusError> {
+        if !request_only_reads(&request) {
+            self.check_writable()?;
+        }
+        let own = self.unit;
+        self.ctx.set_slave(Slave(unit));
+        let function = request.function_code().value();
+        let result = self.send_probe(function, request).await;
+        self.ctx.set_slave(Slave(own));
+        match result {
+            Ok(response) => Ok(Some(response)),
+            Err(ModbusError::Timeout(_)) if unit == 0 => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 
     async fn send_probe(

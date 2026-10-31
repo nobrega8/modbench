@@ -49,6 +49,7 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
 - **Find devices**: scan for unit IDs, or for the baud rate, parity and stop bits of a serial device.
 - **Tools**:
   - **Simulator**: Modbus devices inside Modbench, each optionally shaped after a map (its reference values and addresses), to try maps and other programs without hardware. Several devices answer their own unit IDs at one address, like devices behind a gateway or on one RS-485 line; other unit IDs stay silent. It listens on Modbus TCP or UDP, RTU over TCP or UDP, or a serial port (RTU or ASCII, with the baud rate, parity and stop bits you choose). Generators make values move on their own (increment, sine, random, or a copy of another address), in a map register's own units. Save setup… keeps the interface, devices, unit IDs, maps and generators in a `.mbsim` file to open again later, or with a double-click.
+  - **Gateway**: pass requests from clients on one link to the device of step 1 on another (Modbus TCP or UDP, RTU over TCP or UDP, or a serial port on either side), like a serial-to-Ethernet gateway on the bench, with every request listed. A silent device comes back as exception 0x0B, a missing link as 0x0A; it can rewrite the unit ID and refuse writes.
   - **Identify**: read the device's vendor, product code and revision (FC43).
   - **Find addresses**: discover which registers answer on a device without a manual.
   - **Data decoder** and **frame decoder**: hex as every type in every byte order, and frames field by field with CRC/LRC checks (also on the Raw data tab).
@@ -89,6 +90,7 @@ modbench-cli simulate device.mbmap.json --strict  # a simulated device on port 5
 modbench-cli simulate device.mbmap.json --generators moving.json
 modbench-cli simulate device.mbmap.json --rtu-over-tcp   # RTU frames over TCP, like a gateway
 modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
+modbench-cli gateway --listen tcp:0.0.0.0:5502 --rtu COM3 --baud 9600   # Modbus TCP clients -> RTU device
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap          # version 1 map -> old-device.mbmap.json
 modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10   # or esphome, telegraf, node-red, csv

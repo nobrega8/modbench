@@ -27,6 +27,7 @@ const PAGES: Page[] = ["main", "tools", "library", "settings"];
 const TABS: Tab[] = ["registers", "map", "chart", "write", "raw", "log"];
 const TOOLS: ToolId[] = [
   "simulator",
+  "gateway",
   "identify",
   "addresses",
   "network",

@@ -111,6 +111,28 @@ list what answered and count the rest. The network scan can be exported while
 it runs, without stopping it. Files are UTF-8, with the CSV separator of the
 settings.
 
+\section{Gateway}
+
+The gateway passes requests from clients on one link to the device of step 1
+on another, and the answers back, like a serial-to-Ethernet gateway on the
+bench: Modbus TCP clients can reach an RTU device on a serial port, or the
+other way round. Choose where clients connect (\ui{Interface}: Modbus TCP or
+UDP, RTU over TCP or UDP on a port, or RTU or ASCII on a serial port) and
+press \ui{Start}. \ui{Other computers} lets clients on the network connect;
+otherwise only this computer can.
+
+Requests go to the device one at a time. A device that does not answer comes
+back to the client as exception \val{0x0B} (gateway target device failed to
+respond); a link that cannot be opened, as \val{0x0A} (gateway path
+unavailable). The link opens with the first request and again whenever it is
+lost. \ui{Send to unit} sends every request to one unit ID instead of the
+client's, and \ui{Refuse writes} answers writes with exception \val{0x01}
+instead of passing them on.
+
+Each request is listed with the client, the unit ID (and where it went), the
+function, the address, the result and how long the device took. Right-click a
+row to copy it or every row.
+
 \section{Send request}
 \label{sec:send-request}
 

@@ -95,6 +95,7 @@ export type TransportKind = "tcp" | "rtuovertcp" | "udp" | "rtuoverudp" | "rtu";
 export type Page = "main" | "tools" | "library" | "settings";
 export type ToolId =
   | "simulator"
+  | "gateway"
   | "identify"
   | "addresses"
   | "network"

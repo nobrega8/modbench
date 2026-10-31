@@ -6,6 +6,7 @@ pub mod codec;
 mod commands;
 pub mod export;
 pub mod firmware;
+pub mod gateway;
 pub mod generators;
 pub mod gui_control;
 pub mod library;
@@ -92,6 +93,8 @@ pub fn run() {
             gui_control::gui_control_reply,
             commands::app_version,
             commands::package_manager,
+            commands::gateway_start,
+            commands::gateway_stop,
             commands::export_map,
             commands::list_serial_ports,
             commands::connect,

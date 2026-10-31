@@ -37,6 +37,7 @@
     "addresses",
     "network",
     "simulator",
+    "gateway",
     "decoder",
     "frames",
     "player",

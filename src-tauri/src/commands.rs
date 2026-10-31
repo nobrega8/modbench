@@ -9,6 +9,7 @@ use tokio::sync::Mutex;
 use crate::check;
 use crate::codec::{self, ByteOrder, DataType, Value};
 use crate::export;
+use crate::gateway;
 use crate::generators::{self, Generator};
 use crate::library::{self, ImportResult, LibraryEntry};
 use crate::mbmap::{self, DeviceMap, Diagnostic, Parsed, Register};
@@ -48,6 +49,7 @@ pub struct AppState {
     /// the simulator is stopped.
     sim_devices: SimDevices,
     sim: std::sync::Mutex<Option<simulator::Running>>,
+    gateway: std::sync::Mutex<Option<gateway::Running>>,
     /// What the map builder's window should open next; it takes it on load.
     builder_target: std::sync::Mutex<Option<BuilderTarget>>,
 }
@@ -1147,21 +1149,61 @@ pub async fn sim_start(
     });
     let running = simulator::start(listen, state.sim_devices.0.clone(), Some(logger))
         .await
-        .map_err(|e| match e {
-            ModbusError::Io(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
-                ModbusError::Invalid(format!("port {port} is already in use; choose another"))
-            }
-            ModbusError::Io(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
-                ModbusError::Invalid(format!(
-                    "this system does not allow port {port}; use one above 1023"
-                ))
-            }
-            e => e,
-        })?;
+        .map_err(|e| listen_error(port, e))?;
     let listen = running.listen.clone();
     *state.sim.lock().unwrap() = Some(running);
     sim_changed(&app);
     Ok(listen)
+}
+
+/// Why listening on `port` failed, in words a person can act on.
+fn listen_error(port: u16, e: ModbusError) -> ModbusError {
+    match e {
+        ModbusError::Io(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
+            ModbusError::Invalid(format!("port {port} is already in use; choose another"))
+        }
+        ModbusError::Io(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            ModbusError::Invalid(format!(
+                "this system does not allow port {port}; use one above 1023"
+            ))
+        }
+        e => e,
+    }
+}
+
+/// Starts the gateway (see `gateway`), in place of one already running.
+/// Each request it passes on is sent to every window as a "gateway" event.
+/// Returns where it listens.
+#[tauri::command]
+pub async fn gateway_start(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    options: gateway::Options,
+) -> Result<modbus::Transport, ModbusError> {
+    state.gateway.lock().unwrap().take();
+    let port = match &options.listen {
+        modbus::Transport::Tcp { port, .. }
+        | modbus::Transport::RtuOverTcp { port, .. }
+        | modbus::Transport::Udp { port, .. }
+        | modbus::Transport::RtuOverUdp { port, .. } => *port,
+        _ => 0,
+    };
+    let emitter = app.clone();
+    let logger: gateway::GatewayLogger = Arc::new(move |event| {
+        let _ = emitter.emit("gateway", event);
+    });
+    let running = gateway::start(options, Some(logger))
+        .await
+        .map_err(|e| listen_error(port, e))?;
+    let listen = running.listen.clone();
+    *state.gateway.lock().unwrap() = Some(running);
+    Ok(listen)
+}
+
+/// Stops the gateway and closes its upstream link.
+#[tauri::command]
+pub fn gateway_stop(state: State<'_, AppState>) {
+    state.gateway.lock().unwrap().take();
 }
 
 #[tauri::command]
