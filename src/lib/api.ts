@@ -55,7 +55,7 @@ export const api = {
   guiControlReply: (id: number, ok: boolean, value: unknown) =>
     invoke<void>("gui_control_reply", { id, ok, value }),
   appVersion: () => invoke<string>("app_version"),
-  installedWithApt: () => invoke<boolean>("installed_with_apt"),
+  packageManager: () => invoke<"apt" | "flatpak" | null>("package_manager"),
   listSerialPorts: () => invoke<string[]>("list_serial_ports"),
   connect: (config: ConnectionConfig) => invoke<void>("connect", { config }),
   disconnect: () => invoke<void>("disconnect"),

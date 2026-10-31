@@ -136,14 +136,21 @@ pub fn app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-/// True when Modbench was installed from the .deb package, so dpkg/apt owns the
-/// files and updates come from the APT repository rather than the in-app updater.
-/// An AppImage sets `APPIMAGE` and updates itself, even on a system with the .deb.
+/// The package manager that owns this copy, so updates come from it rather than
+/// the in-app updater: "flatpak" inside a Flatpak sandbox, "apt" when installed
+/// from the .deb, none otherwise. An AppImage sets `APPIMAGE` and updates
+/// itself, even on a system with the .deb.
 #[tauri::command]
-pub fn installed_with_apt() -> bool {
-    cfg!(target_os = "linux")
-        && std::env::var_os("APPIMAGE").is_none()
-        && std::path::Path::new("/var/lib/dpkg/info/modbench.list").exists()
+pub fn package_manager() -> Option<&'static str> {
+    if !cfg!(target_os = "linux") || std::env::var_os("APPIMAGE").is_some() {
+        None
+    } else if std::path::Path::new("/.flatpak-info").exists() {
+        Some("flatpak")
+    } else if std::path::Path::new("/var/lib/dpkg/info/modbench.list").exists() {
+        Some("apt")
+    } else {
+        None
+    }
 }
 
 #[tauri::command]

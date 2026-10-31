@@ -777,6 +777,7 @@
   "settingsview.copied": "Copiado",
   "settingsview.copy_path": "Copiar caminho",
   "settingsview.installed_with_apt_updates": "Instalado com apt: as atualizações instalam-se com",
+  "settingsview.installed_with_flatpak_updates": "Instalado como Flatpak: as atualizações instalam-se com",
   "settingsview.you_choose_when_to": "Escolhe quando instalar.",
   "snapshotbar.this_snapshot_is_of": "Este instantâneo é de uma leitura manual, não de um mapa do equipamento.",
   "snapshotbar.this_snapshot_is_of2": "Este instantâneo é de um mapa do equipamento, não de uma leitura manual.",

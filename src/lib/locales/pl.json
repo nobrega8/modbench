@@ -777,6 +777,7 @@
   "settingsview.copied": "Skopiowano",
   "settingsview.copy_path": "Kopiuj ścieżkę",
   "settingsview.installed_with_apt_updates": "Zainstalowano przez apt: aktualizacje instaluje się poleceniem",
+  "settingsview.installed_with_flatpak_updates": "Zainstalowano jako Flatpak: aktualizacje instaluje się poleceniem",
   "settingsview.you_choose_when_to": "Ty wybierasz, kiedy zainstalować.",
   "snapshotbar.this_snapshot_is_of": "Ta migawka pochodzi z ręcznego odczytu, a nie z mapy urządzenia.",
   "snapshotbar.this_snapshot_is_of2": "Ta migawka pochodzi z mapy urządzenia, a nie z ręcznego odczytu.",

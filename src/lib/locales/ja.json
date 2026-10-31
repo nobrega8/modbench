@@ -777,6 +777,7 @@
   "settingsview.copied": "コピーしました",
   "settingsview.copy_path": "パスをコピー",
   "settingsview.installed_with_apt_updates": "apt でインストール済み: 更新は次のコマンドでインストールします",
+  "settingsview.installed_with_flatpak_updates": "Flatpak としてインストール済み: 更新は次のコマンドでインストールします",
   "settingsview.you_choose_when_to": "インストールするタイミングはあなたが選べます。",
   "snapshotbar.this_snapshot_is_of": "このスナップショットはデバイスマップではなく手動読み取りのものです。",
   "snapshotbar.this_snapshot_is_of2": "このスナップショットは手動読み取りではなくデバイスマップのものです。",

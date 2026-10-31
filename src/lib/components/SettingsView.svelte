@@ -28,7 +28,7 @@
     type Theme,
   } from "#lib/settings.svelte.ts";
   import { forgetAll } from "#lib/profiles.ts";
-  import { APT_UPGRADE, updates } from "#lib/updates.svelte.ts";
+  import { updates } from "#lib/updates.svelte.ts";
 
   const themes: { id: Theme; label: Key }[] = [
     { id: "system", label: "settings.theme.system" },
@@ -648,10 +648,12 @@
                 >{t("settingsview.check_for_updates_when")}</span
               >
               <span class="hint"
-                >{#if updates.viaApt}{t(
-                    "settingsview.installed_with_apt_updates",
+                >{#if updates.upgrade}{t(
+                    updates.manager === "flatpak"
+                      ? "settingsview.installed_with_flatpak_updates"
+                      : "settingsview.installed_with_apt_updates",
                   )}
-                  <span class="mono">{APT_UPGRADE}</span>{:else}{t(
+                  <span class="mono">{updates.upgrade}</span>{:else}{t(
                     "settingsview.you_choose_when_to",
                   )}{/if}</span
               >

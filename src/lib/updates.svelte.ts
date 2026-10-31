@@ -4,20 +4,29 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { api } from "#lib/api.ts";
 import { t } from "./i18n.svelte.ts";
 
-/** Command that updates a copy installed from the .deb package. */
-export const APT_UPGRADE = "sudo apt update && sudo apt upgrade";
+/** Commands that update a copy owned by a package manager. */
+const UPGRADE = {
+  apt: "sudo apt update && sudo apt upgrade",
+  flatpak: "flatpak update io.github.nobrega8.modbench",
+};
 
 class Updates {
   available = $state.raw<Update | null>(null);
   checking = $state(false);
   /** Result of the last check, for Settings. */
   message = $state<string | null>(null);
-  /** Installed from the .deb: apt installs updates, the app only reports them. */
-  viaApt = $state(false);
+  /** Installed from the .deb or as a Flatpak: that package manager installs
+   * updates, the app only reports them. */
+  manager = $state<"apt" | "flatpak" | null>(null);
+
+  /** Command that installs updates, when a package manager owns this copy. */
+  get upgrade(): string | null {
+    return this.manager && UPGRADE[this.manager];
+  }
 
   constructor() {
-    api.installedWithApt().then(
-      (apt) => (this.viaApt = apt),
+    api.packageManager().then(
+      (m) => (this.manager = m),
       () => {},
     );
   }
