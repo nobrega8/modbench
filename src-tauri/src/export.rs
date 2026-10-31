@@ -1,6 +1,7 @@
 //! A device map written as the configuration of other software: Home
 //! Assistant's Modbus integration, ESPHome's `modbus_controller`, Telegraf's
-//! `inputs.modbus`, or a CSV tag list for PLC and SCADA tools.
+//! `inputs.modbus`, a Node-RED flow (node-red-contrib-modbus), or a CSV tag
+//! list for PLC and SCADA tools.
 //!
 //! Registers a format cannot express (a byte order it lacks, bits inside a
 //! register, SunSpec scale factors…) are left out and listed in a comment at
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::codec::{ByteOrder, DataType};
 use crate::mbmap::{DeviceMap, Register};
 use crate::modbus::{ConnectionConfig, Parity, Transport};
-use crate::planner::Area;
+use crate::planner::{self, Area, PlanLimits, Point};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -23,6 +24,9 @@ pub enum Format {
     Esphome,
     /// Telegraf `inputs.modbus`, request style
     Telegraf,
+    /// A Node-RED flow of node-red-contrib-modbus reads and decoding functions
+    #[serde(rename = "nodered")]
+    NodeRed,
     /// One row per register, for PLC and SCADA tag imports
     Csv,
 }
@@ -35,6 +39,7 @@ impl Format {
             Format::HomeAssistant => format!("{slug}-home-assistant.yaml"),
             Format::Esphome => format!("{slug}-esphome.yaml"),
             Format::Telegraf => format!("{slug}-telegraf.conf"),
+            Format::NodeRed => format!("{slug}-node-red.json"),
             Format::Csv => format!("{slug}-tags.csv"),
         }
     }
@@ -63,6 +68,7 @@ pub fn export(map: &DeviceMap, format: Format, options: &Options) -> String {
         Format::HomeAssistant => home_assistant(map, &target),
         Format::Esphome => esphome(map, &target),
         Format::Telegraf => telegraf(map, &target),
+        Format::NodeRed => node_red(map, &target),
         Format::Csv => csv(map),
     }
 }
@@ -634,6 +640,292 @@ fn telegraf(map: &DeviceMap, target: &Target) -> String {
     out
 }
 
+// ---- Node-RED
+
+/// Decodes the words a read node gives (`msg.payload`) into one object of
+/// named values. `REGS` lists each register's place in the block and how to
+/// read it; the rest is the same in every block.
+const NODE_RED_DECODE: &str = r#"const words = msg.payload;
+const out = {};
+for (const r of REGS) {
+  const w = words.slice(r.at, r.at + r.n);
+  if (typeof w[0] === "boolean") {
+    out[r.name] = w[0];
+    continue;
+  }
+  if (r.bit !== undefined) {
+    const v = (w[0] >> r.bit) & ((1 << (r.bits || 1)) - 1);
+    out[r.name] = r.bits ? v * r.scale + r.offset : v === 1;
+    continue;
+  }
+  // Big-endian bytes in the order the device sends them (ABCD).
+  const ws = r.order[0] === "C" || r.order[0] === "D" ? [...w].reverse() : w;
+  const swap = r.order === "BADC" || r.order === "DCBA";
+  const bytes = new Uint8Array(ws.length * 2);
+  ws.forEach((x, i) => {
+    bytes[i * 2] = swap ? x & 0xff : x >> 8;
+    bytes[i * 2 + 1] = swap ? x >> 8 : x & 0xff;
+  });
+  const dv = new DataView(bytes.buffer);
+  let v;
+  switch (r.type) {
+    case "int16": v = dv.getInt16(0); break;
+    case "uint16": v = dv.getUint16(0); break;
+    case "int32": v = dv.getInt32(0); break;
+    case "uint32": v = dv.getUint32(0); break;
+    case "float32": v = dv.getFloat32(0); break;
+    case "int64": v = Number(dv.getBigInt64(0)); break;
+    case "uint64": v = Number(dv.getBigUint64(0)); break;
+    case "float64": v = dv.getFloat64(0); break;
+    case "string":
+      out[r.name] = String.fromCharCode(...bytes).replace(/\0+$/, "").trim();
+      continue;
+  }
+  out[r.name] = v * r.scale + r.offset;
+  if (r.labels && r.labels[v] !== undefined) out[r.name + " (label)"] = r.labels[v];
+}
+msg.payload = out;
+return msg;"#;
+
+fn node_red(map: &DeviceMap, target: &Target) -> String {
+    use serde_json::{Value, json};
+
+    let mut skipped = Skipped::default();
+    let regs: Vec<&Register> = map
+        .registers
+        .iter()
+        .filter(|r| !skipped.common(r))
+        .collect();
+    let points: Vec<Point> = regs
+        .iter()
+        .map(|r| Point {
+            area: r.area,
+            address: r.address,
+            count: r.count(),
+        })
+        .collect();
+    let limits = PlanLimits {
+        max_registers: map.meta.max_read_registers(),
+        max_bits: map.meta.max_read_bits(),
+        max_gap: 0,
+    };
+    let blocks = planner::plan(&points, limits);
+
+    // Ids unique to this device, so two exported flows can sit side by side.
+    let name = format!("{} {}", map.meta.vendor, map.meta.model);
+    let seed = name.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    });
+    let id = |n: u64| format!("{:016x}", seed.wrapping_add(n));
+    let tab = id(0);
+    let client = id(1);
+    let debug = id(2);
+
+    let mut info =
+        format!("Made by Modbench from the device map of {name}. Needs node-red-contrib-modbus.\n");
+    let (client_type, extra) = match &target.transport {
+        Transport::Tcp { host, port }
+        | Transport::RtuOverTcp { host, port }
+        | Transport::Udp { host, port }
+        | Transport::RtuOverUdp { host, port } => {
+            let ty = match target.transport {
+                Transport::Tcp { .. } => "DEFAULT",
+                Transport::RtuOverTcp { .. } => "TCP-RTU-BUFFERED",
+                _ => "UDP",
+            };
+            if matches!(target.transport, Transport::RtuOverUdp { .. }) {
+                info.push_str(
+                    "\nnode-red-contrib-modbus has no RTU over UDP: Modbus UDP is used instead.\n",
+                );
+            }
+            if host == HOST {
+                info.push_str(&format!(
+                    "\nSet the device's address in the client node (it is {HOST}).\n"
+                ));
+            }
+            (
+                "tcp",
+                json!({ "tcpHost": host, "tcpPort": port, "tcpType": ty }),
+            )
+        }
+        Transport::Rtu { .. } | Transport::Ascii { .. } => {
+            let (port, baud, parity, bits, stop) = target.serial(map);
+            if port == SERIAL {
+                info.push_str(&format!(
+                    "\nSet the serial port in the client node (it is {SERIAL}).\n"
+                ));
+            }
+            let ty = if matches!(target.transport, Transport::Ascii { .. }) {
+                "ASCII"
+            } else {
+                "RTU-BUFFERD"
+            };
+            let parity = match parity {
+                Parity::N => "none",
+                Parity::E => "even",
+                Parity::O => "odd",
+            };
+            (
+                "simpleser",
+                json!({
+                    "serialPort": port,
+                    "serialType": ty,
+                    "serialBaudrate": baud,
+                    "serialDatabits": bits,
+                    "serialStopbits": stop,
+                    "serialParity": parity,
+                }),
+            )
+        }
+    };
+    info.push_str(&skipped.comment("-"));
+
+    let mut client_node = json!({
+        "id": client,
+        "type": "modbus-client",
+        "name": name,
+        "clienttype": client_type,
+        "bufferCommands": true,
+        "stateLogEnabled": false,
+        "queueLogEnabled": false,
+        "failureLogEnabled": true,
+        "tcpHost": "127.0.0.1",
+        "tcpPort": 502,
+        "tcpType": "DEFAULT",
+        "serialPort": "/dev/ttyUSB0",
+        "serialType": "RTU-BUFFERD",
+        "serialBaudrate": 9600,
+        "serialDatabits": 8,
+        "serialStopbits": 1,
+        "serialParity": "none",
+        "serialConnectionDelay": 100,
+        "serialAsciiResponseStartDelimiter": "0x3A",
+        "unit_id": target.unit_id,
+        "commandDelay": 1,
+        "clientTimeout": 1000,
+        "reconnectOnTimeout": true,
+        "reconnectTimeout": 2000,
+        "parallelUnitIdsAllowed": true,
+        "showErrors": true,
+        "showWarnings": true,
+        "showLogs": true,
+    });
+    if let (Value::Object(node), Value::Object(set)) = (&mut client_node, extra) {
+        node.extend(set);
+    }
+
+    let mut nodes = vec![
+        json!({ "id": tab, "type": "tab", "label": name, "disabled": false, "info": info }),
+        client_node,
+    ];
+    for (i, block) in blocks.iter().enumerate() {
+        let read = id(10 + 2 * i as u64);
+        let decode = id(11 + 2 * i as u64);
+        let y = 60 + 60 * i as u64;
+        let data_type = match block.area {
+            Area::Coil => "Coil",
+            Area::Discrete => "Input",
+            Area::Input => "InputRegister",
+            Area::Holding => "HoldingRegister",
+        };
+        let label = format!(
+            "{} {}–{}",
+            data_type,
+            block.address,
+            block.address + block.count - 1
+        );
+        let table: Vec<Value> = block
+            .points
+            .iter()
+            .map(|&p| {
+                let r = regs[p];
+                let mut e = json!({
+                    "name": r.name,
+                    "at": r.address - block.address,
+                    "n": r.count(),
+                    "type": serde_json::to_value(r.ty).unwrap_or(Value::Null),
+                    "order": format!("{:?}", r.byte_order(&map.meta)),
+                    "scale": r.scale,
+                    "offset": r.offset,
+                });
+                if in_word(r) {
+                    e["bit"] = json!(r.bit.unwrap_or(0));
+                    if let Some(bits) = r.bits {
+                        e["bits"] = json!(bits);
+                    }
+                }
+                if !r.enum_labels.is_empty() {
+                    let labels: serde_json::Map<String, Value> = r
+                        .enum_labels
+                        .iter()
+                        .map(|(v, l)| (v.to_string(), json!(l)))
+                        .collect();
+                    e["labels"] = Value::Object(labels);
+                }
+                e
+            })
+            .collect();
+        let code = format!(
+            "const REGS = {};\n{NODE_RED_DECODE}",
+            serde_json::to_string_pretty(&table).unwrap_or_default()
+        );
+        nodes.push(json!({
+            "id": read,
+            "type": "modbus-read",
+            "z": tab,
+            "name": label,
+            "topic": label,
+            "showStatusActivities": false,
+            "logIOActivities": false,
+            "showErrors": true,
+            "showWarnings": true,
+            "unitid": target.unit_id.to_string(),
+            "dataType": data_type,
+            "adr": block.address.to_string(),
+            "quantity": block.count.to_string(),
+            "rate": target.interval_s.to_string(),
+            "rateUnit": "s",
+            "delayOnStart": false,
+            "enableDeformedMessages": false,
+            "startDelayTime": "",
+            "server": client,
+            "useIOFile": false,
+            "ioFile": "",
+            "useIOForPayload": false,
+            "emptyMsgOnFail": false,
+            "x": 180,
+            "y": y,
+            "wires": [[decode], []],
+        }));
+        nodes.push(json!({
+            "id": decode,
+            "type": "function",
+            "z": tab,
+            "name": format!("Decode {label}"),
+            "func": code,
+            "outputs": 1,
+            "x": 470,
+            "y": y,
+            "wires": [[debug]],
+        }));
+    }
+    nodes.push(json!({
+        "id": debug,
+        "type": "debug",
+        "z": tab,
+        "name": name,
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 760,
+        "y": 60,
+        "wires": [],
+    }));
+    serde_json::to_string_pretty(&nodes).unwrap_or_default() + "\n"
+}
+
 // ---- CSV tag list
 
 fn csv(map: &DeviceMap) -> String {
@@ -782,6 +1074,24 @@ mod tests {
         let first = slug(&map.registers[0].name, '_');
         assert!(out.contains(&format!("name = \"{first}\"")));
         assert!(out.contains(&format!("name = \"{first}_2\"")));
+    }
+
+    #[test]
+    fn node_red_reads_each_block_and_decodes_it() {
+        let out = all(Format::NodeRed, &Options::default());
+        let nodes: Vec<serde_json::Value> = serde_json::from_str(&out).unwrap();
+        let of = |ty: &str| nodes.iter().filter(|n| n["type"] == ty).count();
+        assert_eq!(of("tab"), 1);
+        assert_eq!(of("modbus-client"), 1);
+        assert_eq!(of("modbus-read"), of("function"));
+        // The demo's holding registers 0-10, 12-15 and 20 (11 and 16-19 are
+        // not in the map, and reads do not touch them), and a coil.
+        assert_eq!(of("modbus-read"), 4);
+        let client = nodes.iter().find(|n| n["type"] == "modbus-client").unwrap();
+        assert_eq!(client["tcpHost"], "<host>");
+        let read = nodes.iter().find(|n| n["type"] == "modbus-read").unwrap();
+        assert_eq!(read["server"], client["id"]);
+        assert_eq!(read["dataType"], "Coil");
     }
 
     #[test]

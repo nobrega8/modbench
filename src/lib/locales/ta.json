@@ -627,6 +627,7 @@
   "export.ha": "configuration.yaml இன் modbus: பகுதி",
   "export.esphome": "RS-485 வரியில் உள்ள ESP32 க்கான உணரிகள்",
   "export.telegraf": "inputs.modbus, மதிப்புகளை InfluxDB முதலியவற்றில் பதிவு செய்ய",
+  "export.nodered": "node-red-contrib-modbus வாசிப்புகளின் ஓட்டம், குறிவிலக்கப்பட்டது",
   "export.csv": "PLC மற்றும் SCADA இறக்குமதிக்கான குறிச்சொல் பட்டியல்",
   "export.use_connection": "படி 1 இன் இணைப்பைப் பயன்படுத்து ({where})",
   "export.interval": "வாசிப்புகளுக்கு இடையிலான விநாடிகள்",

@@ -56,7 +56,7 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
   - **Alarms**: low/high limits on map registers, shown in red on the Device map tab.
   - **Trend player**: play back a CSV recording with a scrub bar and up to 60× speed, and save the charts as an image.
 - **Bit view**: see the 16 bits of each register and switch a single bit of a holding register.
-- **Export to other software**: write a map as a Home Assistant Modbus configuration, ESPHome sensors, a Telegraf input or a CSV tag list, with the device's address from the connection (right-click a map in the Library).
+- **Export to other software**: write a map as a Home Assistant Modbus configuration, ESPHome sensors, a Telegraf input, a Node-RED flow or a CSV tag list, with the device's address from the connection (right-click a map in the Library).
 - **Value templates**: copy the settings of one device to another of the same model.
 - **Reconnects by itself** when a link drops during a test.
 - Light and dark themes, adjustable text size, and small installers (about 2 MB on Windows).
@@ -91,7 +91,7 @@ modbench-cli simulate device.mbmap.json --rtu-over-tcp   # RTU frames over TCP, 
 modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap          # version 1 map -> old-device.mbmap.json
-modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10   # or esphome, telegraf, csv
+modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10   # or esphome, telegraf, node-red, csv
 ```
 
 `--generators` takes a JSON list. Each entry names a map register (in engineering units) or a raw `area` and `address`, a `kind`, and how often it changes (`every_ms`, default 1000, at least 50):

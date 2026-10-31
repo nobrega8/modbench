@@ -623,6 +623,7 @@
   "export.ha": "The modbus: section of configuration.yaml",
   "export.esphome": "Sensors for an ESP32 on an RS-485 line",
   "export.telegraf": "inputs.modbus, to log values to InfluxDB and others",
+  "export.nodered": "A flow of node-red-contrib-modbus reads, decoded",
   "export.csv": "A tag list for PLC and SCADA imports",
   "export.use_connection": "Use the connection of step 1 ({where})",
   "export.interval": "Seconds between reads",

@@ -627,6 +627,7 @@
   "export.ha": "configuration.yaml dosyasının modbus: bölümü",
   "export.esphome": "RS-485 hattındaki bir ESP32 için sensörler",
   "export.telegraf": "inputs.modbus, değerleri InfluxDB ve diğerlerine kaydetmek için",
+  "export.nodered": "Çözülmüş node-red-contrib-modbus okumalarından bir akış",
   "export.csv": "PLC ve SCADA içe aktarımı için etiket listesi",
   "export.use_connection": "1. adımdaki bağlantıyı kullan ({where})",
   "export.interval": "Okumalar arası saniye",

@@ -1,6 +1,6 @@
 <!--
   Export a map as the configuration of other software: Home Assistant,
-  ESPHome, Telegraf, or a CSV tag list. The device's address comes from the
+  ESPHome, Telegraf, a Node-RED flow, or a CSV tag list. The device's address comes from the
   connection set in step 1, or is left as a placeholder to fill in.
 -->
 <script lang="ts">
@@ -26,6 +26,7 @@
     { id: "homeassistant", label: "Home Assistant", hint: "export.ha" },
     { id: "esphome", label: "ESPHome", hint: "export.esphome" },
     { id: "telegraf", label: "Telegraf", hint: "export.telegraf" },
+    { id: "nodered", label: "Node-RED", hint: "export.nodered" },
     { id: "csv", label: "CSV", hint: "export.csv" },
   ];
 

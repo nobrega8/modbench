@@ -627,6 +627,7 @@
   "export.ha": "Раздел modbus: файла configuration.yaml",
   "export.esphome": "Датчики для ESP32 на линии RS-485",
   "export.telegraf": "inputs.modbus, чтобы записывать значения в InfluxDB и другие",
+  "export.nodered": "Поток чтений node-red-contrib-modbus с декодированием",
   "export.csv": "Список тегов для импорта в ПЛК и SCADA",
   "export.use_connection": "Использовать подключение из шага 1 ({where})",
   "export.interval": "Секунд между чтениями",

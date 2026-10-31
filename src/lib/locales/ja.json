@@ -627,6 +627,7 @@
   "export.ha": "configuration.yaml の modbus: セクション",
   "export.esphome": "RS-485 ラインにつないだ ESP32 用のセンサー",
   "export.telegraf": "inputs.modbus。InfluxDB などに値を記録します",
+  "export.nodered": "node-red-contrib-modbus の読み取りとデコードのフロー",
   "export.csv": "PLC や SCADA に取り込むタグ一覧",
   "export.use_connection": "手順 1 の接続を使う ({where})",
   "export.interval": "読み取り間隔 (秒)",

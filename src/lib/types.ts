@@ -527,7 +527,8 @@ export interface ReportContext {
 }
 
 /** Software a map can be exported for (see `export.rs`). */
-export type ExportFormat = "homeassistant" | "esphome" | "telegraf" | "csv";
+export type ExportFormat =
+  "homeassistant" | "esphome" | "telegraf" | "nodered" | "csv";
 
 export interface ExportOptions {
   /** The device's connection; without it the address is a placeholder. */

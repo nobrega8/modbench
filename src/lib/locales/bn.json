@@ -627,6 +627,7 @@
   "export.ha": "configuration.yaml-এর modbus: অংশ",
   "export.esphome": "RS-485 লাইনে ESP32-এর জন্য সেন্সর",
   "export.telegraf": "inputs.modbus, InfluxDB ইত্যাদিতে মান লিখে রাখতে",
+  "export.nodered": "node-red-contrib-modbus রিডের একটি ফ্লো, ডিকোড করা",
   "export.csv": "PLC ও SCADA আমদানির জন্য ট্যাগ তালিকা",
   "export.use_connection": "ধাপ ১-এর সংযোগ ব্যবহার করুন ({where})",
   "export.interval": "পড়ার মাঝে সেকেন্ড",

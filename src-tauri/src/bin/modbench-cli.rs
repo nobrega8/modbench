@@ -197,14 +197,14 @@ enum Command {
         out: Option<String>,
     },
     /// Write a map as the configuration of other software: Home Assistant,
-    /// ESPHome, Telegraf, or a CSV tag list. The connection options set the
+    /// ESPHome, Telegraf, a Node-RED flow, or a CSV tag list. The connection options set the
     /// device's address; without them it is a placeholder to fill in
     Export {
         #[command(flatten)]
         conn: Conn,
         /// Path to the .mbmap file
         map: String,
-        /// home-assistant, esphome, telegraf or csv
+        /// home-assistant, esphome, telegraf, node-red or csv
         #[arg(long, short)]
         format: String,
         /// Seconds between reads (default 10)
@@ -1124,10 +1124,11 @@ async fn run(cli: Cli) -> Result<(), String> {
                 "home-assistant" | "homeassistant" | "ha" => export::Format::HomeAssistant,
                 "esphome" => export::Format::Esphome,
                 "telegraf" => export::Format::Telegraf,
+                "node-red" | "nodered" => export::Format::NodeRed,
                 "csv" => export::Format::Csv,
                 f => {
                     return Err(format!(
-                        "format must be home-assistant, esphome, telegraf or csv, not {f}"
+                        "format must be home-assistant, esphome, telegraf, node-red or csv, not {f}"
                     ));
                 }
             };
