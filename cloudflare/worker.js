@@ -6,9 +6,11 @@
 //                               release, with its download links on this
 //                               domain
 //   /releases/download/<tag>/<file>
-//                               a release file, through Cloudflare's cache
-//   /download/<system>          the latest installer for a system (see
-//                               DOWNLOADS), e.g. /download/windows
+//                               a redirect to the file on GitHub, so each
+//                               download counts in the release's statistics
+//   /download/<system>          a redirect to the latest installer for a
+//                               system on GitHub (see DOWNLOADS), e.g.
+//                               /download/windows
 //   anything else               the website and the APT repository, from
 //                               GitHub Pages
 //
@@ -33,8 +35,6 @@ const DOWNLOADS = {
 /** How long the manifest and the release list are kept, in seconds. */
 const MANIFEST_TTL = 300;
 const RELEASE_TTL = 600;
-/** Release files never change under the same tag. */
-const FILE_TTL = 30 * 24 * 3600;
 
 export default {
   async fetch(request, env, ctx) {
@@ -48,7 +48,7 @@ export default {
     const path = url.pathname;
     try {
       if (path === "/latest.json") return await manifest(url, ctx);
-      if (path.startsWith("/releases/download/")) return await file(path);
+      if (path.startsWith("/releases/download/")) return file(path);
       if (path.startsWith("/download/")) return await latestDownload(url, ctx);
       return await pages(url);
     } catch (e) {
@@ -109,28 +109,18 @@ async function manifest(url, ctx) {
   });
 }
 
-/** A release file, fetched from GitHub once and then from Cloudflare's cache. */
-async function file(path) {
+/** A release file: a redirect to its download link on GitHub, which serves
+ * it and counts the download. */
+function file(path) {
   const rest = path.slice("/releases/download/".length);
   if (!/^v[\w.-]+\/[\w.+-]+$/.test(rest)) {
     return new Response("Not found\n", { status: 404 });
   }
-  const res = await fetch(GITHUB_DOWNLOAD + rest, {
-    cf: { cacheTtl: FILE_TTL, cacheEverything: true },
-  });
-  const out = new Response(res.body, res);
-  if (res.ok) {
-    out.headers.set("cache-control", `public, max-age=${FILE_TTL}, immutable`);
-    out.headers.set(
-      "content-disposition",
-      `attachment; filename="${rest.split("/")[1]}"`,
-    );
-  }
-  return out;
+  return Response.redirect(GITHUB_DOWNLOAD + rest, 302);
 }
 
-/** The latest installer for a system: a redirect to its release file, so the
- * browser saves it under its own name and version. */
+/** The latest installer for a system: a redirect to its download link on
+ * GitHub, so the browser saves it under its own name and version. */
 async function latestDownload(url, ctx) {
   const system = url.pathname.slice("/download/".length).replace(/\/$/, "");
   const ending = DOWNLOADS[system];
@@ -144,10 +134,7 @@ async function latestDownload(url, ctx) {
     const rel = await release("latest", ctx);
     const asset = rel.assets.find((a) => a.name.endsWith(ending));
     if (asset) {
-      return Response.redirect(
-        `${url.origin}/releases/download/${rel.tag_name}/${asset.name}`,
-        302,
-      );
+      return Response.redirect(asset.browser_download_url, 302);
     }
   } catch {
     // Fall through to the release page.
