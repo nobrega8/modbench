@@ -1,7 +1,9 @@
 # Flatpak of Modbench, for Flathub. It repackages the .deb of a release (the
 # same binaries as the APT repository) instead of building from source, so
-# Flathub ships exactly what the release ships. x-checker-data lets Flathub's
-# bot open the update for each new release, and add it to the metainfo.
+# Flathub ships exactly what the release ships. The files and the version
+# come from modbench.nobrega.me, which sends the downloads on to the release.
+# x-checker-data lets Flathub's bot open the update for each new release, and
+# add it to the metainfo.
 # Build it locally with:
 #   flatpak-builder --user --install-deps-from=flathub --force-clean --install build flatpak/io.github.nobrega8.modbench.yml
 id: io.github.nobrega8.modbench
@@ -29,24 +31,24 @@ modules:
       - type: file
         dest-filename: modbench.deb
         only-arches: [x86_64]
-        url: https://github.com/nobrega8/modbench/releases/download/v0.4.4/Modbench_0.4.4_amd64.deb
+        url: https://modbench.nobrega.me/releases/download/v0.4.4/Modbench_0.4.4_amd64.deb
         sha256: 49aa825392c202159a32012b428bda05cc208df77e87618cec2e08f70a508637
         x-checker-data:
           type: json
-          url: https://api.github.com/repos/nobrega8/modbench/releases/latest
-          version-query: .tag_name | sub("^v"; "")
-          url-query: .assets[] | select(.name == "Modbench_" + $version + "_amd64.deb") | .browser_download_url
+          url: https://modbench.nobrega.me/latest.json
+          version-query: .version
+          url-query: '"https://modbench.nobrega.me/releases/download/v" + $version + "/Modbench_" + $version + "_amd64.deb"'
           is-main-source: true
       - type: file
         dest-filename: modbench.deb
         only-arches: [aarch64]
-        url: https://github.com/nobrega8/modbench/releases/download/v0.4.4/Modbench_0.4.4_arm64.deb
+        url: https://modbench.nobrega.me/releases/download/v0.4.4/Modbench_0.4.4_arm64.deb
         sha256: d474f96a5e771abef01641ac2bc652c1046724b21bf1153085dc487d6b0e45e5
         x-checker-data:
           type: json
-          url: https://api.github.com/repos/nobrega8/modbench/releases/latest
-          version-query: .tag_name | sub("^v"; "")
-          url-query: .assets[] | select(.name == "Modbench_" + $version + "_arm64.deb") | .browser_download_url
+          url: https://modbench.nobrega.me/latest.json
+          version-query: .version
+          url-query: '"https://modbench.nobrega.me/releases/download/v" + $version + "/Modbench_" + $version + "_arm64.deb"'
       - type: file
         path: io.github.nobrega8.modbench.metainfo.xml
     build-commands:
