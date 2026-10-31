@@ -51,7 +51,10 @@ jobs:
 
       - name: Every library is in the runtime
         run: |
-          ldd_out=$(flatpak-builder --disable-rofiles-fuse --run build "$MANIFEST" ldd /app/bin/modbench)
+          # Installed from the build, so it runs on the Platform runtime users get
+          flatpak remote-add --user --no-gpg-verify local repo
+          flatpak install --user -y --noninteractive local "$APP"
+          ldd_out=$(flatpak run --command=ldd "$APP" /app/bin/modbench)
           echo "$ldd_out"
           ! echo "$ldd_out" | grep "not found"
 
