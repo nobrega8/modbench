@@ -62,6 +62,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc1QTQzNjQyQjY0REQ2MTUKUldRVjFrMjJRamFrZFV2dytkdkdNTEJmbnh3U0tMT1RjWDNjaEFWL3VjUVA4UU13QVV3Z24yazUK",
       "endpoints": [
+        "https://modbench.nobrega.me/latest.json",
         "https://github.com/nobrega8/modbench/releases/latest/download/latest.json"
       ],
       "windows": {

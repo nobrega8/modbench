@@ -15,7 +15,7 @@
     />
     <meta
       property="og:image"
-      content="https://nobrega8.github.io/modbench/img/overview.png"
+      content="https://modbench.nobrega.me/img/overview.png"
     />
     <link rel="icon" type="image/png" href="img/app-icon.png" />
     <link
@@ -200,9 +200,7 @@
                 <code>.msi</code>.</span
               >
             </div>
-            <a
-              class="btn"
-              href="https://github.com/nobrega8/modbench/releases/latest"
+            <a class="btn" href="https://modbench.nobrega.me/download/windows"
               >Download</a
             >
           </div>
@@ -214,9 +212,7 @@
                 right-click the app and choose Open.</span
               >
             </div>
-            <a
-              class="btn"
-              href="https://github.com/nobrega8/modbench/releases/latest"
+            <a class="btn" href="https://modbench.nobrega.me/download/macos"
               >Download</a
             >
           </div>
@@ -224,13 +220,13 @@
             <div class="text">
               <span class="name">Linux</span>
               <span class="hint"
-                ><code>.AppImage</code> or <code>.deb</code>, or install with
-                APT below.</span
+                ><code>.AppImage</code> (other files on
+                <a href="https://github.com/nobrega8/modbench/releases/latest"
+                  >the release page</a
+                >), or install with APT below.</span
               >
             </div>
-            <a
-              class="btn"
-              href="https://github.com/nobrega8/modbench/releases/latest"
+            <a class="btn" href="https://modbench.nobrega.me/download/linux"
               >Download</a
             >
           </div>
@@ -240,8 +236,8 @@
           <code>amd64</code>, <code>arm64</code> and <code>armhf</code>);
           updates then come with <code>apt upgrade</code>:
         </p>
-        <pre><code>curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
-echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
+        <pre><code>curl -fsSL https://modbench.nobrega.me/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
+echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://modbench.nobrega.me stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
 sudo apt update &amp;&amp; sudo apt install modbench</code></pre>
       </section>
     </main>

@@ -11,13 +11,13 @@
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/nobrega8)
 
-A lightweight Modbus TCP/RTU/ASCII client for Windows, Linux and macOS ([website](https://nobrega8.github.io/modbench/)). Test any address by hand, or open a device map and read every register by name, already scaled, with units and labels.
+A lightweight Modbus TCP/RTU/ASCII client for Windows, Linux and macOS ([website](https://modbench.nobrega.me/)). Test any address by hand, or open a device map and read every register by name, already scaled, with units and labels.
 
 ![Modbench reading an energy meter through its device map](assets/screenshots/device-map.png)
 
 ## Download
 
-Get the installer from [Releases](https://github.com/nobrega8/modbench/releases/latest): `Modbench_x.y.z_x64-setup.exe` (or `.msi`) for Windows 10/11, `Modbench_x.y.z_amd64.AppImage` (or `.deb`) for Linux on PCs and `Modbench_x.y.z_aarch64.AppImage` (or `_arm64.deb`) for the Raspberry Pi and other 64-bit ARM boards, `Modbench_x.y.z_armhf.deb` for 32-bit Raspberry Pi OS (Bookworm or later), `Modbench_x.y.z_universal.dmg` for macOS 10.15+ (Apple Silicon and Intel). Modbench offers new versions when it starts.
+Get the installer for [Windows](https://modbench.nobrega.me/download/windows), [macOS](https://modbench.nobrega.me/download/macos) or [Linux](https://modbench.nobrega.me/download/linux), or any file from [Releases](https://github.com/nobrega8/modbench/releases/latest): `Modbench_x.y.z_x64-setup.exe` (or `.msi`) for Windows 10/11, `Modbench_x.y.z_amd64.AppImage` (or `.deb`) for Linux on PCs and `Modbench_x.y.z_aarch64.AppImage` (or `_arm64.deb`) for the Raspberry Pi and other 64-bit ARM boards, `Modbench_x.y.z_armhf.deb` for 32-bit Raspberry Pi OS (Bookworm or later), `Modbench_x.y.z_universal.dmg` for macOS 10.15+ (Apple Silicon and Intel). Modbench offers new versions when it starts.
 
 On macOS the app is not notarized by Apple, so the first time, right-click Modbench in Applications and choose **Open** (or allow it under System Settings › Privacy & Security). Serial adapters appear as `/dev/cu.*`.
 
@@ -29,12 +29,12 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 For `amd64` (PCs), `arm64` (Raspberry Pi 3, 4 and 5 with a 64-bit system, other 64-bit ARM boards) and `armhf` (32-bit Raspberry Pi OS): Debian 12 and 13, Ubuntu 22.04 and later, Raspberry Pi OS Bookworm or later. APT picks the package for the machine. Raspberry Pi OS Buster and older cannot run Modbench (no WebKitGTK 4.1).
 
 ```sh
-curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
-echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
+curl -fsSL https://modbench.nobrega.me/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
+echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://modbench.nobrega.me stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
 sudo apt update && sudo apt install modbench
 ```
 
-Updates then arrive with `sudo apt upgrade`. A list written for an older release with `arch=amd64` keeps working on PCs; on a Raspberry Pi, replace it with the line above.
+Updates then arrive with `sudo apt upgrade`. Lists written for earlier releases keep working: one pointing at `nobrega8.github.io/modbench`, and one with `arch=amd64` on PCs (on a Raspberry Pi, replace that one with the line above).
 </details>
 
 ## Features
@@ -122,6 +122,8 @@ npm run tauri build     # build the installers
 No hardware? `cargo run --example simulator -- <map> 5020` (in `src-tauri`) serves a map over Modbus TCP on port 5020 with changing values.
 
 CI runs `npm run format:check && npm run check && npm test` and, in `src-tauri`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`.
+
+The website, the APT repository, the updater's `latest.json` and the installers are served on `modbench.nobrega.me` by a Cloudflare Worker in [`cloudflare/`](cloudflare/) (`wrangler deploy` there), from GitHub Pages and the releases.
 
 To release, bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, then push a `v*` tag: the Release workflow builds, signs and publishes the installers and the update manifest.
 

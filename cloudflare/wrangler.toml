@@ -1,0 +1,9 @@
+# The Worker that serves Modbench on modbench.nobrega.me (see worker.js).
+name = "modbench"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[[routes]]
+pattern = "modbench.nobrega.me"
+custom_domain = true

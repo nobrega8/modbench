@@ -36,8 +36,8 @@ first start. Right-click the app in \nav{Applications}, choose \nav{Open}, then
 \end{itemize}
 
 \begin{lstlisting}[language=bash]
-curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
-echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
+curl -fsSL https://modbench.nobrega.me/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
+echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://modbench.nobrega.me stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
 sudo apt update && sudo apt install modbench
 \end{lstlisting}
 
