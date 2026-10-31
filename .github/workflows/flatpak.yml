@@ -42,9 +42,12 @@ jobs:
 
       - name: Build
         run: |
+          # The container has neither a machine id (for D-Bus) nor FUSE
+          dbus-uuidgen --ensure
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak-builder --user --install-deps-from=flathub --force-clean \
-            --repo=repo --arch=${{ matrix.arch }} build "$MANIFEST"
+            --disable-rofiles-fuse --repo=repo --arch=${{ matrix.arch }} \
+            build "$MANIFEST"
 
       - name: Every library is in the runtime
         run: |
