@@ -4,6 +4,7 @@
   import Icon from "./Icon.svelte";
   import { netScanner } from "#lib/netscan.svelte.ts";
   import { sim } from "#lib/simulator.svelte.ts";
+  import { gateway } from "#lib/gateway.svelte.ts";
   import { bench, type ToolId } from "#lib/state.svelte.ts";
   import AddressScanTool from "./tools/AddressScanTool.svelte";
   import AlarmsTool from "./tools/AlarmsTool.svelte";
@@ -13,6 +14,7 @@
   import NetworkScanTool from "./tools/NetworkScanTool.svelte";
   import SendRequestTool from "./tools/SendRequestTool.svelte";
   import SimulatorTool from "./tools/SimulatorTool.svelte";
+  import GatewayTool from "./tools/GatewayTool.svelte";
   import StatsTool from "./tools/StatsTool.svelte";
   import TrendPlayerTool from "./tools/TrendPlayerTool.svelte";
 
@@ -31,6 +33,7 @@
         { id: "addresses" },
         { id: "network" },
         { id: "simulator" },
+        { id: "gateway" },
       ],
     },
     {
@@ -46,6 +49,7 @@
   /** A dot next to tools that have something going on. */
   function busy(id: ToolId): boolean {
     if (id === "simulator") return sim.running !== null;
+    if (id === "gateway") return gateway.running !== null;
     if (id === "addresses")
       return bench.scanning && bench.addressProgress !== null;
     if (id === "alarms") return bench.alarms.length > 0;
@@ -83,6 +87,8 @@
     <div class="panel" in:viewIn>
       {#if tool === "simulator"}
         <SimulatorTool />
+      {:else if tool === "gateway"}
+        <GatewayTool />
       {:else if tool === "identify"}
         <DeviceIdTool />
       {:else if tool === "addresses"}

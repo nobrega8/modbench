@@ -17,6 +17,7 @@ import type {
   DeviceMap,
   ExportFormat,
   ExportOptions,
+  GatewayOptions,
   Diagnostic,
   Generator,
   ImportResult,
@@ -173,6 +174,9 @@ export const api = {
    * picked when asked for port 0). */
   simStart: (listen: Transport) => invoke<Transport>("sim_start", { listen }),
   simStop: () => invoke<void>("sim_stop"),
+  gatewayStart: (options: GatewayOptions) =>
+    invoke<Transport>("gateway_start", { options }),
+  gatewayStop: () => invoke<void>("gateway_stop"),
   /** Adds a device with empty memory; returns its index. */
   simAddDevice: (unit: number | null) =>
     invoke<number>("sim_add_device", { unit }),

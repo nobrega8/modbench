@@ -5,25 +5,21 @@
 //! by generators (see [`crate::generators`]).
 
 use std::collections::HashSet;
-use std::future::{Ready, ready};
-use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
-use tokio::net::{TcpListener, UdpSocket};
 use tokio_modbus::prelude::{
     ConformityLevel, DeviceIdObject, ReadCode, ReadDeviceIdentificationResponse,
 };
-use tokio_modbus::server::tcp::{Server, accept_tcp_connection};
-use tokio_modbus::{ExceptionCode, Request, Response, SlaveRequest};
+use tokio_modbus::{ExceptionCode, Request, Response};
 
 use crate::codec::{self, DataType, Value};
 use crate::generators;
 use crate::mbmap::{self, DeviceMap, Register};
-use crate::modbus::{self, ModbusError, RawData, Transport};
+use crate::modbus::{ModbusError, RawData, Transport};
 use crate::planner::Area;
-use crate::serve::{self, Framing};
+use crate::serve;
 
 const SIZE: usize = 0x1_0000;
 
@@ -380,7 +376,7 @@ pub struct SimEvent {
 
 pub type SimLogger = Arc<dyn Fn(SimEvent) + Send + Sync>;
 
-fn where_of(request: &Request<'_>) -> (Option<u16>, Option<u16>) {
+pub(crate) fn where_of(request: &Request<'_>) -> (Option<u16>, Option<u16>) {
     use Request::*;
     match request {
         ReadCoils(a, n)
@@ -396,7 +392,7 @@ fn where_of(request: &Request<'_>) -> (Option<u16>, Option<u16>) {
     }
 }
 
-fn is_write(request: &Request<'_>) -> bool {
+pub(crate) fn is_write(request: &Request<'_>) -> bool {
     use Request::*;
     matches!(
         request,
@@ -493,7 +489,7 @@ impl Responder {
 }
 
 impl serve::Handler for Responder {
-    fn handle(
+    async fn handle(
         &self,
         unit: u8,
         request: Request<'static>,
@@ -529,24 +525,6 @@ impl serve::Handler for Responder {
             write && answer.is_ok(),
         );
         Some(answer)
-    }
-}
-
-/// tokio-modbus's TCP server, answering through a [`Responder`].
-struct TcpService(Responder);
-
-impl tokio_modbus::server::Service for TcpService {
-    type Request = SlaveRequest<'static>;
-    type Response = Option<Response>;
-    type Exception = ExceptionCode;
-    type Future = Ready<Result<Self::Response, Self::Exception>>;
-
-    fn call(&self, req: Self::Request) -> Self::Future {
-        use serve::Handler;
-        ready(match self.0.handle(req.slave, req.request) {
-            None => Ok(None),
-            Some(answer) => answer.map(Some),
-        })
     }
 }
 
@@ -599,105 +577,7 @@ pub async fn start(
             broadcast,
         }
     };
-    let (listen, task) = match listen {
-        Transport::Tcp { host, port } => {
-            let listener = TcpListener::bind((host.as_str(), port)).await?;
-            let port = listener.local_addr()?.port();
-            let server = Server::new(listener);
-            let task = tokio::spawn(async move {
-                let on_connected = |stream, peer: SocketAddr| {
-                    let accepted = accept_tcp_connection(stream, peer, |peer| {
-                        Ok(Some(TcpService(responder(peer.to_string(), false))))
-                    });
-                    async move { accepted }
-                };
-                // A client that sends garbage only loses its own connection.
-                let _ = server.serve(&on_connected, |_| {}).await;
-            });
-            (Transport::Tcp { host, port }, task)
-        }
-        Transport::RtuOverTcp { host, port } => {
-            let listener = TcpListener::bind((host.as_str(), port)).await?;
-            let port = listener.local_addr()?.port();
-            let task = tokio::spawn(async move {
-                // Dropped with the task, which ends every connection.
-                let mut clients = tokio::task::JoinSet::new();
-                loop {
-                    tokio::select! {
-                        accepted = listener.accept() => match accepted {
-                            Ok((stream, peer)) => {
-                                // A gateway passes broadcasts on to its line.
-                                let r = responder(peer.to_string(), true);
-                                clients.spawn(serve::serve(stream, Framing::Rtu, r));
-                            }
-                            Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
-                        },
-                        Some(_) = clients.join_next() => {}
-                    }
-                }
-            });
-            (Transport::RtuOverTcp { host, port }, task)
-        }
-        Transport::Udp { ref host, port } | Transport::RtuOverUdp { ref host, port } => {
-            let socket = UdpSocket::bind((host.as_str(), port)).await?;
-            let port = socket.local_addr()?.port();
-            let rtu = matches!(listen, Transport::RtuOverUdp { .. });
-            let task = tokio::spawn(async move {
-                // One request per datagram; the longest ADU is 260 bytes.
-                let mut buf = [0u8; 512];
-                loop {
-                    // On Windows a client that went away shows up here as
-                    // an error: keep serving the others.
-                    let Ok((n, peer)) = socket.recv_from(&mut buf).await else {
-                        continue;
-                    };
-                    // RTU over UDP comes from gateways, which pass
-                    // broadcasts on to their line.
-                    let r = responder(peer.to_string(), rtu);
-                    let reply = if rtu {
-                        serve::rtu_frame(&r, &buf[..n])
-                    } else {
-                        serve::mbap_frame(&r, &buf[..n])
-                    };
-                    if let Some(reply) = reply {
-                        let _ = socket.send_to(&reply, peer).await;
-                    }
-                }
-            });
-            let host = host.clone();
-            let listen = if rtu {
-                Transport::RtuOverUdp { host, port }
-            } else {
-                Transport::Udp { host, port }
-            };
-            (listen, task)
-        }
-        Transport::Rtu {
-            ref port,
-            baudrate,
-            parity,
-            data_bits,
-            stop_bits,
-        }
-        | Transport::Ascii {
-            ref port,
-            baudrate,
-            parity,
-            data_bits,
-            stop_bits,
-        } => {
-            let stream = modbus::open_serial(port, baudrate, parity, data_bits, stop_bits)?;
-            let framing = match listen {
-                Transport::Ascii { .. } => Framing::Ascii,
-                _ => Framing::Rtu,
-            };
-            let r = responder(port.clone(), true);
-            let task = tokio::spawn(async move {
-                let _ = serve::serve(stream, framing, r).await;
-            });
-            (listen, task)
-        }
-    };
+    let (listen, task) = serve::listen(listen, responder).await?;
     let generators = tokio::spawn(generators::drive(devices));
     Ok(Running {
         listen,
@@ -710,7 +590,10 @@ pub async fn start(
 mod tests {
     use super::*;
     use crate::modbus::{AddressScan, ConnectionConfig, Session};
+    use crate::serve::Framing;
     use std::sync::atomic::{AtomicBool, Ordering};
+    use std::time::Duration;
+    use tokio::net::TcpListener;
 
     fn map() -> DeviceMap {
         let text = "@mbmap=1\n@vendor=ACME\n@model=PM-1\n\

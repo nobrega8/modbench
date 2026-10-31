@@ -1,17 +1,24 @@
 //! Server side of Modbus RTU and ASCII framing, over any byte stream (a
 //! serial port, or a TCP connection for RTU over TCP), and of MBAP and RTU
 //! frames in UDP datagrams. tokio-modbus only serves RTU on a serial port
-//! and has neither ASCII nor UDP, so the simulator frames requests and
-//! answers here.
+//! and has neither ASCII nor UDP, so the simulator and the gateway frame
+//! requests and answers here, and listen with [`listen`].
 
+use std::future::Future;
 use std::io;
+use std::net::SocketAddr;
+use std::pin::Pin;
 use std::time::Duration;
 
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::net::{TcpListener, UdpSocket};
+use tokio::task::JoinHandle;
 use tokio_modbus::bytes::Bytes;
-use tokio_modbus::{ExceptionCode, Request, Response};
+use tokio_modbus::server::tcp::{Server, accept_tcp_connection};
+use tokio_modbus::{ExceptionCode, Request, Response, SlaveRequest};
 
 use crate::ascii;
+use crate::modbus::{self, ModbusError, Transport};
 
 /// How requests and answers are framed on the stream.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,12 +32,12 @@ const GAP: Duration = Duration::from_millis(100);
 
 /// What answers requests: given the unit ID and the request, the answer to
 /// send back, or None to stay silent (another unit ID, or a broadcast).
-pub trait Handler {
+pub trait Handler: Send + Sync {
     fn handle(
         &self,
         unit: u8,
         request: Request<'static>,
-    ) -> Option<Result<Response, ExceptionCode>>;
+    ) -> impl Future<Output = Option<Result<Response, ExceptionCode>>> + Send;
 }
 
 /// Modbus CRC-16 of an RTU frame (sent low byte first).
@@ -127,13 +134,13 @@ fn exception_pdu(function: u8, code: ExceptionCode) -> Vec<u8> {
 }
 
 /// The answer PDU for a request PDU sent to `unit`, or None for silence.
-fn answer(handler: &impl Handler, unit: u8, pdu: &[u8]) -> Option<Vec<u8>> {
+async fn answer(handler: &impl Handler, unit: u8, pdu: &[u8]) -> Option<Vec<u8>> {
     let function = *pdu.first()?;
     if function >= 0x80 {
         return None;
     }
     match Request::try_from(Bytes::copy_from_slice(pdu)) {
-        Ok(request) => match handler.handle(unit, request)? {
+        Ok(request) => match handler.handle(unit, request).await? {
             Ok(response) => Some(response_pdu(&response)),
             Err(code) => Some(exception_pdu(function, code)),
         },
@@ -141,6 +148,7 @@ fn answer(handler: &impl Handler, unit: u8, pdu: &[u8]) -> Option<Vec<u8>> {
         // answers.
         Err(_) => handler
             .handle(unit, Request::Custom(function, Vec::new().into()))
+            .await
             .map(|_| exception_pdu(function, ExceptionCode::IllegalDataValue)),
     }
 }
@@ -163,7 +171,7 @@ where
                     // length, or noise.
                     let frame = std::mem::take(&mut buf);
                     if framing == Framing::Rtu
-                        && let Some(reply) = rtu_frame(&handler, &frame)
+                        && let Some(reply) = rtu_frame(&handler, &frame).await
                     {
                         stream.write_all(&reply).await?;
                     }
@@ -176,8 +184,8 @@ where
         }
         buf.extend_from_slice(&chunk[..n]);
         let replies = match framing {
-            Framing::Rtu => rtu_frames(&handler, &mut buf),
-            Framing::Ascii => ascii_frames(&handler, &mut buf),
+            Framing::Rtu => rtu_frames(&handler, &mut buf).await,
+            Framing::Ascii => ascii_frames(&handler, &mut buf).await,
         };
         for reply in replies {
             stream.write_all(&reply).await?;
@@ -187,7 +195,7 @@ where
 
 /// The answer to one MBAP frame (transaction ID, protocol 0, length, unit
 /// ID, PDU), as Modbus TCP sends it, when it is whole and the unit answers.
-pub fn mbap_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
+pub async fn mbap_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
     if frame.len() < 8 || frame[2..4] != [0, 0] {
         return None;
     }
@@ -196,7 +204,7 @@ pub fn mbap_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
         return None;
     }
     let unit = frame[6];
-    let pdu = answer(handler, unit, &frame[7..])?;
+    let pdu = answer(handler, unit, &frame[7..]).await?;
     let mut out = frame[..4].to_vec();
     out.extend(((pdu.len() + 1) as u16).to_be_bytes());
     out.push(unit);
@@ -206,7 +214,7 @@ pub fn mbap_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
 
 /// The answer to one whole RTU frame (unit ID to CRC), when its CRC holds
 /// and the unit answers.
-pub fn rtu_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
+pub async fn rtu_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
     if frame.len() < 4 {
         return None;
     }
@@ -214,7 +222,7 @@ pub fn rtu_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
     if crc16(body) != u16::from_le_bytes([crc[0], crc[1]]) {
         return None;
     }
-    let pdu = answer(handler, body[0], &body[1..])?;
+    let pdu = answer(handler, body[0], &body[1..]).await?;
     let mut out = vec![body[0]];
     out.extend(pdu);
     out.extend(crc16(&out).to_le_bytes());
@@ -223,7 +231,7 @@ pub fn rtu_frame(handler: &impl Handler, frame: &[u8]) -> Option<Vec<u8>> {
 
 /// Takes every whole RTU request from the front of `buf`; returns the
 /// answers to send.
-fn rtu_frames(handler: &impl Handler, buf: &mut Vec<u8>) -> Vec<Vec<u8>> {
+async fn rtu_frames(handler: &impl Handler, buf: &mut Vec<u8>) -> Vec<Vec<u8>> {
     let mut replies = Vec::new();
     while let Some(len) = rtu_request_len(buf) {
         if buf.len() < len {
@@ -236,13 +244,13 @@ fn rtu_frames(handler: &impl Handler, buf: &mut Vec<u8>) -> Vec<Vec<u8>> {
             continue;
         }
         let frame: Vec<u8> = buf.drain(..len).collect();
-        replies.extend(rtu_frame(handler, &frame));
+        replies.extend(rtu_frame(handler, &frame).await);
     }
     replies
 }
 
 /// Takes every whole ASCII line from `buf`; returns the answers to send.
-fn ascii_frames(handler: &impl Handler, buf: &mut Vec<u8>) -> Vec<Vec<u8>> {
+async fn ascii_frames(handler: &impl Handler, buf: &mut Vec<u8>) -> Vec<Vec<u8>> {
     let mut replies = Vec::new();
     while let Some(end) = buf.iter().position(|b| *b == b'\n') {
         let line: Vec<u8> = buf.drain(..=end).collect();
@@ -256,7 +264,7 @@ fn ascii_frames(handler: &impl Handler, buf: &mut Vec<u8>) -> Vec<Vec<u8>> {
         let Ok((unit, pdu)) = ascii::decode_frame(text) else {
             continue;
         };
-        if let Some(reply) = answer(handler, unit, &pdu) {
+        if let Some(reply) = answer(handler, unit, &pdu).await {
             replies.push(ascii::encode_frame(unit, &reply));
         }
     }
@@ -267,6 +275,142 @@ fn ascii_frames(handler: &impl Handler, buf: &mut Vec<u8>) -> Vec<Vec<u8>> {
     replies
 }
 
+/// tokio-modbus's TCP server, answering through a [`Handler`].
+struct TcpService<H>(H);
+
+impl<H: Handler + Clone + 'static> tokio_modbus::server::Service for TcpService<H> {
+    type Request = SlaveRequest<'static>;
+    type Response = Option<Response>;
+    type Exception = ExceptionCode;
+    type Future = Pin<Box<dyn Future<Output = Result<Option<Response>, ExceptionCode>> + Send>>;
+
+    fn call(&self, req: Self::Request) -> Self::Future {
+        let handler = self.0.clone();
+        Box::pin(async move {
+            match handler.handle(req.slave, req.request).await {
+                None => Ok(None),
+                Some(answer) => answer.map(Some),
+            }
+        })
+    }
+}
+
+/// Starts answering requests the way `listen` says: Modbus TCP or UDP, or
+/// RTU over TCP or UDP, on a host and port (port 0 picks a free one), or RTU
+/// or ASCII on a serial port. `handler(peer, broadcast)` makes the handler
+/// for each client (or the serial line); `broadcast` is true where unit ID
+/// 0 is a broadcast, as on a serial line and the gateways in front of one.
+/// Returns where it listens, with the port it picked, and the task to abort
+/// to stop.
+pub async fn listen<H, F>(
+    listen: Transport,
+    handler: F,
+) -> Result<(Transport, JoinHandle<()>), ModbusError>
+where
+    H: Handler + Clone + 'static,
+    F: Fn(String, bool) -> H + Send + Sync + 'static,
+{
+    Ok(match listen {
+        Transport::Tcp { host, port } => {
+            let listener = TcpListener::bind((host.as_str(), port)).await?;
+            let port = listener.local_addr()?.port();
+            let server = Server::new(listener);
+            let task = tokio::spawn(async move {
+                let on_connected = |stream, peer: SocketAddr| {
+                    let accepted = accept_tcp_connection(stream, peer, |peer| {
+                        Ok(Some(TcpService(handler(peer.to_string(), false))))
+                    });
+                    async move { accepted }
+                };
+                // A client that sends garbage only loses its own connection.
+                let _ = server.serve(&on_connected, |_| {}).await;
+            });
+            (Transport::Tcp { host, port }, task)
+        }
+        Transport::RtuOverTcp { host, port } => {
+            let listener = TcpListener::bind((host.as_str(), port)).await?;
+            let port = listener.local_addr()?.port();
+            let task = tokio::spawn(async move {
+                // Dropped with the task, which ends every connection.
+                let mut clients = tokio::task::JoinSet::new();
+                loop {
+                    tokio::select! {
+                        accepted = listener.accept() => match accepted {
+                            Ok((stream, peer)) => {
+                                // A gateway passes broadcasts on to its line.
+                                let h = handler(peer.to_string(), true);
+                                clients.spawn(serve(stream, Framing::Rtu, h));
+                            }
+                            Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
+                        },
+                        Some(_) = clients.join_next() => {}
+                    }
+                }
+            });
+            (Transport::RtuOverTcp { host, port }, task)
+        }
+        Transport::Udp { ref host, port } | Transport::RtuOverUdp { ref host, port } => {
+            let socket = UdpSocket::bind((host.as_str(), port)).await?;
+            let port = socket.local_addr()?.port();
+            let rtu = matches!(listen, Transport::RtuOverUdp { .. });
+            let task = tokio::spawn(async move {
+                // One request per datagram; the longest ADU is 260 bytes.
+                let mut buf = [0u8; 512];
+                loop {
+                    // On Windows a client that went away shows up here as
+                    // an error: keep serving the others.
+                    let Ok((n, peer)) = socket.recv_from(&mut buf).await else {
+                        continue;
+                    };
+                    // RTU over UDP comes from gateways, which pass
+                    // broadcasts on to their line.
+                    let h = handler(peer.to_string(), rtu);
+                    let reply = if rtu {
+                        rtu_frame(&h, &buf[..n]).await
+                    } else {
+                        mbap_frame(&h, &buf[..n]).await
+                    };
+                    if let Some(reply) = reply {
+                        let _ = socket.send_to(&reply, peer).await;
+                    }
+                }
+            });
+            let host = host.clone();
+            let listen = if rtu {
+                Transport::RtuOverUdp { host, port }
+            } else {
+                Transport::Udp { host, port }
+            };
+            (listen, task)
+        }
+        Transport::Rtu {
+            ref port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        }
+        | Transport::Ascii {
+            ref port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => {
+            let stream = modbus::open_serial(port, baudrate, parity, data_bits, stop_bits)?;
+            let framing = match listen {
+                Transport::Ascii { .. } => Framing::Ascii,
+                _ => Framing::Rtu,
+            };
+            let h = handler(port.clone(), true);
+            let task = tokio::spawn(async move {
+                let _ = serve(stream, framing, h).await;
+            });
+            (listen, task)
+        }
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,7 +418,7 @@ mod tests {
     struct Echo;
 
     impl Handler for Echo {
-        fn handle(
+        async fn handle(
             &self,
             unit: u8,
             request: Request<'static>,
@@ -301,55 +445,55 @@ mod tests {
         assert_eq!(crc16(&[1, 3, 0, 0, 0, 2]).to_le_bytes(), [0xC4, 0x0B]);
     }
 
-    #[test]
-    fn rtu_frames_are_answered_and_noise_is_skipped() {
+    #[tokio::test]
+    async fn rtu_frames_are_answered_and_noise_is_skipped() {
         let mut buf = vec![0x55];
         buf.extend(rtu(&[1, 3, 0, 4, 0, 2]));
         buf.extend(rtu(&[2, 3, 0, 0, 0, 1]));
         buf.extend(&rtu(&[1, 16, 0, 0, 0, 1, 2, 0, 9])[..5]);
-        let replies = rtu_frames(&Echo, &mut buf);
+        let replies = rtu_frames(&Echo, &mut buf).await;
         assert_eq!(replies, [rtu(&[1, 3, 4, 0, 4, 0, 5])]);
         // Half of a write is kept for when the rest comes.
         assert_eq!(buf.len(), 5);
         buf.extend(&rtu(&[1, 16, 0, 0, 0, 1, 2, 0, 9])[5..]);
-        assert_eq!(rtu_frames(&Echo, &mut buf), [rtu(&[1, 0x90, 1])]);
+        assert_eq!(rtu_frames(&Echo, &mut buf).await, [rtu(&[1, 0x90, 1])]);
         assert!(buf.is_empty());
     }
 
-    #[test]
-    fn an_unknown_function_is_a_frame_after_silence() {
+    #[tokio::test]
+    async fn an_unknown_function_is_a_frame_after_silence() {
         let frame = rtu(&[1, 0x41, 7]);
         let mut buf = frame.clone();
-        assert!(rtu_frames(&Echo, &mut buf).is_empty());
-        assert_eq!(rtu_frame(&Echo, &frame), Some(rtu(&[1, 0xC1, 1])));
+        assert!(rtu_frames(&Echo, &mut buf).await.is_empty());
+        assert_eq!(rtu_frame(&Echo, &frame).await, Some(rtu(&[1, 0xC1, 1])));
     }
 
-    #[test]
-    fn ascii_lines_are_answered() {
+    #[tokio::test]
+    async fn ascii_lines_are_answered() {
         let mut buf = b"xx".to_vec();
         buf.extend(ascii::encode_frame(1, &[3, 0, 0, 0, 1]));
         buf.extend(ascii::encode_frame(9, &[3, 0, 0, 0, 1]));
         buf.extend(b":0103");
-        let replies = ascii_frames(&Echo, &mut buf);
+        let replies = ascii_frames(&Echo, &mut buf).await;
         assert_eq!(replies, [ascii::encode_frame(1, &[3, 2, 0, 0])]);
         assert_eq!(buf, b":0103");
     }
 
-    #[test]
-    fn mbap_frames_keep_their_transaction_id() {
+    #[tokio::test]
+    async fn mbap_frames_keep_their_transaction_id() {
         let request = [0x12, 0x34, 0, 0, 0, 6, 1, 3, 0, 2, 0, 1];
         assert_eq!(
-            mbap_frame(&Echo, &request),
+            mbap_frame(&Echo, &request).await,
             Some(vec![0x12, 0x34, 0, 0, 0, 5, 1, 3, 2, 0, 2])
         );
         // Another unit, a cut frame, or another protocol: no answer.
         let mut other = request;
         other[6] = 9;
-        assert_eq!(mbap_frame(&Echo, &other), None);
-        assert_eq!(mbap_frame(&Echo, &request[..10]), None);
+        assert_eq!(mbap_frame(&Echo, &other).await, None);
+        assert_eq!(mbap_frame(&Echo, &request[..10]).await, None);
         let mut protocol = request;
         protocol[3] = 1;
-        assert_eq!(mbap_frame(&Echo, &protocol), None);
+        assert_eq!(mbap_frame(&Echo, &protocol).await, None);
     }
 
     #[test]
