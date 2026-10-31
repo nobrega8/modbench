@@ -25,6 +25,7 @@
   } from "#lib/types.ts";
   import Icon from "./Icon.svelte";
   import MapMetaLists from "./MapMetaLists.svelte";
+  import TableImport from "./TableImport.svelte";
 
   const AREAS: { value: Area; label: string }[] = $derived([
     { value: "holding", label: t("customregisterform.holding_register") },
@@ -161,6 +162,13 @@
     });
   });
 
+  let importing = $state(false);
+
+  async function imported(first: number) {
+    const row = await rowAt(first);
+    row?.scrollIntoView({ block: "start" });
+  }
+
   async function addRegister() {
     const at = builder.addRegister(builder.registers.length - 1);
     const row = await rowAt(at);
@@ -169,6 +177,8 @@
   }
 </script>
 
+<TableImport bind:open={importing} onimported={imported} />
+
 <div class="builder">
   <div class="toolbar">
     <button class="btn" onclick={() => builder.startNew()}
@@ -176,6 +186,9 @@
     >
     <button class="btn" onclick={() => builder.openFile()}
       ><Icon name="folder" />{t("builder.open_file")}</button
+    >
+    <button class="btn" onclick={() => (importing = true)}
+      ><Icon name="imported" />{t("builder.import_table")}</button
     >
     <button class="btn accent" onclick={() => builder.save()}
       >{t("builder.save_here")}</button

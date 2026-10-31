@@ -113,6 +113,15 @@ class MapBuilder {
     return at;
   }
 
+  /** Adds registers read from a table after the others, or in their place.
+   * Returns the position of the first one. */
+  importRegisters(registers: Register[], replace: boolean): number {
+    const from = replace ? 0 : this.registers.length;
+    this.registers = replace ? registers : [...this.registers, ...registers];
+    this.touch();
+    return from;
+  }
+
   duplicate(index: number) {
     const copy = $state.snapshot(this.registers[index]);
     this.registers.splice(index + 1, 0, copy);
