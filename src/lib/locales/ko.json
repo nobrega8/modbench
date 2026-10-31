@@ -627,6 +627,7 @@
   "export.ha": "configuration.yaml의 modbus: 섹션",
   "export.esphome": "RS-485 라인의 ESP32용 센서",
   "export.telegraf": "inputs.modbus, InfluxDB 등에 값을 기록",
+  "export.nodered": "디코딩까지 하는 node-red-contrib-modbus 읽기 플로",
   "export.csv": "PLC 및 SCADA 가져오기용 태그 목록",
   "export.use_connection": "1단계의 연결 사용 ({where})",
   "export.interval": "읽기 간격(초)",
