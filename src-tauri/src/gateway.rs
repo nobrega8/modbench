@@ -89,39 +89,40 @@ impl serve::Handler for Forwarder {
         } else {
             // One request at a time on the upstream link.
             let mut slot = self.upstream.lock().await;
-            let session = match slot.as_mut() {
-                Some(s) => {
-                    if s.link_lost() {
-                        let _ = s.reconnect().await;
+            let opened = match slot.as_mut() {
+                Some(s) if s.link_lost() => s.reconnect().await,
+                Some(_) => Ok(()),
+                None => Session::connect(&self.config, None)
+                    .await
+                    .map(|s| *slot = Some(s)),
+            };
+            match (opened, slot.as_mut()) {
+                (Ok(()), Some(session)) => match session.forward(target, request).await {
+                    Ok(response) => (response.map(Ok), None),
+                    Err(ModbusError::Exception { code, .. }) => {
+                        (Some(Err(ExceptionCode::new(code))), None)
                     }
-                    Ok(s)
-                }
-                None => match Session::connect(&self.config, None).await {
-                    Ok(s) => Ok(slot.insert(s)),
-                    Err(e) => Err(e),
+                    Err(e @ ModbusError::Timeout(_)) => (
+                        Some(Err(ExceptionCode::GatewayTargetDevice)),
+                        Some(e.to_string()),
+                    ),
+                    Err(e @ ModbusError::ReadOnly) => (
+                        Some(Err(ExceptionCode::IllegalFunction)),
+                        Some(e.to_string()),
+                    ),
+                    Err(e) => (
+                        Some(Err(ExceptionCode::GatewayPathUnavailable)),
+                        Some(e.to_string()),
+                    ),
                 },
-            };
-            let result = match session {
-                Ok(s) => s.forward(target, request).await,
-                Err(e) => Err(e),
-            };
-            match result {
-                Ok(response) => (response.map(Ok), None),
-                Err(ModbusError::Exception { code, .. }) => {
-                    (Some(Err(ExceptionCode::new(code))), None)
-                }
-                Err(e @ ModbusError::Timeout(_)) => (
-                    Some(Err(ExceptionCode::GatewayTargetDevice)),
-                    Some(e.to_string()),
-                ),
-                Err(e @ ModbusError::ReadOnly) => (
-                    Some(Err(ExceptionCode::IllegalFunction)),
-                    Some(e.to_string()),
-                ),
-                Err(e) => (
+                // The link could not be opened, whatever the reason: refused,
+                // or a timeout where the system keeps trying (Windows does
+                // for a closed port). There is no path to the device.
+                (Err(e), _) => (
                     Some(Err(ExceptionCode::GatewayPathUnavailable)),
                     Some(e.to_string()),
                 ),
+                (Ok(()), None) => unreachable!("the link was just opened"),
             }
         };
         if let Some(logger) = &self.logger {
