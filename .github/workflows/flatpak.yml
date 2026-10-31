@@ -47,7 +47,12 @@ jobs:
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak-builder --user --install-deps-from=flathub --force-clean \
             --disable-rofiles-fuse --repo=repo --arch=${{ matrix.arch }} \
+            --mirror-screenshots-url=https://dl.flathub.org/media/ \
             build "$MANIFEST"
+          # Screenshots go in the repo as Flathub's build puts them, for the linter
+          mkdir -p build/files/share/app-info/media
+          ostree commit --repo=repo --canonical-permissions \
+            --branch=screenshots/${{ matrix.arch }} build/files/share/app-info/media
 
       - name: Every library is in the runtime
         run: |

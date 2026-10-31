@@ -13,8 +13,8 @@ finish-args:
   - --socket=wayland
   - --socket=fallback-x11
   - --share=ipc
-  - --device=dri
-  # Serial adapters (/dev/ttyUSB*, /dev/ttyACM*) for Modbus RTU and ASCII
+  # Serial adapters (/dev/ttyUSB*, /dev/ttyACM*) for Modbus RTU and ASCII,
+  # and the GPU
   - --device=all
   # Modbus TCP and UDP, the online map library and the update check
   - --share=network
