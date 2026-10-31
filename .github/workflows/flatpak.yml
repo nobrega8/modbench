@@ -51,7 +51,7 @@ jobs:
 
       - name: Every library is in the runtime
         run: |
-          ldd_out=$(flatpak-builder --run build "$MANIFEST" ldd /app/bin/modbench)
+          ldd_out=$(flatpak-builder --disable-rofiles-fuse --run build "$MANIFEST" ldd /app/bin/modbench)
           echo "$ldd_out"
           ! echo "$ldd_out" | grep "not found"
 
