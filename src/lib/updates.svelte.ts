@@ -7,7 +7,7 @@ import { t } from "./i18n.svelte.ts";
 /** Commands that update a copy owned by a package manager. */
 const UPGRADE = {
   apt: "sudo apt update && sudo apt upgrade",
-  flatpak: "flatpak update io.github.nobrega8.modbench",
+  flatpak: "flatpak update me.nobrega.modbench",
 };
 
 class Updates {

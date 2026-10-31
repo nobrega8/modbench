@@ -2,15 +2,15 @@
 <!-- AppStream metadata of the Flatpak (the Flathub page). Flathub's bot adds a
      <release> for each new release. -->
 <component type="desktop-application">
-  <id>io.github.nobrega8.modbench</id>
+  <id>me.nobrega.modbench</id>
   <name>Modbench</name>
   <summary>Test Modbus devices over TCP, RTU and ASCII</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <developer id="io.github.nobrega8">
+  <developer id="me.nobrega">
     <name>Afonso Nóbrega</name>
   </developer>
-  <launchable type="desktop-id">io.github.nobrega8.modbench.desktop</launchable>
+  <launchable type="desktop-id">me.nobrega.modbench.desktop</launchable>
   <provides>
     <binary>modbench</binary>
     <binary>modbench-cli</binary>

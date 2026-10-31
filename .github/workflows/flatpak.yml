@@ -37,8 +37,8 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
       options: --privileged
     env:
-      MANIFEST: flatpak/io.github.nobrega8.modbench.yml
-      APP: io.github.nobrega8.modbench
+      MANIFEST: flatpak/me.nobrega.modbench.yml
+      APP: me.nobrega.modbench
     steps:
       - uses: actions/checkout@v7
 
