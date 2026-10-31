@@ -25,12 +25,15 @@
   import OnlineLibrary from "./OnlineLibrary.svelte";
   import Icon from "./Icon.svelte";
   import MapExplorer from "./MapExplorer.svelte";
+  import MapExport from "./MapExport.svelte";
   import VendorIcon from "./VendorIcon.svelte";
 
   let search = $state("");
   /** A row asking to confirm an edit. */
   let confirm = $state<string | null>(null);
   let exploring = $state<string | null>(null);
+  let exporting = $state<string | null>(null);
+  let exportName = $state("");
   let busy = $state(false);
   let menuOpen = $state(false);
   let onlineOpen = $state(false);
@@ -215,6 +218,14 @@
         disabled: !!e.error,
         action: () => simulate(e.path),
       },
+      {
+        label: t("libraryview.export"),
+        disabled: !!e.error,
+        action: () => {
+          exportName = `${e.vendor} ${e.model}`;
+          exporting = e.path;
+        },
+      },
       null,
       {
         label: t("libraryview.copy_name"),
@@ -298,6 +309,7 @@
 </div>
 
 <MapExplorer bind:path={exploring} />
+<MapExport bind:path={exporting} name={exportName} />
 
 <OnlineLibrary bind:open={onlineOpen} onadded={(text) => toasts.show(text)} />
 

@@ -15,6 +15,8 @@ import type {
   FunctionCheck,
   ReadLimit,
   DeviceMap,
+  ExportFormat,
+  ExportOptions,
   Diagnostic,
   Generator,
   ImportResult,
@@ -146,6 +148,12 @@ export const api = {
   cancelScan: () => invoke<void>("cancel_scan"),
   scanNetwork: (scan: NetScan) => invoke<NetHit[]>("scan_network", { scan }),
   localInterfaces: () => invoke<LocalInterface[]>("local_interfaces"),
+  exportMap: (path: string, format: ExportFormat, options: ExportOptions) =>
+    invoke<{ text: string; file_name: string }>("export_map", {
+      path,
+      format,
+      options,
+    }),
   readText: (path: string) => invoke<string>("read_text", { path }),
   saveText: (path: string, text: string) =>
     invoke<void>("save_text", { path, text }),

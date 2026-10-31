@@ -13,6 +13,7 @@ use serde_json::{Value as Json, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use modbench_lib::check::{self, format_raw, format_value};
+use modbench_lib::export;
 use modbench_lib::mbmap::{self, DeviceMap, Severity};
 use modbench_lib::modbus::{self, ConnectionConfig, Parity, RawData, Session, Transport};
 use modbench_lib::planner::{Area, PlanLimits};
@@ -193,6 +194,24 @@ enum Command {
         map: String,
         /// Where to write the result (default: next to the file, as <name>.mbmap.json)
         #[arg(long)]
+        out: Option<String>,
+    },
+    /// Write a map as the configuration of other software: Home Assistant,
+    /// ESPHome, Telegraf, or a CSV tag list. The connection options set the
+    /// device's address; without them it is a placeholder to fill in
+    Export {
+        #[command(flatten)]
+        conn: Conn,
+        /// Path to the .mbmap file
+        map: String,
+        /// home-assistant, esphome, telegraf or csv
+        #[arg(long, short)]
+        format: String,
+        /// Seconds between reads (default 10)
+        #[arg(long)]
+        interval: Option<u32>,
+        /// Write to this file instead of printing
+        #[arg(long, short)]
         out: Option<String>,
     },
     /// Run as an MCP server over stdio
@@ -1092,6 +1111,50 @@ async fn run(cli: Cli) -> Result<(), String> {
             print!("{text}");
             if text.ends_with("The file has errors.\n") {
                 return Err("invalid map".into());
+            }
+        }
+        Command::Export {
+            conn,
+            map,
+            format,
+            interval,
+            out,
+        } => {
+            let format = match format.as_str() {
+                "home-assistant" | "homeassistant" | "ha" => export::Format::HomeAssistant,
+                "esphome" => export::Format::Esphome,
+                "telegraf" => export::Format::Telegraf,
+                "csv" => export::Format::Csv,
+                f => {
+                    return Err(format!(
+                        "format must be home-assistant, esphome, telegraf or csv, not {f}"
+                    ));
+                }
+            };
+            let parsed = load_map(&map)?;
+            let given = conn.tcp.is_some()
+                || conn.rtu_over_tcp.is_some()
+                || conn.udp.is_some()
+                || conn.rtu_over_udp.is_some()
+                || conn.rtu.is_some()
+                || conn.ascii.is_some();
+            let connection = if given {
+                Some(conn.config(Some(&parsed))?)
+            } else {
+                None
+            };
+            let options = export::Options {
+                connection,
+                unit_id: conn.unit,
+                interval_s: interval,
+            };
+            let text = export::export(&parsed, format, &options);
+            match out {
+                Some(path) => {
+                    std::fs::write(&path, text).map_err(|e| format!("{path}: {e}"))?;
+                    println!("{map} -> {path}");
+                }
+                None => print!("{text}"),
             }
         }
         Command::Convert { map, out } => {
