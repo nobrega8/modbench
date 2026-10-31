@@ -8,6 +8,7 @@ use tokio::sync::Mutex;
 
 use crate::check;
 use crate::codec::{self, ByteOrder, DataType, Value};
+use crate::export;
 use crate::generators::{self, Generator};
 use crate::library::{self, ImportResult, LibraryEntry};
 use crate::mbmap::{self, DeviceMap, Diagnostic, Parsed, Register};
@@ -488,6 +489,30 @@ async fn read_exponent(
 pub async fn open_map(path: String) -> Result<Parsed, ModbusError> {
     let bytes = tokio::fs::read(&path).await?;
     Ok(mbmap::parse(&bytes))
+}
+
+/// A map file written as the configuration of other software, and the file
+/// name it is usually saved as (see `export`).
+#[derive(serde::Serialize)]
+pub struct Exported {
+    text: String,
+    file_name: String,
+}
+
+#[tauri::command]
+pub async fn export_map(
+    path: String,
+    format: export::Format,
+    options: export::Options,
+) -> Result<Exported, ModbusError> {
+    let bytes = tokio::fs::read(&path).await?;
+    let map = mbmap::parse(&bytes)
+        .map
+        .ok_or_else(|| ModbusError::Invalid("the map has errors".into()))?;
+    Ok(Exported {
+        text: export::export(&map, format, &options),
+        file_name: format.file_name(&map),
+    })
 }
 
 /// Checks map files against the connected device by their identity

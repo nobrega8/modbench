@@ -19,6 +19,7 @@ modbench-cli simulate device.mbmap.json --rtu-over-tcp
 modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap
+modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10
 \end{lstlisting}
 
 \begin{center}
@@ -36,6 +37,9 @@ modbench-cli convert old-device.mbmap
   \val{validate} & Checks a map against the format, with the same messages as
     the app. \\
   \val{convert} & Converts a version 1 map to a \file{.mbmap.json} next to it. \\
+  \val{export} & Writes a map as the configuration of other software
+    (\val{-f home-assistant}, \val{esphome}, \val{telegraf} or \val{csv});
+    the connection options fill in the device's address. \\
   \bottomrule
 \end{tabularx}
 \end{center}

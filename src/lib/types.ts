@@ -525,3 +525,12 @@ export interface ReportContext {
   identification: [string, string][];
   when: string;
 }
+
+/** Software a map can be exported for (see `export.rs`). */
+export type ExportFormat = "homeassistant" | "esphome" | "telegraf" | "csv";
+
+export interface ExportOptions {
+  /** The device's connection; without it the address is a placeholder. */
+  connection?: ConnectionConfig;
+  interval_s?: number;
+}
