@@ -4,8 +4,8 @@ name: Flatpak
 # it names), checks that the app's libraries are all in the runtime, and runs
 # Flathub's linter on the manifest and the metainfo. (Its check of the built
 # repo wants screenshots mirrored to Flathub's servers, which only Flathub's
-# own build does.) The bundle is
-# kept as an artifact to try with `flatpak install --user modbench.flatpak`.
+# own build does.) The bundle is kept as an artifact to try with
+# `flatpak install --user modbench-x86_64.flatpak`.
 # Flathub itself builds from its own copy of the manifest.
 on:
   push:
