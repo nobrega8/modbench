@@ -17,7 +17,7 @@ A lightweight Modbus TCP/RTU/ASCII client for Windows, Linux and macOS ([website
 
 ## Download
 
-Get the installer from [Releases](https://github.com/nobrega8/modbench/releases/latest): `Modbench_x.y.z_x64-setup.exe` (or `.msi`) for Windows 10/11, `Modbench_x.y.z_amd64.AppImage` (or `.deb`) for Linux on PCs and `Modbench_x.y.z_aarch64.AppImage` (or `_arm64.deb`) for the Raspberry Pi and other 64-bit ARM boards, `Modbench_x.y.z_universal.dmg` for macOS 10.15+ (Apple Silicon and Intel). Modbench offers new versions when it starts.
+Get the installer from [Releases](https://github.com/nobrega8/modbench/releases/latest): `Modbench_x.y.z_x64-setup.exe` (or `.msi`) for Windows 10/11, `Modbench_x.y.z_amd64.AppImage` (or `.deb`) for Linux on PCs and `Modbench_x.y.z_aarch64.AppImage` (or `_arm64.deb`) for the Raspberry Pi and other 64-bit ARM boards, `Modbench_x.y.z_armhf.deb` for 32-bit Raspberry Pi OS (Bookworm or later), `Modbench_x.y.z_universal.dmg` for macOS 10.15+ (Apple Silicon and Intel). Modbench offers new versions when it starts.
 
 On macOS the app is not notarized by Apple, so the first time, right-click Modbench in Applications and choose **Open** (or allow it under System Settings › Privacy & Security). Serial adapters appear as `/dev/cu.*`.
 
@@ -26,7 +26,7 @@ On Linux, add yourself to the `dialout` group to use serial ports: `sudo usermod
 <details>
 <summary>Install with APT (Debian, Ubuntu, Raspberry Pi OS)</summary>
 
-For `amd64` (PCs) and `arm64` (Raspberry Pi 3, 4 and 5 with a 64-bit system, other 64-bit ARM boards): Debian 12 and 13, Ubuntu 22.04 and later, Raspberry Pi OS 64-bit. APT picks the package for the machine. 32-bit ARM (`armhf`) is not built.
+For `amd64` (PCs), `arm64` (Raspberry Pi 3, 4 and 5 with a 64-bit system, other 64-bit ARM boards) and `armhf` (32-bit Raspberry Pi OS): Debian 12 and 13, Ubuntu 22.04 and later, Raspberry Pi OS Bookworm or later. APT picks the package for the machine. Raspberry Pi OS Buster and older cannot run Modbench (no WebKitGTK 4.1).
 
 ```sh
 curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg

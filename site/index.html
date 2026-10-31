@@ -237,8 +237,8 @@
         </div>
         <p class="sub">
           Install with APT (Debian, Ubuntu, Raspberry Pi OS;
-          <code>amd64</code> and <code>arm64</code>); updates then come with
-          <code>apt upgrade</code>:
+          <code>amd64</code>, <code>arm64</code> and <code>armhf</code>);
+          updates then come with <code>apt upgrade</code>:
         </p>
         <pre><code>curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
 echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
