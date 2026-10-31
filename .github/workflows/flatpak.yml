@@ -1,0 +1,69 @@
+name: Flatpak
+
+# Builds the Flatpak from flatpak/ (which repackages the .deb of the release
+# it names), checks that the app's libraries are all in the runtime, and runs
+# Flathub's linter on the manifest, the metainfo and the build. The bundle is
+# kept as an artifact to try with `flatpak install --user modbench.flatpak`.
+# Flathub itself builds from its own copy of the manifest.
+on:
+  push:
+    branches: [main]
+    paths: ["flatpak/**", ".github/workflows/flatpak.yml"]
+  pull_request:
+    paths: ["flatpak/**", ".github/workflows/flatpak.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    env:
+      MANIFEST: flatpak/io.github.nobrega8.modbench.yml
+      APP: io.github.nobrega8.modbench
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --user --install-deps-from=flathub --force-clean \
+            --repo=repo --arch=${{ matrix.arch }} build "$MANIFEST"
+
+      - name: Every library is in the runtime
+        run: |
+          ldd_out=$(flatpak-builder --run build "$MANIFEST" ldd /app/bin/modbench)
+          echo "$ldd_out"
+          ! echo "$ldd_out" | grep "not found"
+
+      - name: Flathub linter
+        run: |
+          flatpak install --user -y --noninteractive flathub org.flatpak.Builder
+          lint() { flatpak run --command=flatpak-builder-lint org.flatpak.Builder "$@"; }
+          lint manifest "$MANIFEST"
+          lint appstream flatpak/$APP.metainfo.xml
+          lint repo repo
+
+      - name: Bundle
+        run: flatpak build-bundle --arch=${{ matrix.arch }} repo modbench-${{ matrix.arch }}.flatpak "$APP"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: modbench-${{ matrix.arch }}.flatpak
+          path: modbench-${{ matrix.arch }}.flatpak

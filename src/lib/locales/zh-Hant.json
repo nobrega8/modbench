@@ -777,6 +777,7 @@
   "settingsview.copied": "已複製",
   "settingsview.copy_path": "複製路徑",
   "settingsview.installed_with_apt_updates": "透過 apt 安裝：更新請使用以下命令安裝",
+  "settingsview.installed_with_flatpak_updates": "以 Flatpak 安裝：更新請使用以下命令安裝",
   "settingsview.you_choose_when_to": "由您選擇何時安裝。",
   "snapshotbar.this_snapshot_is_of": "此快照來自手動讀取，而不是設備映射。",
   "snapshotbar.this_snapshot_is_of2": "此快照來自設備映射，而不是手動讀取。",

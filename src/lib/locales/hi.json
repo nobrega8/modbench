@@ -777,6 +777,7 @@
   "settingsview.copied": "कॉपी हो गया",
   "settingsview.copy_path": "पथ कॉपी करें",
   "settingsview.installed_with_apt_updates": "apt से इंस्टॉल किया गया: अपडेट इससे इंस्टॉल होते हैं",
+  "settingsview.installed_with_flatpak_updates": "Flatpak के रूप में इंस्टॉल किया गया: अपडेट इससे इंस्टॉल होते हैं",
   "settingsview.you_choose_when_to": "आप चुनते हैं कि कब इंस्टॉल करना है।",
   "snapshotbar.this_snapshot_is_of": "यह स्नैपशॉट मैन्युअल पढ़ाई का है, डिवाइस मैप का नहीं।",
   "snapshotbar.this_snapshot_is_of2": "यह स्नैपशॉट डिवाइस मैप का है, मैन्युअल पढ़ाई का नहीं।",

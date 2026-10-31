@@ -3,7 +3,7 @@
   import { changes, summary } from "#lib/release-notes.ts";
   import { relaunch } from "@tauri-apps/plugin-process";
   import { settings } from "#lib/settings.svelte.ts";
-  import { APT_UPGRADE, updates } from "#lib/updates.svelte.ts";
+  import { updates } from "#lib/updates.svelte.ts";
 
   const update = $derived(updates.available);
   let dismissed = $state(false);
@@ -45,10 +45,10 @@
         version: update.version,
       })}</strong
     >
-    {#if updates.viaApt}
+    {#if updates.upgrade}
       <span
         >{t("updatebanner.update_with")}
-        <span class="mono">{APT_UPGRADE}</span></span
+        <span class="mono">{updates.upgrade}</span></span
       >
     {:else if failure}
       <span class="bad"
@@ -66,7 +66,7 @@
       >
     {/if}
     <span class="spacer"></span>
-    {#if updates.viaApt}
+    {#if updates.upgrade}
       <button class="btn" onclick={() => (dismissed = true)}
         >{t("action.dismiss")}</button
       >

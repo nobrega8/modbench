@@ -90,7 +90,7 @@ pub fn run() {
             gui_control::gui_control_status,
             gui_control::gui_control_reply,
             commands::app_version,
-            commands::installed_with_apt,
+            commands::package_manager,
             commands::list_serial_ports,
             commands::connect,
             commands::disconnect,
