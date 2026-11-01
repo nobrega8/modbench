@@ -208,7 +208,7 @@ async fn with_timeout<T>(
         .map_err(|_| ModbusError::Timeout(ms))???)
 }
 
-pub(crate) fn open_serial(
+pub fn open_serial(
     port: &str,
     baudrate: u32,
     parity: Parity,
@@ -246,7 +246,7 @@ pub(crate) fn open_serial(
 
 /// What a serial port reads and writes through: the port itself, or in debug
 /// builds the socket a port alias names.
-pub(crate) trait SerialLink:
+pub trait SerialLink:
     tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + std::fmt::Debug
 {
 }

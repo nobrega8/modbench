@@ -96,6 +96,7 @@ export type Page = "main" | "tools" | "library" | "settings";
 export type ToolId =
   | "simulator"
   | "gateway"
+  | "monitor"
   | "identify"
   | "addresses"
   | "network"
