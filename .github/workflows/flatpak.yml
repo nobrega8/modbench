@@ -70,7 +70,7 @@ jobs:
       - name: Bundle
         run: flatpak build-bundle --arch=${{ matrix.arch }} repo modbench-${{ matrix.arch }}.flatpak "$APP"
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: modbench-${{ matrix.arch }}.flatpak
           path: modbench-${{ matrix.arch }}.flatpak
