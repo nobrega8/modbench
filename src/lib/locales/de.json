@@ -859,7 +859,7 @@
   "settingsview.copied": "Kopiert",
   "settingsview.copy_path": "Pfad kopieren",
   "settingsview.installed_with_apt_updates": "Mit apt installiert: Updates werden installiert mit",
-  "settingsview.installed_with_flatpak_updates": "Als Flatpak installiert: Updates werden installiert mit",
+  "settingsview.installed_with_pacman_updates": "Mit pacman installiert: Updates werden installiert mit",
   "settingsview.you_choose_when_to": "Sie wählen, wann installiert wird.",
   "snapshotbar.this_snapshot_is_of": "Dieser Schnappschuss stammt von einem manuellen Lesevorgang, nicht von einer Gerätekarte.",
   "snapshotbar.this_snapshot_is_of2": "Dieser Schnappschuss stammt von einer Gerätekarte, nicht von einem manuellen Lesevorgang.",

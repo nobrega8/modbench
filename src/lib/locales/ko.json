@@ -859,7 +859,7 @@
   "settingsview.copied": "복사됨",
   "settingsview.copy_path": "경로 복사",
   "settingsview.installed_with_apt_updates": "apt로 설치됨: 업데이트는 다음으로 설치합니다",
-  "settingsview.installed_with_flatpak_updates": "Flatpak으로 설치됨: 업데이트는 다음으로 설치합니다",
+  "settingsview.installed_with_pacman_updates": "pacman으로 설치됨: 업데이트는 다음으로 설치합니다",
   "settingsview.you_choose_when_to": "설치 시점은 직접 선택합니다.",
   "snapshotbar.this_snapshot_is_of": "이 스냅샷은 장치 맵이 아니라 수동 읽기의 것입니다.",
   "snapshotbar.this_snapshot_is_of2": "이 스냅샷은 수동 읽기가 아니라 장치 맵의 것입니다.",

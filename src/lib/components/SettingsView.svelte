@@ -649,8 +649,8 @@
               >
               <span class="hint"
                 >{#if updates.upgrade}{t(
-                    updates.manager === "flatpak"
-                      ? "settingsview.installed_with_flatpak_updates"
+                    updates.manager === "pacman"
+                      ? "settingsview.installed_with_pacman_updates"
                       : "settingsview.installed_with_apt_updates",
                   )}
                   <span class="mono">{updates.upgrade}</span>{:else}{t(

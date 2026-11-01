@@ -39,6 +39,18 @@ sudo apt update && sudo apt install modbench
 Updates then arrive with `sudo apt upgrade`. A list written for an older release with `arch=amd64` keeps working on PCs; on a Raspberry Pi, replace it with the line above.
 </details>
 
+<details>
+<summary>Install from the AUR (Arch Linux, Manjaro)</summary>
+
+`modbench-bin` repackages the release's `.deb` for `x86_64`, `aarch64` and `armv7h`:
+
+```sh
+yay -S modbench-bin
+```
+
+Updates then arrive with your AUR helper, for example `yay -Syu`.
+</details>
+
 ## Features
 
 - **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or UDP, or RTU over TCP or UDP.

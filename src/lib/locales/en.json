@@ -859,7 +859,7 @@
   "settingsview.copied": "Copied",
   "settingsview.copy_path": "Copy path",
   "settingsview.installed_with_apt_updates": "Installed with apt: updates install with",
-  "settingsview.installed_with_flatpak_updates": "Installed as a Flatpak: updates install with",
+  "settingsview.installed_with_pacman_updates": "Installed with pacman: updates install with",
   "settingsview.you_choose_when_to": "You choose when to install.",
   "snapshotbar.this_snapshot_is_of": "This snapshot is of a manual read, not of a device map.",
   "snapshotbar.this_snapshot_is_of2": "This snapshot is of a device map, not of a manual read.",

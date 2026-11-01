@@ -1,0 +1,35 @@
+# Maintainer: nobrega8
+# Arch package of Modbench, for the AUR as modbench-bin. It repackages the .deb
+# of a release (the same binaries as the APT repository) instead of building
+# from source. The Arch workflow fills in pkgver and the checksums and pushes
+# this file to the AUR after each release; to try it by hand, set them and run
+# `makepkg -si`.
+pkgname=modbench-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc='Modbus TCP/RTU/ASCII client with device map files and a device library'
+arch=('x86_64' 'aarch64' 'armv7h')
+url='https://github.com/nobrega8/modbench'
+license=('GPL-3.0-or-later')
+depends=('webkit2gtk-4.1' 'gtk3')
+provides=('modbench')
+conflicts=('modbench')
+options=('!strip')
+noextract=("Modbench_${pkgver}_amd64.deb" "Modbench_${pkgver}_arm64.deb" "Modbench_${pkgver}_armhf.deb")
+_base="$url/releases/download/v${pkgver}"
+source_x86_64=("Modbench_${pkgver}_amd64.deb::$_base/Modbench_${pkgver}_amd64.deb")
+source_aarch64=("Modbench_${pkgver}_arm64.deb::$_base/Modbench_${pkgver}_arm64.deb")
+source_armv7h=("Modbench_${pkgver}_armhf.deb::$_base/Modbench_${pkgver}_armhf.deb")
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+sha256sums_armv7h=('SKIP')
+
+package() {
+  local deb
+  case "$CARCH" in
+    x86_64) deb="Modbench_${pkgver}_amd64.deb" ;;
+    aarch64) deb="Modbench_${pkgver}_arm64.deb" ;;
+    armv7h) deb="Modbench_${pkgver}_armhf.deb" ;;
+  esac
+  bsdtar -xOf "$srcdir/$deb" 'data.tar.*' | bsdtar -xf - -C "$pkgdir"
+}
