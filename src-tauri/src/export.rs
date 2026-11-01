@@ -1024,6 +1024,7 @@ mod tests {
                 unit_id: 7,
                 timeout_ms: 1000,
                 local_address: None,
+                tls: None,
             }),
             unit_id: None,
             interval_s: Some(5),

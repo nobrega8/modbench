@@ -42,6 +42,7 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
 ## Features
 
 - **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or UDP, or RTU over TCP or UDP.
+- **Modbus/TCP Security**: Modbus TCP inside TLS (port 802), checking the device's certificate against a CA (or trusting any) and showing a client certificate to devices that ask for one.
 - **Address notations**: show addresses 0-based, 1-based, in hex, in Modicon (`400101`) or IEC 61131-3 (`%MW100`) notation. Address fields take the last two as typed, and switch to their area.
 - **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. The FC column shows the function code each register is read with, and a right-click reads one with the other function (FC03 or FC04) when a device only answers one. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
 - **Map builder**: in the Library tab, a window of its own to write a map from a manual: the device header, a table of registers (area, address as the manual numbers it, type, scale, unit, access, state labels, description) and the validator's messages on each row while you type. It saves a version 2 `.mbmap.json`. The same window edits an existing map: right-click a map in the Library, or a register on the Device map, and choose the edit entry. A changes list shows what differs from the original. **Save** writes a library map back to its own file (the Library then shows it as edited), puts a new map in the library under its vendor and model (asking before it replaces one) and writes a map opened from another folder back to that file; **Save as…** writes a file wherever you choose.
@@ -89,10 +90,12 @@ modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
 modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
 modbench-cli id --tcp 192.168.1.10               # FC43 device identification
 modbench-cli read --udp 192.168.1.10 holding 0 10   # Modbus UDP
+modbench-cli read --tcp 192.168.1.10 --tls --ca ca.pem --cert me.pem --key me.key holding 0 1   # Modbus/TCP Security, port 802
 modbench-cli simulate device.mbmap.json --strict  # a simulated device on port 5020
 modbench-cli simulate device.mbmap.json --generators moving.json
 modbench-cli simulate device.mbmap.json --rtu-over-tcp   # RTU frames over TCP, like a gateway
 modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
+modbench-cli simulate device.mbmap.json --tls-cert server.pem --tls-key server.key --tls-client-ca ca.pem   # inside TLS
 modbench-cli gateway --listen tcp:0.0.0.0:5502 --rtu COM3 --baud 9600   # Modbus TCP clients -> RTU device
 modbench-cli monitor --rtu COM3 --baud 19200 --parity E   # listen to a line, never send
 modbench-cli validate device.mbmap.json

@@ -568,6 +568,17 @@ pub async fn start(
     devices: Devices,
     logger: Option<SimLogger>,
 ) -> Result<Running, ModbusError> {
+    start_tls(listen, None, devices, logger).await
+}
+
+/// [`start`], and with `tls` Modbus TCP inside TLS (Modbus/TCP Security):
+/// `listen` must then be Modbus TCP.
+pub async fn start_tls(
+    listen: Transport,
+    tls: Option<tokio_rustls::TlsAcceptor>,
+    devices: Devices,
+    logger: Option<SimLogger>,
+) -> Result<Running, ModbusError> {
     let responder = {
         let (devices, logger) = (devices.clone(), logger.clone());
         move |peer: String, broadcast: bool| Responder {
@@ -577,7 +588,17 @@ pub async fn start(
             broadcast,
         }
     };
-    let (listen, task) = serve::listen(listen, responder).await?;
+    let (listen, task) = match (tls, listen) {
+        (None, listen) => serve::listen(listen, responder).await?,
+        (Some(acceptor), Transport::Tcp { host, port }) => {
+            serve::listen_tls(host, port, acceptor, responder).await?
+        }
+        (Some(_), _) => {
+            return Err(ModbusError::Invalid(
+                "TLS (Modbus/TCP Security) goes with Modbus TCP only".into(),
+            ));
+        }
+    };
     let generators = tokio::spawn(generators::drive(devices));
     Ok(Running {
         listen,
@@ -614,6 +635,7 @@ mod tests {
             unit_id: unit,
             timeout_ms: 300,
             local_address: None,
+            tls: None,
         };
         Session::connect(&config, None).await.unwrap()
     }
@@ -687,6 +709,7 @@ mod tests {
                 unit_id: 1,
                 timeout_ms: 300,
                 local_address: None,
+                tls: None,
             };
             let mut s = Session::connect(&config, None).await.unwrap();
             let checks = s.check_functions(0, false).await.unwrap();
@@ -962,6 +985,7 @@ mod tests {
             unit_id: 1,
             timeout_ms: 500,
             local_address: None,
+            tls: None,
         };
         let seen = std::sync::Mutex::new(Vec::new());
         let frame = [0, 9, 0, 0, 0, 6, 1, 3, 0, 10, 0, 2];
@@ -1219,6 +1243,7 @@ mod tests {
             unit_id: unit,
             timeout_ms: 300,
             local_address: None,
+            tls: None,
         };
         let mut s = Session::connect(&config(1), None).await.unwrap();
         assert_eq!(
@@ -1274,6 +1299,7 @@ mod tests {
                     unit_id: unit,
                     timeout_ms: 300,
                     local_address: None,
+                    tls: None,
                 }
             };
             let mut s = Session::connect(&config(1), None).await.unwrap();

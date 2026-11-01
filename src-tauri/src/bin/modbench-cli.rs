@@ -188,6 +188,17 @@ enum Command {
         /// generators (increment, sine, random, copy), see the README
         #[arg(long, value_name = "FILE")]
         generators: Option<String>,
+        /// Answer Modbus TCP inside TLS (Modbus/TCP Security) with this
+        /// certificate (PEM)
+        #[arg(long, value_name = "FILE", requires = "tls_key", conflicts_with_all = ["rtu", "ascii", "udp", "rtu_over_udp", "rtu_over_tcp"])]
+        tls_cert: Option<String>,
+        /// The private key (PEM) of --tls-cert
+        #[arg(long, value_name = "FILE", requires = "tls_cert")]
+        tls_key: Option<String>,
+        /// With --tls-cert: clients must show a certificate signed by this CA
+        /// (PEM), as the spec's mutual authentication wants
+        #[arg(long, value_name = "FILE", requires = "tls_cert")]
+        tls_client_ca: Option<String>,
     },
     /// Check a map file (.mbmap.json, or a deprecated version 1 .mbmap) against the spec
     Validate { map: String },
@@ -307,6 +318,23 @@ struct Conn {
     #[arg(long)]
     #[serde(default)]
     source: Option<String>,
+    /// Modbus/TCP Security: Modbus TCP inside TLS (default port 802)
+    #[arg(long)]
+    #[serde(default)]
+    tls: bool,
+    /// With --tls: CA certificate (PEM) the device's certificate must be
+    /// signed by (without it, any certificate is trusted)
+    #[arg(long, requires = "tls")]
+    #[serde(default)]
+    ca: Option<String>,
+    /// With --tls: this client's certificate (PEM), for devices that ask
+    #[arg(long, requires_all = ["tls", "key"])]
+    #[serde(default)]
+    cert: Option<String>,
+    /// With --tls: the private key (PEM) of --cert
+    #[arg(long, requires_all = ["tls", "cert"])]
+    #[serde(default)]
+    key: Option<String>,
 }
 
 fn default_timeout() -> u64 {
@@ -328,8 +356,15 @@ impl Conn {
     /// Connection settings; values not given come from the map, then defaults.
     fn config(&self, map: Option<&DeviceMap>) -> Result<ConnectionConfig, String> {
         let meta = map.map(|m| &m.meta);
+        if self.tls && self.tcp.is_none() {
+            return Err("--tls goes with --tcp (Modbus/TCP Security)".into());
+        }
         let transport = if let Some(t) = &self.tcp {
-            let (host, port) = host_port(t);
+            let (host, mut port) = host_port(t);
+            // No port given: Modbus/TCP Security's own.
+            if self.tls && !t.contains(':') {
+                port = modbench_lib::tls::PORT;
+            }
             Transport::Tcp { host, port }
         } else if let Some(t) = &self.rtu_over_tcp {
             let (host, port) = host_port(t);
@@ -386,11 +421,17 @@ impl Conn {
             unit_id: self.unit.or(meta.and_then(|m| m.unit_id)).unwrap_or(1),
             timeout_ms: self.timeout,
             local_address: self.source.clone(),
+            tls: self.tls.then(|| modbench_lib::tls::TlsConfig {
+                ca: self.ca.clone(),
+                cert: self.cert.clone(),
+                key: self.key.clone(),
+            }),
         })
     }
 
     fn describe(cfg: &ConnectionConfig) -> String {
         let t = match &cfg.transport {
+            Transport::Tcp { host, port } if cfg.tls.is_some() => format!("TLS {host}:{port}"),
             Transport::Tcp { host, port } => format!("TCP {host}:{port}"),
             Transport::RtuOverTcp { host, port } => format!("RTU over TCP {host}:{port}"),
             Transport::Udp { host, port } => format!("UDP {host}:{port}"),
@@ -1041,6 +1082,7 @@ async fn simulate(
     strict: bool,
     unit: Option<u8>,
     generators: Option<String>,
+    tls: Option<tokio_rustls::TlsAcceptor>,
 ) -> Result<(), String> {
     use modbench_lib::generators::{self, Generator};
     use modbench_lib::simulator::{self, Memory, SimLogger};
@@ -1086,7 +1128,8 @@ async fn simulate(
     let device = simulator::Device::new(unit, memory);
     *device.generators.lock().unwrap() = generators.unwrap_or_default();
     let devices = std::sync::Arc::new(std::sync::Mutex::new(vec![device]));
-    let running = simulator::start(listen.clone(), devices, Some(logger))
+    let secure = tls.is_some();
+    let running = simulator::start_tls(listen.clone(), tls, devices, Some(logger))
         .await
         .map_err(|e| format!("{}: {e}", where_listening(&listen)))?;
     let changing = match count {
@@ -1095,9 +1138,10 @@ async fn simulate(
         n => format!(", {n} generators"),
     };
     println!(
-        "Simulating {} on {}{changing} (Ctrl+C to stop)",
+        "Simulating {} on {}{}{changing} (Ctrl+C to stop)",
         map.as_deref().unwrap_or("an empty device"),
-        where_listening(&running.listen)
+        where_listening(&running.listen),
+        if secure { " inside TLS" } else { "" }
     );
     // Runs until the process is stopped (Ctrl+C ends it).
     std::future::pending::<()>().await;
@@ -1567,6 +1611,9 @@ async fn run(cli: Cli) -> Result<(), String> {
             unit,
             public,
             generators,
+            tls_cert,
+            tls_key,
+            tls_client_ca,
         } => {
             let host = if public { "0.0.0.0" } else { "127.0.0.1" }.to_string();
             // The serial settings are read like a client's (see `Conn`).
@@ -1591,7 +1638,14 @@ async fn run(cli: Cli) -> Result<(), String> {
             } else {
                 Transport::Tcp { host, port }
             };
-            simulate(map, listen, strict, unit, generators).await?
+            let tls = match (&tls_cert, &tls_key) {
+                (Some(cert), Some(key)) => Some(
+                    modbench_lib::tls::acceptor(cert, key, tls_client_ca.as_deref())
+                        .map_err(|e| e.to_string())?,
+                ),
+                _ => None,
+            };
+            simulate(map, listen, strict, unit, generators, tls).await?
         }
         Command::Gateway {
             conn,

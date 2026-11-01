@@ -200,6 +200,7 @@ async fn probe(host: Ipv4Addr, scan: Arc<NetScan>) -> Option<NetHit> {
         unit_id: scan.unit,
         timeout_ms: scan.timeout_ms.max(1),
         local_address: scan.local_address.clone(),
+        tls: None,
     };
     let mut session = None;
     for _ in 0..=scan.retries {

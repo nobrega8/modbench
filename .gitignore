@@ -22,6 +22,9 @@ pnpm-debug.log*
 !.env.example
 *.pem
 *.key
+# ...except the TLS tests' certificates, which protect nothing
+!src-tauri/tests/tls/*.pem
+!src-tauri/tests/tls/*.key
 *.p12
 *.pfx
 *.keystore

@@ -411,6 +411,38 @@ where
     })
 }
 
+/// Answers Modbus TCP inside TLS on a host and port (Modbus/TCP Security):
+/// each client's TLS handshake runs through `acceptor`, and a client that
+/// fails it (no certificate, or one the acceptor does not trust) is dropped.
+pub async fn listen_tls<H, F>(
+    host: String,
+    port: u16,
+    acceptor: tokio_rustls::TlsAcceptor,
+    handler: F,
+) -> Result<(Transport, JoinHandle<()>), ModbusError>
+where
+    H: Handler + Clone + 'static,
+    F: Fn(String, bool) -> H + Send + Sync + 'static,
+{
+    let listener = TcpListener::bind((host.as_str(), port)).await?;
+    let port = listener.local_addr()?.port();
+    let server = Server::new(listener);
+    let task = tokio::spawn(async move {
+        let on_connected = |stream, peer: SocketAddr| {
+            let acceptor = acceptor.clone();
+            let service = TcpService(handler(peer.to_string(), false));
+            async move {
+                Ok(match acceptor.accept(stream).await {
+                    Ok(tls) => Some((service, tls)),
+                    Err(_) => None,
+                })
+            }
+        };
+        let _ = server.serve(&on_connected, |_| {}).await;
+    });
+    Ok((Transport::Tcp { host, port }, task))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
