@@ -97,6 +97,8 @@
 \titlespacing*{\subsubsection}{0pt}{10pt}{2pt}
 \setcounter{secnumdepth}{1}
 \setcounter{tocdepth}{1}
+% Room for numbers like 10.13 in the contents: the class's 2.3em is too narrow
+\renewcommand*\l@section{\@dottedtocline{1}{1.5em}{3.3em}}
 
 % --- Lists ---------------------------------------------------------------
 \setlist{itemsep=2pt, topsep=4pt, parsep=0pt}
