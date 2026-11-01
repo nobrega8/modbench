@@ -216,6 +216,7 @@ mod tests {
             unit_id,
             timeout_ms,
             local_address: None,
+            tls: None,
         }
     }
 

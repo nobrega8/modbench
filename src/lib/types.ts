@@ -39,6 +39,15 @@ export interface ConnectionConfig {
   /** Local address to send from over TCP/UDP; absent for the system's
    * routing. */
   local_address?: string;
+  /** Modbus/TCP Security (see `tls.rs`): PEM file paths. */
+  tls?: TlsConfig;
+}
+
+export interface TlsConfig {
+  /** CA the device's certificate must be signed by; null trusts any. */
+  ca: string | null;
+  cert: string | null;
+  key: string | null;
 }
 
 /** A network interface of this computer and one of its addresses. */

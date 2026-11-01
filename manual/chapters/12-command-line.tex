@@ -10,6 +10,7 @@ the app. It never writes to a device.
 modbench-cli read --tcp 192.168.1.10 holding 0x0405 1
 modbench-cli read --udp 192.168.1.10 holding 0 10
 modbench-cli read --tcp 192.168.1.10 --source 192.168.1.5 holding 0 2
+modbench-cli read --tcp 192.168.1.10 --tls --ca ca.pem --cert me.pem --key me.key holding 0 1
 modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
 modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
 modbench-cli id --tcp 192.168.1.10
@@ -34,7 +35,9 @@ modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10
   \val{scan} & Finds the unit IDs that answer. \\
   \val{id} & Device identification (FC43). \\
   \val{simulate} & A simulated device shaped after a map (port 5020 by
-    default); \val{--strict} answers only the map's addresses. \\
+    default); \val{--strict} answers only the map's addresses;
+    \val{--tls-cert} and \val{--tls-key} answer inside TLS, and
+    \val{--tls-client-ca} asks clients for a certificate from that CA. \\
   \val{gateway} & Passes requests from clients on \val{--listen}
     (\val{tcp:}, \val{udp:}, \val{rtu-over-tcp:}, \val{rtu-over-udp:} and a
     port, or \val{rtu:} and \val{ascii:} and a serial port) to the device of
@@ -50,6 +53,11 @@ modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10
   \bottomrule
 \end{tabularx}
 \end{center}
+
+With \val{--tcp}, \val{--tls} talks Modbus/TCP Security (port 802 unless the
+address gives one): \val{--ca} is the CA the device's certificate must be
+signed by (without it, any is trusted), \val{--cert} and \val{--key} the
+client certificate and key for devices that ask.
 
 \val{modbench-cli --help} lists every command and option, and
 \val{modbench-cli --version} prints the version; \val{-h} and \val{-V} are

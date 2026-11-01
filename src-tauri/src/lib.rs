@@ -21,6 +21,7 @@ pub mod poller;
 pub mod serve;
 pub mod simulator;
 pub mod tap;
+pub mod tls;
 pub mod udp;
 
 const USAGE: &str = "\
