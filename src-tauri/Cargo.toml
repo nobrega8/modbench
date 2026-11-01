@@ -42,7 +42,7 @@ tauri-plugin-clipboard-manager = "2"
 # Lists the network interfaces to send from
 if-addrs = "0.15"
 # Random token of the GUI control channel (already in the tree through tauri)
-getrandom = "0.3"
+getrandom = "0.4"
 
 # https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

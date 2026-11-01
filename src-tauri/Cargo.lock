@@ -2397,7 +2397,7 @@ version = "0.5.1"
 dependencies = [
  "async-trait",
  "clap",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "if-addrs",
  "reqwest",
  "rustls",
