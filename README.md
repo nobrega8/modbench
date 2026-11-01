@@ -2,6 +2,8 @@
 
 # Modbench
 
+**English** · [Español](docs/readme/README_ES.md) · [简体中文](docs/readme/README_ZHS.md) · [日本語](docs/readme/README_JP.md)
+
 [![CI](https://github.com/nobrega8/modbench/actions/workflows/ci.yml/badge.svg)](https://github.com/nobrega8/modbench/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/nobrega8/modbench)](https://github.com/nobrega8/modbench/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/nobrega8/modbench/total)](https://github.com/nobrega8/modbench/releases)
