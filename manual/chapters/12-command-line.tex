@@ -8,12 +8,15 @@ the app. It never writes to a device.
 \section{Commands}
 
 \begin{lstlisting}[language=bash]
+modbench-cli ports
 modbench-cli read --tcp 192.168.1.10 holding 0x0405 1
 modbench-cli read --udp 192.168.1.10 holding 0 10
 modbench-cli read --tcp 192.168.1.10 --source 192.168.1.5 holding 0 2
 modbench-cli read --tcp 192.168.1.10 --tls --ca ca.pem --cert me.pem --key me.key holding 0 1
 modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
+modbench-cli check --tcp 192.168.1.10 device.mbmap.json --report out.html
 modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
+modbench-cli scan-serial --rtu COM3 --first
 modbench-cli id --tcp 192.168.1.10
 modbench-cli simulate device.mbmap.json --strict
 modbench-cli simulate device.mbmap.json --generators moving.json
@@ -32,10 +35,19 @@ modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10
   \toprule
   \thead{Command} & \thead{What it does} \\
   \midrule
+  \val{ports} & Lists the serial ports. \\
   \val{read} & Reads coils or registers, like a manual request. \\
   \val{map} & Reads every register of a map from a device, by name;
     \val{--filter} keeps the names that match. \\
+  \val{check} & Reads every register of a map once, as \val{map} does, and
+    reports for each one whether it passed, failed or was not read, like the
+    Check device button of the Device map tab (Section~\ref{sec:check}); it exits with 1
+    when a check fails and \val{--report} writes the HTML report. \\
   \val{scan} & Finds the unit IDs that answer. \\
+  \val{scan-serial} & Finds the baud rate, parity and stop bits of a serial
+    device: it asks one register (\val{--area} and \val{--address}) with each
+    setting of \val{--bauds}, \val{--parities} and \val{--stop-bits} and
+    lists the ones that get an answer; \val{--first} stops at the first. \\
   \val{id} & Device identification (FC43). \\
   \val{simulate} & A simulated device shaped after a map (port 5020 by
     default); \val{--strict} answers only the map's addresses;
@@ -68,6 +80,9 @@ address gives one): \val{--ca} is the CA the device's certificate must be
 signed by (without it, any is trusted), \val{--cert} and \val{--key} the
 client certificate and key for devices that ask.
 
+\val{read}, \val{map}, \val{check}, \val{scan}, \val{scan-serial} and
+\val{id} take \val{--json} to print JSON instead of text.
+
 \val{modbench-cli --help} lists every command and option, and
 \val{modbench-cli --version} prints the version; \val{-h} and \val{-V} are
 short for them. \val{modbench --help} and \val{modbench --version} answer the
@@ -93,8 +108,10 @@ often it changes (\val{every\_ms}, 1000 by default, at least 50):
 
 \val{modbench-cli mcp} serves the same reads over the Model Context Protocol
 (stdio), so an AI assistant such as Claude Code can read devices and check
-maps: \val{read\_map} reads a device with a map, \val{validate\_map} checks a
-map file. Like the command line, it never writes to a device.
+maps: \val{list\_serial\_ports} lists the serial ports,
+\val{read\_registers} reads coils or registers once, \val{read\_device\_id}
+asks a device to identify itself, \val{read\_map} reads a device with a map and
+\val{validate\_map} checks a map file. Like the command line, it never writes to a device.
 
 \subsection{Letting an assistant drive the window}
 

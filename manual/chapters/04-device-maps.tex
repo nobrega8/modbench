@@ -92,6 +92,22 @@ but mean nothing. Modbench checks in two ways:
 After a mismatch, writes ask for confirmation even when confirmation is off.
 \end{warning}
 
+\section{Checking a device against its map}
+\label{sec:check}
+
+When the connection and the map are set, \ui{Check device} (the tick button in
+the toolbar of the Device map tab) reads every register of the map once and
+gives each a result: \emph{passed}, \emph{failed} or \emph{not read}. It also
+compares the model and the firmware the device reports with what the map
+declares, like the checks above. The summary counts the three results, or says
+\emph{No failures}.
+
+\ui{Save report (HTML)} writes the result to one page, to keep with a
+commissioning or to send. Check device needs the connection to itself, so stop
+reading the map first. It only reads, and never writes to the device. The
+command line does the same with \val{modbench-cli check}
+(Chapter~\ref{ch:cli}).
+
 \section{Map status}
 \label{sec:map-status}
 

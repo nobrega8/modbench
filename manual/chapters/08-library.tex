@@ -19,6 +19,13 @@ Right-click a map:
 
 \begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
   \item[Use] Opens it on the Main page.
+  \item[Explore] Shows the registers of the map, with a search, and its
+    properties, translation tables, no-data values and sources, without using
+    it.
+  \item[Edit…] Opens the map in the map builder (next section).
+  \item[Open in a text editor…] Opens the file in your text editor, after
+    asking.
+  \item[Duplicate] Makes a copy of the map in the library.
   \item[Simulate this device] Opens the simulator with a device shaped after
     this map (Chapter~\ref{ch:simulator}).
   \item[Export for other software…] Writes the map as the Modbus
@@ -45,6 +52,67 @@ editor.
 
 The library is a folder (\nav{Settings\then Device library\then Library
 folder}): files copied into it by hand appear too.
+
+\section{The map builder}
+\label{sec:builder}
+
+\ui{Map builder} (in the Library's toolbar) opens a window of its own, next to
+the main one, to write a map without a text editor. \ui{Edit…} in a map's
+right-click menu opens that map in it. \ui{New map} starts an empty one,
+\ui{Open a map…} loads a file.
+
+The window has the map's header and a table of its registers. It checks the
+map with the same rules as a file while you type, and says so at the top:
+\emph{No problems found}, or the number of errors and warnings, with the
+cause beside each one. \emph{Unsaved changes} shows when the map differs from
+what is on disk.
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Device] Vendor, model and the other fields that name the device, the
+    source it was made from (manual, version, URL) and the connection defaults
+    that are filled in when the map is used.
+  \item[Optional parameters] The firmware the map is for (\field{Firmware
+    from} and \field{Firmware up to}), the date it was revised, the most
+    registers or bits one read may ask for, the models it covers and notes,
+    one per line. \ui{Sources} lists the documents the map was made from.
+    Named state labels, the no-data values by type and any other keys of the
+    file (the ones that begin with \val{x\_}) are here too.
+  \item[Address base] How the manual numbers its addresses, from 0 or from 1.
+    Addresses in the table are typed as the manual writes them.
+  \item[Registers] One row for each register. \ui{Add a register} adds a row;
+    each row can be moved up or down, duplicated or deleted, and
+    \ui{Edit register…} opens all of its fields. State labels are written as
+    pairs, such as \val{0=Off, 1=On}.
+  \item[Changes from the original] Lists what was added, removed or changed
+    since the map was opened.
+\end{description}
+
+\ui{Save as…} writes a version 2 \file{.mbmap.json}. A map that came from the
+library is saved back to its file with \ui{Save}, or copied elsewhere with
+\ui{Save as…}; errors must be fixed before it goes into the library, and
+Modbench asks before it replaces a map the library already has for the same
+vendor and model. \ui{Open in a text editor…} opens the file instead.
+
+\subsection{Importing a register table}
+
+Manuals list registers in tables. \ui{Import a table…}, in the map builder,
+turns one into the registers of a map. Paste the table copied from a
+spreadsheet or a manual (\val{Ctrl+V}), or open a CSV file.
+
+Modbench reads the header to guess what each column holds (name, group, area,
+address, type, length, scale, unit, access or description). Each guess can be
+changed, a column can be left out, and \field{The first row is a header} is
+ticked when the first row looks like one. Types, scales and access are read the
+way manuals write them (\val{x0.1}, \val{1/10}, \val{R/W}), and so are
+addresses such as \val{40001}. Rows that do not say
+which area they belong to (coils, holding registers…) use
+\field{Area of rows that name none}. Addresses are read the way the manual
+numbers them, that is, with the map's address base.
+
+A cell that could not be read keeps the default value and is marked in red,
+and the message after the import names the rows to check.
+\ui{Replace the registers} swaps the map's registers for the table;
+\ui{Add to the map} keeps them and appends the rows.
 
 \section{The online library}
 

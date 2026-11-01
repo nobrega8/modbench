@@ -2,12 +2,14 @@
 \documentclass[11pt, a4paper, oneside, openany]{book}
 \usepackage{modbench}
 
-\newcommand{\mbversion}{0.2}
+% The version is the app's, read from ../package.json, and the date is the
+% month of the build, so neither goes stale
+\directlua{dofile('version.lua')}
 \hypersetup{pdftitle={Modbench user manual}, pdfauthor={Modbench}}
 
 \begin{document}
 
-\mbcover{\mbversion}{October 2026}
+\mbcover{\mbversion}{\mbdate}
 
 \frontmatter
 \pagestyle{plain}

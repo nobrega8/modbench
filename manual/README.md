@@ -17,6 +17,9 @@ The PDF is written to `build/modbench-manual.pdf` and copied to
 `modbench-manual.pdf`, the copy kept in the repository (the app's Settings
 link to it).
 
+The cover's version is read from `../package.json` by `version.lua`, and its date
+is the month of the build, so a release only needs the manual rebuilt.
+
 ## Layout
 
 - `modbench-manual.tex`: the book: cover, contents, chapters.
