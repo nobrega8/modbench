@@ -23,6 +23,8 @@
       '<rect width="6" height="6" x="2" y="9" rx="1"/><rect width="6" height="6" x="16" y="9" rx="1"/><path d="M8 12h8"/><path d="m13 9 3 3-3 3"/>',
     sequence:
       '<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="m3 6 1 1 2-2"/><path d="m3 12 1 1 2-2"/><circle cx="4" cy="18" r="1"/>',
+    up: '<path d="m6 15 6-6 6 6"/>',
+    down: '<path d="m6 9 6 6 6-6"/>',
     simulator:
       '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/>',
     decoder:

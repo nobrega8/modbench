@@ -25,7 +25,8 @@
   --surface-3-rgb: 230 230 234; /* hover */
   --fg-rgb: 23 23 23; /* ink */
   --fg-2-rgb: 92 92 96;
-  --fg-3-rgb: 142 142 147;
+  /* 4.5:1 on the sunken cells, the darkest ground text sits on (WCAG AA) */
+  --fg-3-rgb: 108 108 113;
   --edge-rgb: 226 226 230; /* the one hairline: inset separators */
   --edge-2-rgb: 210 210 215;
   --alert-rgb: 200 38 38;
@@ -39,7 +40,8 @@
   --e2: 0 1px 2px rgb(17 17 17 / 0.04), 0 4px 12px -2px rgb(17 17 17 / 0.06);
   --e3:
     0 12px 32px -8px rgb(17 17 17 / 0.16), 0 32px 64px -16px rgb(17 17 17 / 0.2);
-  --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.14);
+  /* Ink at 3:1 or more against every surface, so the keyboard's place shows */
+  --ring-focus: 0 0 0 2px rgb(var(--fg-rgb) / 0.62);
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
@@ -67,7 +69,7 @@
     --surface-3-rgb: 62 62 66;
     --fg-rgb: 245 245 245;
     --fg-2-rgb: 174 174 178;
-    --fg-3-rgb: 122 122 128;
+    --fg-3-rgb: 152 152 158;
     --edge-rgb: 56 56 58;
     --edge-2-rgb: 72 72 74;
     --alert-rgb: 248 113 113;
@@ -80,7 +82,7 @@
     --e3:
       inset 0 0 0 1px rgb(255 255 255 / 0.12),
       0 20px 56px -14px rgb(0 0 0 / 0.8);
-    --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
+    --ring-focus: 0 0 0 2px rgb(var(--fg-rgb) / 0.62);
     --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --series-1: #4aa8f5;
     --series-2: #22d36b;
@@ -102,7 +104,7 @@
   --surface-3-rgb: 62 62 66;
   --fg-rgb: 245 245 245;
   --fg-2-rgb: 174 174 178;
-  --fg-3-rgb: 122 122 128;
+  --fg-3-rgb: 152 152 158;
   --edge-rgb: 56 56 58;
   --edge-2-rgb: 72 72 74;
   --alert-rgb: 248 113 113;
@@ -114,7 +116,7 @@
     inset 0 0 0 1px rgb(255 255 255 / 0.09), 0 6px 20px -6px rgb(0 0 0 / 0.6);
   --e3:
     inset 0 0 0 1px rgb(255 255 255 / 0.12), 0 20px 56px -14px rgb(0 0 0 / 0.8);
-  --ring-focus: 0 0 0 3px rgb(var(--fg-rgb) / 0.22);
+  --ring-focus: 0 0 0 2px rgb(var(--fg-rgb) / 0.62);
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --series-1: #4aa8f5;
   --series-2: #22d36b;

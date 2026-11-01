@@ -244,6 +244,7 @@
             <input
               class="input reg"
               list="sequence-registers"
+              aria-label={t("sequence.register")}
               bind:value={s.register}
               aria-invalid={!!problem}
               title={problem ?? ""}
@@ -258,6 +259,7 @@
               >= <input
                 class="input num"
                 value={s.value}
+                aria-label={t("sequence.write")}
                 disabled={running}
                 onchange={(e) => (s.value = num(e.currentTarget.value))}
               /></label
@@ -267,6 +269,7 @@
               ><input
                 class="input num"
                 value={s.ms}
+                aria-label={t("sequence.wait")}
                 disabled={running}
                 onchange={(e) =>
                   (s.ms = Math.max(0, num(e.currentTarget.value)))}
@@ -275,6 +278,7 @@
           {:else if s.do === "expect"}
             <select
               class="input mode"
+              aria-label={t("sequence.expect")}
               value={s.equals !== undefined ? "equals" : "range"}
               disabled={running}
               onchange={(e) =>
@@ -287,6 +291,7 @@
               <input
                 class="input num"
                 value={s.equals}
+                aria-label={t("sequence.expect")}
                 disabled={running}
                 onchange={(e) => (s.equals = num(e.currentTarget.value))}
               />
@@ -294,6 +299,7 @@
                 >± <input
                   class="input num"
                   value={s.tolerance ?? 0}
+                  aria-label="±"
                   disabled={running}
                   onchange={(e) =>
                     (s.tolerance = Math.abs(num(e.currentTarget.value)))}
@@ -303,6 +309,7 @@
               <input
                 class="input num"
                 value={s.min ?? ""}
+                aria-label="min"
                 placeholder="min"
                 disabled={running}
                 onchange={(e) =>
@@ -314,6 +321,7 @@
               <input
                 class="input num"
                 value={s.max ?? ""}
+                aria-label="max"
                 placeholder="max"
                 disabled={running}
                 onchange={(e) =>
@@ -327,6 +335,7 @@
               <input
                 class="input num"
                 value={s.within_ms}
+                aria-label={t("sequence.within")}
                 disabled={running}
                 onchange={(e) =>
                   (s.within_ms = Math.max(0, num(e.currentTarget.value)))}
@@ -353,14 +362,14 @@
             title={t("builder.row_up")}
             aria-label={t("builder.row_up")}
             disabled={running || i === 0}
-            onclick={() => move(i, -1)}>↑</button
+            onclick={() => move(i, -1)}><Icon name="up" size={14} /></button
           >
           <button
             class="btn icon ghost"
             title={t("builder.row_down")}
             aria-label={t("builder.row_down")}
             disabled={running || i === sequence.steps.length - 1}
-            onclick={() => move(i, 1)}>↓</button
+            onclick={() => move(i, 1)}><Icon name="down" size={14} /></button
           >
           <button
             class="btn icon ghost"
