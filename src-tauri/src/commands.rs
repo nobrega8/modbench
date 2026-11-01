@@ -145,7 +145,7 @@ pub fn app_version() -> &'static str {
 }
 
 /// The package manager that owns this copy, so updates come from it rather than
-/// the in-app updater: "pacman" when installed from the AUR package, "apt" when
+/// the in-app updater: "pacman" when installed from the Arch package, "apt" when
 /// installed from the .deb, none otherwise. An AppImage sets `APPIMAGE` and updates
 /// itself, even on a system with the .deb.
 #[tauri::command]
@@ -155,9 +155,7 @@ pub fn package_manager() -> Option<&'static str> {
     } else if std::path::Path::new("/var/lib/pacman/local")
         .read_dir()
         .is_ok_and(|mut dir| {
-            dir.any(|e| {
-                e.is_ok_and(|e| e.file_name().to_string_lossy().starts_with("modbench-bin-"))
-            })
+            dir.any(|e| e.is_ok_and(|e| e.file_name().to_string_lossy().starts_with("modbench-")))
         })
     {
         Some("pacman")

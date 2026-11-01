@@ -40,15 +40,15 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
 </details>
 
 <details>
-<summary>Install from the AUR (Arch Linux, Manjaro)</summary>
+<summary>Install on Arch Linux (x86_64)</summary>
 
-`modbench-bin` repackages the release's `.deb` for `x86_64`, `aarch64` and `armv7h`:
+Each release has an Arch package, `modbench-x86_64.pkg.tar.zst`. No repository needed:
 
 ```sh
-yay -S modbench-bin
+sudo pacman -U https://github.com/nobrega8/modbench/releases/latest/download/modbench-x86_64.pkg.tar.zst
 ```
 
-Updates then arrive with your AUR helper, for example `yay -Syu`.
+Run the same command to update.
 </details>
 
 ## Features

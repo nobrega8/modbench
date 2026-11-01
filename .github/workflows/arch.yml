@@ -1,11 +1,10 @@
 name: Arch
 
-# Publishes modbench-bin to the AUR after each release, so Arch users install
-# and update it with their AUR helper (`yay -S modbench-bin`). The package
-# repackages the release's .deb files (packaging/arch/PKGBUILD); this fills in
-# the version and the checksums and pushes the result. Needs the AUR_SSH_PRIVATE_KEY
-# secret: the private key of an AUR account that maintains modbench-bin.
-# A pull request that touches the PKGBUILD only checks that it builds.
+# Builds a package for Arch Linux after each release and attaches it to the
+# release, so it installs with pacman, without any repository:
+#   sudo pacman -U https://github.com/nobrega8/modbench/releases/latest/download/modbench-x86_64.pkg.tar.zst
+# The package repackages the release's .deb (packaging/arch/PKGBUILD); the same
+# command also updates it. A pull request that touches the PKGBUILD only builds.
 on:
   workflow_run:
     workflows: [Release]
@@ -15,29 +14,28 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (default: the latest release)"
+        description: "Release tag to build (default: the latest release)"
         required: false
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: arch
   cancel-in-progress: false
 
 jobs:
-  aur:
+  package:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     steps:
       - name: Install the tools
-        run: pacman -Syu --noconfirm git openssh github-cli
+        run: pacman -Syu --noconfirm github-cli
 
       - uses: actions/checkout@v7
 
       - name: Fill in the version and the checksums
-        id: pkg
         env:
           GH_TOKEN: ${{ github.token }}
           INPUT_TAG: ${{ inputs.tag }}
@@ -45,51 +43,32 @@ jobs:
           tag="$INPUT_TAG"
           [ -n "$tag" ] || tag=$(gh release list -R "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases --limit 1 --json tagName -q '.[0].tagName')
           ver="${tag#v}"
-          echo "version=$ver" >> "$GITHUB_OUTPUT"
-          mkdir debs
-          gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.deb' -D debs
-          sum() { sha256sum "debs/Modbench_${ver}_$1.deb" | cut -d' ' -f1; }
-          cd packaging/arch
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          mkdir -p "$PWD/debs"
+          gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.deb' -D "$PWD/debs"
+          sum() { sha256sum "$PWD/debs/Modbench_${ver}_$1.deb" | cut -d' ' -f1; }
           sed -i \
             -e "s/^pkgver=.*/pkgver=$ver/" \
             -e "s/^sha256sums_x86_64=.*/sha256sums_x86_64=('$(sum amd64)')/" \
             -e "s/^sha256sums_aarch64=.*/sha256sums_aarch64=('$(sum arm64)')/" \
             -e "s/^sha256sums_armv7h=.*/sha256sums_armv7h=('$(sum armhf)')/" \
-            PKGBUILD
-          cat PKGBUILD
+            packaging/arch/PKGBUILD
+          cat packaging/arch/PKGBUILD
 
-      - name: Build the package and write .SRCINFO
+      - name: Build the package
         run: |
           useradd -m builder
           cp -r packaging/arch /home/builder/pkg
-          cp -r debs/. /home/builder/pkg/
+          # The .deb files are already downloaded: makepkg only verifies and packages
+          cp debs/*_amd64.deb /home/builder/pkg/
           chown -R builder /home/builder/pkg
-          # makepkg refuses to run as root; the .deb files are already downloaded,
-          # so it only has to verify them and package
-          su builder -c 'cd ~/pkg && makepkg --nodeps --noconfirm && makepkg --printsrcinfo > .SRCINFO'
-          ls -l /home/builder/pkg/*.pkg.tar.* /home/builder/pkg/.SRCINFO
+          su builder -c 'cd ~/pkg && makepkg --nodeps --noconfirm'
+          cp /home/builder/pkg/modbench-*-x86_64.pkg.tar.zst modbench-x86_64.pkg.tar.zst
+          pacman -Qip modbench-x86_64.pkg.tar.zst
+          pacman -Qlp modbench-x86_64.pkg.tar.zst | head -20
 
-      - name: Push to the AUR
+      - name: Attach it to the release
         if: github.event_name != 'pull_request'
         env:
-          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          VERSION: ${{ steps.pkg.outputs.version }}
-        run: |
-          [ -n "$AUR_SSH_PRIVATE_KEY" ] || { echo "AUR_SSH_PRIVATE_KEY is not set"; exit 1; }
-          install -d -m 700 ~/.ssh
-          echo "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
-          ssh-keyscan -t ed25519 aur.archlinux.org >> ~/.ssh/known_hosts
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
-          git clone ssh://aur@aur.archlinux.org/modbench-bin.git aur
-          cp /home/builder/pkg/PKGBUILD /home/builder/pkg/.SRCINFO aur/
-          cd aur
-          git config user.name "nobrega8"
-          git config user.email "afonsognobrega@gmail.com"
-          git add PKGBUILD .SRCINFO
-          if git diff --cached --quiet; then
-            echo "The AUR already has $VERSION"
-          else
-            git commit -m "Update to $VERSION"
-            git push origin HEAD:master
-          fi
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" modbench-x86_64.pkg.tar.zst -R "$GITHUB_REPOSITORY" --clobber
