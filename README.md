@@ -59,6 +59,7 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
   - **Data decoder** and **frame decoder**: hex as every type in every byte order, and frames field by field with CRC/LRC checks (also on the Raw data tab).
   - **Statistics**: failures by cause (timeouts, each exception, bad frames) and response times per function code, and a suggested timeout (4 × the slowest answer) that one click puts in step 1.
   - **Alarms**: low/high limits on map registers, shown in red on the Device map tab.
+  - **Test sequence**: for commissioning, steps on the map's registers (write a value, wait, expect a value or a range within a time, read one to record it), saved as `.mbtest.json`, with a result per step and an HTML report.
   - **Trend player**: play back a CSV recording with a scrub bar and up to 60× speed, and save the charts as an image.
 - **Bit view**: see the 16 bits of each register and switch a single bit of a holding register.
 - **Export to other software**: write a map as a Home Assistant Modbus configuration, ESPHome sensors, a Telegraf input, a Node-RED flow or a CSV tag list, with the device's address from the connection (right-click a map in the Library).
@@ -82,7 +83,7 @@ Read the [user manual (PDF)](https://raw.githubusercontent.com/nobrega8/modbench
 
 ## Command line and MCP
 
-`modbench-cli` reads devices without the UI. It never writes to a device.
+`modbench-cli` reads devices without the UI. It never writes to a device, except the write steps of a test sequence run with `--allow-writes`.
 
 ```sh
 modbench-cli read --tcp 192.168.1.10 holding 0x0405 1
@@ -98,6 +99,7 @@ modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
 modbench-cli simulate device.mbmap.json --tls-cert server.pem --tls-key server.key --tls-client-ca ca.pem   # inside TLS
 modbench-cli gateway --listen tcp:0.0.0.0:5502 --rtu COM3 --baud 9600   # Modbus TCP clients -> RTU device
 modbench-cli monitor --rtu COM3 --baud 19200 --parity E   # listen to a line, never send
+modbench-cli test --tcp 192.168.1.10 device.mbmap.json start.mbtest.json --allow-writes --report out.html
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap          # version 1 map -> old-device.mbmap.json
 modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10   # or esphome, telegraf, node-red, csv

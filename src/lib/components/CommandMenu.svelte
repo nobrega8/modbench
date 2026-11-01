@@ -45,6 +45,7 @@
     "request",
     "stats",
     "alarms",
+    "sequence",
   ];
 
   const blocked = $derived(

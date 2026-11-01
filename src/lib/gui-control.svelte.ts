@@ -37,6 +37,7 @@ const TOOLS: ToolId[] = [
   "frames",
   "stats",
   "alarms",
+  "sequence",
   "player",
 ];
 const ORDERS: ByteOrder[] = ["ABCD", "DCBA", "BADC", "CDAB"];

@@ -586,3 +586,32 @@ export interface ExportOptions {
   connection?: ConnectionConfig;
   interval_s?: number;
 }
+
+/** A test sequence (see `sequence.rs`), saved as `.mbtest.json`. */
+export interface Sequence {
+  name: string;
+  steps: SequenceStep[];
+}
+
+export type SequenceStep =
+  | { do: "write"; register: string; value: number }
+  | { do: "wait"; ms: number }
+  | {
+      do: "expect";
+      register: string;
+      equals?: number;
+      tolerance?: number;
+      min?: number;
+      max?: number;
+      within_ms: number;
+    }
+  | { do: "read"; register: string };
+
+export interface StepResult {
+  index: number;
+  status: "pass" | "fail" | "error" | "done";
+  value: string | null;
+  message: string | null;
+  time_ms: number;
+  ms: number;
+}
