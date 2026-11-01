@@ -22,6 +22,8 @@ import type {
   Generator,
   ImportResult,
   SaveOutcome,
+  Sequence,
+  StepResult,
   LibraryEntry,
   LocalInterface,
   MapSearch,
@@ -97,6 +99,13 @@ export const api = {
     invoke<PollCycle>("poll_map_once", { request }),
   checkDevice: (map: DeviceMap, request: PollRequest) =>
     invoke<CheckReport>("check_device", { map, request }),
+  sequenceRun: (map: DeviceMap, sequence: Sequence) =>
+    invoke<StepResult[]>("sequence_run", { map, sequence }),
+  sequenceHtml: (
+    sequence: Sequence,
+    results: StepResult[],
+    context: ReportContext,
+  ) => invoke<string>("sequence_html", { sequence, results, context }),
   checkHtml: (report: CheckReport, context: ReportContext) =>
     invoke<string>("check_html", { report, context }),
   writeMapValue: (

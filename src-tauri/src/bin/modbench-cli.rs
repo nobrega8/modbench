@@ -2,7 +2,9 @@
 //!
 //! Read-only on purpose: it lists ports, reads registers, reads every
 //! register of a `.mbmap` once, and validates map files. `simulate` runs a
-//! simulated device that others can write to; it never writes to a device.
+//! simulated device that others can write to; it never writes to a device,
+//! except a test sequence's write steps when `test` is given
+//! `--allow-writes`.
 
 use std::path::Path;
 use std::time::Duration;
@@ -239,6 +241,26 @@ enum Command {
         /// Answer writes with exception 01 instead of passing them on
         #[arg(long)]
         read_only: bool,
+    },
+    /// Run a test sequence (.mbtest.json: write, wait, expect, read on map
+    /// registers) against a device; exits with 1 when a step fails. Writes
+    /// only with --allow-writes
+    Test {
+        #[command(flatten)]
+        conn: Conn,
+        /// Path to the .mbmap file whose registers the sequence names
+        map: String,
+        /// Path to the .mbtest.json sequence
+        sequence: String,
+        /// Write the report to this HTML file
+        #[arg(long)]
+        report: Option<String>,
+        /// Let the sequence's write steps write to the device
+        #[arg(long)]
+        allow_writes: bool,
+        /// Print the results as JSON
+        #[arg(long)]
+        json: bool,
     },
     /// Run as an MCP server over stdio
     Mcp,
@@ -646,6 +668,82 @@ async fn check_device(
     Ok((text, report.failed()))
 }
 
+/// Runs a test sequence; true when a step failed.
+async fn run_sequence(
+    conn: &Conn,
+    map_path: &str,
+    sequence_path: &str,
+    report_path: Option<&str>,
+    allow_writes: bool,
+    json: bool,
+) -> Result<bool, String> {
+    use modbench_lib::sequence::{self, Sequence, Status};
+    let map = load_map(map_path)?;
+    let text =
+        std::fs::read_to_string(sequence_path).map_err(|e| format!("{sequence_path}: {e}"))?;
+    let seq: Sequence = serde_json::from_str(&text).map_err(|e| format!("{sequence_path}: {e}"))?;
+    if seq.steps.iter().any(sequence::Step::writes) && !allow_writes {
+        return Err(format!(
+            "{sequence_path} writes to the device; add --allow-writes to let it"
+        ));
+    }
+    let cfg = conn.config(Some(&map))?;
+    let mut session = Session::connect(&cfg, None)
+        .await
+        .map_err(|e| format!("could not connect ({}): {e}", Conn::describe(&cfg)))?;
+    if !json {
+        println!("{}  {sequence_path}", Conn::describe(&cfg));
+    }
+    let results = sequence::run(&mut session, &map, &seq, allow_writes, |r| {
+        if json {
+            return;
+        }
+        let mark = match r.status {
+            Status::Pass => "pass",
+            Status::Fail => "FAIL",
+            Status::Error => "ERROR",
+            Status::Done => "done",
+        };
+        let value = r
+            .value
+            .as_deref()
+            .map(|v| format!("  {v}"))
+            .unwrap_or_default();
+        let note = r
+            .message
+            .as_deref()
+            .map(|m| format!("  ({m})"))
+            .unwrap_or_default();
+        println!(
+            "  {mark:<5} {:>2}. {}{value}{note}",
+            r.index + 1,
+            seq.steps[r.index].text()
+        );
+    })
+    .await;
+    session.disconnect().await;
+    if let Some(out) = report_path {
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs());
+        let ctx = check::ReportContext {
+            map: format!("{} {}", map.meta.vendor, map.meta.model),
+            map_file: map_path.to_string(),
+            map_revision: None,
+            connection: Conn::describe(&cfg),
+            unit_id: cfg.unit_id,
+            identification: Vec::new(),
+            when: check::utc_text(secs),
+        };
+        std::fs::write(out, sequence::html(&seq, &results, &ctx))
+            .map_err(|e| format!("{out}: {e}"))?;
+    }
+    if json {
+        println!("{}", serde_json::to_string_pretty(&results).unwrap());
+    }
+    Ok(sequence::failed(&results))
+}
+
 fn check_text(where_: &str, path: &str, report: &check::CheckReport) -> String {
     use check::Status;
     let mut out = format!("{where_}  {path}\n");
@@ -900,7 +998,7 @@ fn gui_tools() -> Json {
             "inputSchema": {"type": "object", "properties": {
                 "page": {"type": "string", "enum": ["main", "tools", "library", "settings"]},
                 "tab": {"type": "string", "enum": ["registers", "map", "chart", "write", "raw", "log"]},
-                "tool": {"type": "string", "enum": ["simulator", "gateway", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "player"]}
+                "tool": {"type": "string", "enum": ["simulator", "gateway", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "sequence", "player"]}
             }}
         }
     ])
@@ -1504,6 +1602,27 @@ async fn run(cli: Cli) -> Result<(), String> {
         } => {
             let listen = parse_listen(&listen, listen_baud, listen_parity, listen_stop_bits)?;
             gateway(conn, listen, read_only).await?
+        }
+        Command::Test {
+            conn,
+            map,
+            sequence,
+            report,
+            allow_writes,
+            json,
+        } => {
+            if run_sequence(
+                &conn,
+                &map,
+                &sequence,
+                report.as_deref(),
+                allow_writes,
+                json,
+            )
+            .await?
+            {
+                return Err("the sequence failed".into());
+            }
         }
         Command::Mcp => serve_mcp().await,
     }

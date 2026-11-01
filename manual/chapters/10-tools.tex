@@ -212,6 +212,35 @@ can be looked at again later.
 \field{Time span} works as on the Chart tab, and \ui{Export image…} saves the
 charts (Section~\ref{sec:chart-image}).
 
+\section{Test sequence}
+
+A test sequence checks that a device reacts as it should, which a reading of
+its registers cannot tell: a setpoint written shows up in a status, a command
+starts something, a value settles in a range. Open the device's map on the
+Main page first: the steps name its registers.
+
+Each step is one of:
+
+\begin{description}[style=nextline, leftmargin=0pt, font=\intermedium]
+  \item[Write] a value in the register's own units (1 or 0 for on/off).
+  \item[Wait] some milliseconds.
+  \item[Expect] the register to equal a value (within a tolerance), or to be
+    in a range, reading it again until it does or the time given runs out
+    (0 reads once).
+  \item[Read] the register, to record its value in the report.
+\end{description}
+
+\ui{Run} runs every step in order against the device of step 1, and each step
+shows its result as it ends: \ui{Pass} or \ui{Fail} for an expectation, with
+the value seen; \ui{Done} for the others; \ui{Error} when the step could not
+run (a register not in the map, no answer). A failed step does not stop the
+ones after it. A sequence that writes asks before it runs, and read-only mode
+blocks its writes. \ui{Save report…} writes the results as an HTML page like
+the commissioning report.
+
+Sequences are saved as \file{.mbtest.json} files, usually next to the map, and
+\val{modbench-cli test} runs them too (Chapter~\ref{ch:cli}).
+
 \section{Statistics}
 \label{sec:statistics}
 

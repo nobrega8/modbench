@@ -89,6 +89,8 @@ import type {
   SerialProgress,
   SerialScan,
   TrafficEntry,
+  Sequence,
+  StepResult,
 } from "./types";
 
 export type TransportKind = "tcp" | "rtuovertcp" | "udp" | "rtuoverudp" | "rtu";
@@ -104,6 +106,7 @@ export type ToolId =
   | "frames"
   | "stats"
   | "alarms"
+  | "sequence"
   | "player";
 /** Framing on a serial port. */
 export type Framing = "rtu" | "ascii";
@@ -1274,25 +1277,48 @@ class Bench {
           id.objects.map((o) => [o.name, o.value]),
         )
         .catch((): [string, string][] => []);
-      const meta = open.map.meta;
-      const connection =
-        this.transport === "rtu"
-          ? `${this.framing === "ascii" ? "ASCII" : "RTU"} ${this.serialPort} ${this.baudrate} ${this.dataBits}${this.parity}${this.stopBits}`
-          : `${this.transport.toUpperCase()} ${this.host.trim()}:${this.tcpPort}`;
-      const context: ReportContext = {
-        map: `${meta.vendor} ${meta.model}`,
-        map_file: open.path,
-        map_revision:
-          meta.revision == null
-            ? null
-            : `${meta.revision}${meta.revised ? `, ${meta.revised}` : ""}`,
-        connection,
-        unit_id: this.unitId,
-        identification,
-        when: new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
-      };
-      return { report, context };
+      return { report, context: this.reportContext(open, identification) };
     });
+  }
+
+  /** What a report says besides its results: the map, how the device was
+   * reached, what it says about itself, and when. */
+  private reportContext(
+    open: OpenMap,
+    identification: [string, string][],
+  ): ReportContext {
+    const meta = open.map.meta;
+    const connection =
+      this.transport === "rtu"
+        ? `${this.framing === "ascii" ? "ASCII" : "RTU"} ${this.serialPort} ${this.baudrate} ${this.dataBits}${this.parity}${this.stopBits}`
+        : `${this.transport.toUpperCase()} ${this.host.trim()}:${this.tcpPort}`;
+    return {
+      map: `${meta.vendor} ${meta.model}`,
+      map_file: open.path,
+      map_revision:
+        meta.revision == null
+          ? null
+          : `${meta.revision}${meta.revised ? `, ${meta.revised}` : ""}`,
+      connection,
+      unit_id: this.unitId,
+      identification,
+      when: new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
+    };
+  }
+
+  /** Runs a test sequence on the open map's registers (see `sequence.rs`).
+   * Steps also arrive one by one as "sequence-step" events. */
+  async runSequence(sequence: Sequence): Promise<{
+    results: StepResult[];
+    context: ReportContext;
+  }> {
+    const open = this.map;
+    if (!open) throw new Error(t("state.choosemap"));
+    if (this.running) throw new Error(t("check.stop_first"));
+    return this.withLink(async () => ({
+      results: await api.sequenceRun($state.snapshot(open.map), sequence),
+      context: this.reportContext(open, []),
+    }));
   }
 
   /** Asks the device to identify itself (FC43): 1 basic, 2 regular, 3 extended. */

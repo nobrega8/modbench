@@ -13,6 +13,7 @@
   import FrameDecoderTool from "./tools/FrameDecoderTool.svelte";
   import NetworkScanTool from "./tools/NetworkScanTool.svelte";
   import SendRequestTool from "./tools/SendRequestTool.svelte";
+  import SequenceTool from "./tools/SequenceTool.svelte";
   import SimulatorTool from "./tools/SimulatorTool.svelte";
   import GatewayTool from "./tools/GatewayTool.svelte";
   import StatsTool from "./tools/StatsTool.svelte";
@@ -42,7 +43,12 @@
     },
     {
       title: "tools.test",
-      tools: [{ id: "request" }, { id: "stats" }, { id: "alarms" }],
+      tools: [
+        { id: "request" },
+        { id: "stats" },
+        { id: "alarms" },
+        { id: "sequence" },
+      ],
     },
   ];
 
@@ -105,6 +111,8 @@
         <StatsTool />
       {:else if tool === "alarms"}
         <AlarmsTool />
+      {:else if tool === "sequence"}
+        <SequenceTool />
       {:else}
         <TrendPlayerTool />
       {/if}

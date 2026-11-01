@@ -1,4 +1,5 @@
 \chapter{Command line and AI assistants}
+\label{ch:cli}
 
 \file{modbench-cli} reads devices and works with maps without the window: for
 scripts, for servers without a screen, and for a quick check. It comes with
@@ -18,6 +19,7 @@ modbench-cli simulate device.mbmap.json --generators moving.json
 modbench-cli simulate device.mbmap.json --rtu-over-tcp
 modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
 modbench-cli gateway --listen tcp:0.0.0.0:5502 --rtu COM3 --baud 9600
+modbench-cli test --tcp 192.168.1.10 device.mbmap.json start.mbtest.json --allow-writes --report out.html
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap
 modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10
@@ -40,6 +42,9 @@ modbench-cli export device.mbmap.json -f home-assistant --tcp 192.168.1.10
     port, or \val{rtu:} and \val{ascii:} and a serial port) to the device of
     the connection options, and prints each one; \val{--unit} sends them all
     to one unit ID, \val{--read-only} refuses writes. \\
+  \val{test} & Runs a test sequence (\file{.mbtest.json}) against the device
+    and exits with 1 when a step fails; \val{--report} writes the HTML report.
+    A sequence that writes needs \val{--allow-writes}. \\
   \val{validate} & Checks a map against the format, with the same messages as
     the app. \\
   \val{convert} & Converts a version 1 map to a \file{.mbmap.json} next to it. \\

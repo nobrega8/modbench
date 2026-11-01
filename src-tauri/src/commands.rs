@@ -17,6 +17,7 @@ use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
 use crate::online;
 use crate::planner::Area;
 use crate::poller::{self, PollCycle, PollRequest};
+use crate::sequence;
 use crate::simulator;
 use crate::tap::{Direction, RawSink};
 
@@ -335,6 +336,35 @@ pub async fn check_device(
     Ok(check::evaluate(&map, &results))
 }
 
+/// Runs a test sequence on the open connection (see `sequence`), reporting
+/// each step to every window as a "sequence-step" event as it ends. Write
+/// steps are errors while read-only mode is on.
+#[tauri::command]
+pub async fn sequence_run(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    map: DeviceMap,
+    sequence: sequence::Sequence,
+) -> Result<Vec<sequence::StepResult>, ModbusError> {
+    let allow_writes = !state.read_only.load(std::sync::atomic::Ordering::Relaxed);
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    Ok(sequence::run(session, &map, &sequence, allow_writes, |r| {
+        let _ = app.emit("sequence-step", r);
+    })
+    .await)
+}
+
+/// A test sequence's results as one HTML page.
+#[tauri::command]
+pub fn sequence_html(
+    sequence: sequence::Sequence,
+    results: Vec<sequence::StepResult>,
+    context: check::ReportContext,
+) -> String {
+    sequence::html(&sequence, &results, &context)
+}
+
 /// The commissioning report as one HTML page.
 #[tauri::command]
 pub fn check_html(report: check::CheckReport, context: check::ReportContext) -> String {
@@ -393,7 +423,7 @@ pub async fn write_map_value(
 
 /// Refuses a write outside the register's declared limits (spec 4.5). The
 /// limits are in engineering units, like the value.
-fn check_write_limits(register: &Register, value: &Value) -> Result<(), ModbusError> {
+pub(crate) fn check_write_limits(register: &Register, value: &Value) -> Result<(), ModbusError> {
     let v = match value {
         Value::Int(n) => *n as f64,
         Value::Uint(n) => *n as f64,

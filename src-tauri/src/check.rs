@@ -307,7 +307,21 @@ pub struct ReportContext {
     pub when: String,
 }
 
-fn escape(text: &str) -> String {
+/// The style of the HTML reports (commissioning check, test sequences).
+pub(crate) const REPORT_STYLE: &str = "<style>\n\
+         body{font:14px/1.45 system-ui,sans-serif;color:#1d1d1f;margin:32px auto;max-width:960px;padding:0 16px}\n\
+         h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px}\n\
+         table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:4px 8px;border-bottom:1px solid #ddd;vertical-align:top}\n\
+         th{font-size:12px;text-transform:uppercase;color:#666}\n\
+         dl{display:grid;grid-template-columns:max-content 1fr;gap:2px 16px;margin:12px 0}dt{color:#666}dd{margin:0}\n\
+         .pass{color:#1a7f37}.fail{color:#c0262d;font-weight:600}.skip{color:#777}\n\
+         .verdict{display:inline-block;padding:2px 10px;border-radius:4px;font-weight:700;border:2px solid currentColor}\n\
+         .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}\n\
+         tr.bad td{background:#fdeeee}\n\
+         @media print{body{margin:0;max-width:none}tr{break-inside:avoid}}\n\
+         </style>";
+
+pub(crate) fn escape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for c in text.chars() {
         match c {
@@ -347,20 +361,8 @@ pub fn html(report: &CheckReport, ctx: &ReportContext) -> String {
         "<title>Commissioning report - {}</title>\n",
         escape(&ctx.map)
     ));
-    out.push_str(
-        "<style>\n\
-         body{font:14px/1.45 system-ui,sans-serif;color:#1d1d1f;margin:32px auto;max-width:960px;padding:0 16px}\n\
-         h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px}\n\
-         table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:4px 8px;border-bottom:1px solid #ddd;vertical-align:top}\n\
-         th{font-size:12px;text-transform:uppercase;color:#666}\n\
-         dl{display:grid;grid-template-columns:max-content 1fr;gap:2px 16px;margin:12px 0}dt{color:#666}dd{margin:0}\n\
-         .pass{color:#1a7f37}.fail{color:#c0262d;font-weight:600}.skip{color:#777}\n\
-         .verdict{display:inline-block;padding:2px 10px;border-radius:4px;font-weight:700;border:2px solid currentColor}\n\
-         .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}\n\
-         tr.bad td{background:#fdeeee}\n\
-         @media print{body{margin:0;max-width:none}tr{break-inside:avoid}}\n\
-         </style></head><body>\n",
-    );
+    out.push_str(REPORT_STYLE);
+    out.push_str("</head><body>\n");
     out.push_str(&format!(
         "<h1>Commissioning report</h1>\n<p><span class=\"verdict {}\">{}</span> \
          {} passed, {} failed, {} not read</p>\n",

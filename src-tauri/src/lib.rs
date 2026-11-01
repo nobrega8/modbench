@@ -18,6 +18,7 @@ pub mod netscan;
 pub mod online;
 pub mod planner;
 pub mod poller;
+pub mod sequence;
 pub mod serve;
 pub mod simulator;
 pub mod tap;
@@ -116,6 +117,8 @@ pub fn run() {
             commands::poll_map_once,
             commands::check_device,
             commands::check_html,
+            commands::sequence_run,
+            commands::sequence_html,
             commands::write_map_value,
             commands::save_text,
             commands::save_bytes,
