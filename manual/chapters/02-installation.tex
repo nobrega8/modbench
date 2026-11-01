@@ -33,12 +33,19 @@ first start. Right-click the app in \nav{Applications}, choose \nav{Open}, then
         22.04 and later and Raspberry Pi OS Bookworm or later; APT picks the
         one for the machine. Raspberry Pi OS Buster and older cannot run
         Modbench (it lacks WebKitGTK 4.1).
+  \item \textbf{Arch Linux and derivatives} (\val{x86\_64}): each release has
+        an Arch package, \file{modbench-x86\_64.pkg.tar.zst}. It needs no
+        repository; the same command, below, installs and updates it.
 \end{itemize}
 
 \begin{lstlisting}[language=bash]
 curl -fsSL https://nobrega8.github.io/modbench/key.asc | sudo gpg --dearmor -o /usr/share/keyrings/modbench.gpg
 echo "deb [signed-by=/usr/share/keyrings/modbench.gpg] https://nobrega8.github.io/modbench stable main" | sudo tee /etc/apt/sources.list.d/modbench.list
 sudo apt update && sudo apt install modbench
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash]
+sudo pacman -U https://github.com/nobrega8/modbench/releases/latest/download/modbench-x86_64.pkg.tar.zst
 \end{lstlisting}
 
 \begin{note}[Serial ports on Linux]
@@ -60,7 +67,8 @@ installs it and starts Modbench again. \ui{Later} hides the banner until the
 next start. \nav{Settings\then Updates} can also check by hand.
 
 Installs from the APT repository update with the system
-(\val{sudo apt upgrade}) instead.
+(\val{sudo apt upgrade}), and the Arch package with the \val{pacman -U}
+command above, instead.
 
 \section{Files Modbench opens}
 
