@@ -205,7 +205,6 @@
 % --- Cover ------------------------------------------------------------------
 \newcommand{\mbcover}[2]{% version, date
   \begin{titlepage}
-  \newgeometry{margin=0pt}
   \begin{tikzpicture}[remember picture, overlay]
     \shade[top color=tile, bottom color=tiledeep]
       (current page.south west) rectangle (current page.north east);
@@ -225,7 +224,6 @@
       at ([xshift=24mm, yshift=24mm]current page.south west)
       {Version #1 \quad·\quad #2\\[3pt] github.com/nobrega8/modbench};
   \end{tikzpicture}
-  \restoregeometry
   \end{titlepage}
 }
 
