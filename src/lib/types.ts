@@ -321,6 +321,24 @@ export interface GatewayEvent {
   ms: number;
 }
 
+/** One request heard by the bus monitor, with its answer (see `monitor.rs`). */
+export interface MonitorEvent {
+  time_ms: number;
+  outcome:
+    "ok" | "exception" | "no_answer" | "broadcast" | "bad_check" | "unknown";
+  unit: number | null;
+  function: number | null;
+  address: number | null;
+  count: number | null;
+  registers: number[] | null;
+  bits: boolean[] | null;
+  exception: number | null;
+  ms: number | null;
+  /** Bytes as hex. */
+  request: string;
+  response: string | null;
+}
+
 export interface GatewayOptions {
   listen: Transport;
   upstream: ConnectionConfig;

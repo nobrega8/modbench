@@ -133,6 +133,25 @@ Each request is listed with the client, the unit ID (and where it went), the
 function, the address, the result and how long the device took. Right-click a
 row to copy it or every row.
 
+\section{Bus monitor}
+
+The bus monitor listens to a serial line where a master (a PLC, a SCADA, a
+gateway) already talks to its devices, and shows what they say. It never
+sends a byte, so it can sit on a working RS-485 line with a second adapter.
+Choose the serial port, RTU or ASCII, and the line's baud rate, parity and
+stop bits, and press \ui{Start}.
+
+Each request is listed with its answer: the unit ID, the function, the
+address and count, the values read or written, and the time the device took.
+A request nobody answers within a second shows \ui{No answer}; an exception
+shows its code; a frame whose CRC or LRC does not hold shows \ui{Bad CRC/LRC}.
+RTU frames are told apart by the silence between them, as the protocol says;
+when the adapter hands over two at once, they are split where a CRC holds.
+
+Filter by unit ID, by function, or to problems only. \ui{Export CSV…} saves
+the requests the filter keeps, with their bytes; hover a row to see them, or
+right-click it to copy it.
+
 \section{Send request}
 \label{sec:send-request}
 

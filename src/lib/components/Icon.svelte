@@ -17,6 +17,8 @@
     request: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
     network:
       '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
+    monitor:
+      '<path d="M2 12h3l2-5 3 10 3-8 2 3h7"/><circle cx="19" cy="5" r="2"/>',
     gateway:
       '<rect width="6" height="6" x="2" y="9" rx="1"/><rect width="6" height="6" x="16" y="9" rx="1"/><path d="M8 12h8"/><path d="m13 9 3 3-3 3"/>',
     simulator:

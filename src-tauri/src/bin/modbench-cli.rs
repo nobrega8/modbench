@@ -17,6 +17,7 @@ use modbench_lib::export;
 use modbench_lib::gateway;
 use modbench_lib::mbmap::{self, DeviceMap, Severity};
 use modbench_lib::modbus::{self, ConnectionConfig, Parity, RawData, Session, Transport};
+use modbench_lib::monitor;
 use modbench_lib::planner::{Area, PlanLimits};
 use modbench_lib::poller::{self, PollRequest};
 
@@ -239,6 +240,16 @@ enum Command {
         /// Answer writes with exception 01 instead of passing them on
         #[arg(long)]
         read_only: bool,
+    },
+    /// Listen to a serial line where a master already talks to devices, and
+    /// print each request with its answer. Never sends a byte; give --rtu or
+    /// --ascii and the line's serial settings
+    Monitor {
+        #[command(flatten)]
+        conn: Conn,
+        /// Print each request as a line of JSON
+        #[arg(long)]
+        json: bool,
     },
     /// Run as an MCP server over stdio
     Mcp,
@@ -900,7 +911,7 @@ fn gui_tools() -> Json {
             "inputSchema": {"type": "object", "properties": {
                 "page": {"type": "string", "enum": ["main", "tools", "library", "settings"]},
                 "tab": {"type": "string", "enum": ["registers", "map", "chart", "write", "raw", "log"]},
-                "tool": {"type": "string", "enum": ["simulator", "gateway", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "player"]}
+                "tool": {"type": "string", "enum": ["simulator", "gateway", "monitor", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "player"]}
             }}
         }
     ])
@@ -1209,6 +1220,94 @@ async fn gateway(conn: Conn, listen: Transport, read_only: bool) -> Result<(), S
     Ok(())
 }
 
+/// Prints what a serial line carries until the process is stopped.
+async fn monitor_line(conn: Conn, json: bool) -> Result<(), String> {
+    let (port, baudrate, parity, data_bits, stop_bits, framing) = match conn.config(None)?.transport
+    {
+        Transport::Rtu {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => (
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+            modbench_lib::serve::Framing::Rtu,
+        ),
+        Transport::Ascii {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => (
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+            modbench_lib::serve::Framing::Ascii,
+        ),
+        _ => return Err("the monitor listens to a serial port: give --rtu or --ascii".into()),
+    };
+    let stream = modbus::open_serial(&port, baudrate, parity, data_bits, stop_bits)
+        .map_err(|e| format!("{port}: {e}"))?;
+    if !json {
+        println!("Listening to {port} at {baudrate} baud (Ctrl+C to stop); nothing is sent");
+    }
+    let started = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64);
+    monitor::listen(stream, framing, baudrate, Duration::from_secs(1), |e| {
+        if json {
+            println!("{}", serde_json::to_string(&e).unwrap_or_default());
+            return;
+        }
+        let what = match (e.address, e.count) {
+            (Some(a), Some(n)) => format!(" {a} x{n}"),
+            _ => String::new(),
+        };
+        let values = match (&e.registers, &e.bits) {
+            (Some(r), _) => format!(
+                " = {}",
+                r.iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ),
+            (_, Some(b)) => format!(
+                " = {}",
+                b.iter()
+                    .map(|v| if *v { "1" } else { "0" })
+                    .collect::<String>()
+            ),
+            _ => String::new(),
+        };
+        let result = match e.outcome {
+            monitor::Outcome::Ok => format!("ok {} ms", e.ms.unwrap_or(0)),
+            monitor::Outcome::Exception => format!("exception {:02X}", e.exception.unwrap_or(0)),
+            monitor::Outcome::NoAnswer => "no answer".into(),
+            monitor::Outcome::Broadcast => "broadcast".into(),
+            monitor::Outcome::BadCheck => format!("bad CRC/LRC: {}", e.request),
+            monitor::Outcome::Unknown => format!("unknown frame: {}", e.request),
+        };
+        let unit = e.unit.map_or("  -".into(), |u| format!("{u:>3}"));
+        let function = e.function.map_or(String::new(), |f| format!("  FC{f:02}"));
+        let since = e.time_ms.saturating_sub(started);
+        println!(
+            "+{}.{:03} s  unit {unit}{function}{what}{values}  {result}",
+            since / 1000,
+            since % 1000
+        );
+    })
+    .await
+    .map_err(|e| format!("{port}: {e}"))
+}
+
 /// Where a simulator listens, for messages.
 fn where_listening(listen: &Transport) -> String {
     match listen {
@@ -1505,6 +1604,7 @@ async fn run(cli: Cli) -> Result<(), String> {
             let listen = parse_listen(&listen, listen_baud, listen_parity, listen_stop_bits)?;
             gateway(conn, listen, read_only).await?
         }
+        Command::Monitor { conn, json } => monitor_line(conn, json).await?,
         Command::Mcp => serve_mcp().await,
     }
     Ok(())
