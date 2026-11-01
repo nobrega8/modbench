@@ -7,7 +7,8 @@ import { t } from "./i18n.svelte.ts";
 /** Commands that update a copy owned by a package manager. */
 const UPGRADE = {
   apt: "sudo apt update && sudo apt upgrade",
-  flatpak: "flatpak update io.github.nobrega8.modbench",
+  pacman:
+    "sudo pacman -U https://github.com/nobrega8/modbench/releases/latest/download/modbench-x86_64.pkg.tar.zst",
 };
 
 class Updates {
@@ -15,9 +16,9 @@ class Updates {
   checking = $state(false);
   /** Result of the last check, for Settings. */
   message = $state<string | null>(null);
-  /** Installed from the .deb or as a Flatpak: that package manager installs
+  /** Installed from the .deb or the Arch package: that package manager installs
    * updates, the app only reports them. */
-  manager = $state<"apt" | "flatpak" | null>(null);
+  manager = $state<"apt" | "pacman" | null>(null);
 
   /** Command that installs updates, when a package manager owns this copy. */
   get upgrade(): string | null {

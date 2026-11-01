@@ -39,6 +39,18 @@ sudo apt update && sudo apt install modbench
 Updates then arrive with `sudo apt upgrade`. A list written for an older release with `arch=amd64` keeps working on PCs; on a Raspberry Pi, replace it with the line above.
 </details>
 
+<details>
+<summary>Install on Arch Linux (x86_64)</summary>
+
+Each release has an Arch package, `modbench-x86_64.pkg.tar.zst`. No repository needed:
+
+```sh
+sudo pacman -U https://github.com/nobrega8/modbench/releases/latest/download/modbench-x86_64.pkg.tar.zst
+```
+
+Run the same command to update.
+</details>
+
 ## Features
 
 - **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or UDP, or RTU over TCP or UDP.

@@ -859,7 +859,7 @@
   "settingsview.copied": "நகலெடுக்கப்பட்டது",
   "settingsview.copy_path": "பாதையை நகலெடு",
   "settingsview.installed_with_apt_updates": "apt மூலம் நிறுவப்பட்டது: புதுப்பிப்புகள் இதன் மூலம் நிறுவப்படும்",
-  "settingsview.installed_with_flatpak_updates": "Flatpak ஆக நிறுவப்பட்டது: புதுப்பிப்புகள் இதன் மூலம் நிறுவப்படும்",
+  "settingsview.installed_with_pacman_updates": "pacman மூலம் நிறுவப்பட்டது: புதுப்பிப்புகள் இதன் மூலம் நிறுவப்படும்",
   "settingsview.you_choose_when_to": "எப்போது நிறுவுவது என்பதை நீங்கள் தேர்ந்தெடுக்கிறீர்கள்.",
   "snapshotbar.this_snapshot_is_of": "இந்த ஸ்னாப்ஷாட் கைமுறை வாசிப்பினுடையது, சாதன வரைபடத்தினுடையது அல்ல.",
   "snapshotbar.this_snapshot_is_of2": "இந்த ஸ்னாப்ஷாட் சாதன வரைபடத்தினுடையது, கைமுறை வாசிப்பினுடையது அல்ல.",

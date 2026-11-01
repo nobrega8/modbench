@@ -1,0 +1,74 @@
+name: Arch
+
+# Builds a package for Arch Linux after each release and attaches it to the
+# release, so it installs with pacman, without any repository:
+#   sudo pacman -U https://github.com/nobrega8/modbench/releases/latest/download/modbench-x86_64.pkg.tar.zst
+# The package repackages the release's .deb (packaging/arch/PKGBUILD); the same
+# command also updates it. A pull request that touches the PKGBUILD only builds.
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  pull_request:
+    paths: ["packaging/arch/**", ".github/workflows/arch.yml"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build (default: the latest release)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arch
+  cancel-in-progress: false
+
+jobs:
+  package:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Install the tools
+        run: pacman -Syu --noconfirm github-cli
+
+      - uses: actions/checkout@v7
+
+      - name: Fill in the version and the checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          tag="$INPUT_TAG"
+          [ -n "$tag" ] || tag=$(gh release list -R "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases --limit 1 --json tagName -q '.[0].tagName')
+          ver="${tag#v}"
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+          mkdir -p "$PWD/debs"
+          gh release download "$tag" -R "$GITHUB_REPOSITORY" -p '*.deb' -D "$PWD/debs"
+          sum() { sha256sum "$PWD/debs/Modbench_${ver}_$1.deb" | cut -d' ' -f1; }
+          sed -i \
+            -e "s/^pkgver=.*/pkgver=$ver/" \
+            -e "s/^sha256sums_x86_64=.*/sha256sums_x86_64=('$(sum amd64)')/" \
+            -e "s/^sha256sums_aarch64=.*/sha256sums_aarch64=('$(sum arm64)')/" \
+            -e "s/^sha256sums_armv7h=.*/sha256sums_armv7h=('$(sum armhf)')/" \
+            packaging/arch/PKGBUILD
+          cat packaging/arch/PKGBUILD
+
+      - name: Build the package
+        run: |
+          useradd -m builder
+          cp -r packaging/arch /home/builder/pkg
+          # The .deb files are already downloaded: makepkg only verifies and packages
+          cp debs/*_amd64.deb /home/builder/pkg/
+          chown -R builder /home/builder/pkg
+          su builder -c 'cd ~/pkg && makepkg --nodeps --noconfirm'
+          cp /home/builder/pkg/modbench-*-x86_64.pkg.tar.zst modbench-x86_64.pkg.tar.zst
+          pacman -Qip modbench-x86_64.pkg.tar.zst
+          pacman -Qlp modbench-x86_64.pkg.tar.zst | head -20
+
+      - name: Attach it to the release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" modbench-x86_64.pkg.tar.zst -R "$GITHUB_REPOSITORY" --clobber
