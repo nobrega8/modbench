@@ -14,6 +14,7 @@ pub mod mapfind;
 pub mod mbmap;
 mod mbmap_v2;
 pub mod modbus;
+pub mod monitor;
 pub mod netscan;
 pub mod online;
 pub mod planner;
@@ -22,6 +23,7 @@ pub mod sequence;
 pub mod serve;
 pub mod simulator;
 pub mod tap;
+pub mod tls;
 pub mod udp;
 
 const USAGE: &str = "\
@@ -96,6 +98,8 @@ pub fn run() {
             commands::package_manager,
             commands::gateway_start,
             commands::gateway_stop,
+            commands::monitor_start,
+            commands::monitor_stop,
             commands::export_map,
             commands::list_serial_ports,
             commands::connect,

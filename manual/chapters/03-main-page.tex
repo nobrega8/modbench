@@ -50,6 +50,26 @@ on the computer, or the interface has no route to the device, the error says
 so; the step 3 line shows the address used (\val{192.168.1.10:502 from
 192.168.1.5}).
 
+\subsubsection{TLS (Modbus/TCP Security)}
+
+With Modbus TCP, \ui{TLS} wraps the connection in TLS 1.2 or later, as the
+Modbus/TCP Security specification says; turning it on moves the port from 502
+to 802, its usual port. Three PEM files go with it:
+
+\begin{itemize}
+  \item \field{CA certificate}: the device's certificate must be signed by this
+    CA, or the connection fails and says why (an unknown issuer, an expired
+    certificate, another name). Empty trusts any certificate the device shows,
+    which is fine on the bench but not on a network you do not control.
+  \item \field{Client certificate} and \field{Client key}: this computer's
+    certificate and private key, for devices that ask for one (the
+    specification's mutual authentication). A device that wants one and gets
+    none closes the connection.
+\end{itemize}
+
+The paths are kept with the connection, and with each device's map; the files
+are only read when connecting, and keys never appear in the log.
+
 \subsection{Device}
 
 \field{Device (unit ID)} is the device's address: \val{1}--\val{247} on a serial

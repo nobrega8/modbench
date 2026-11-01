@@ -35,6 +35,9 @@ clap = { version = "4", features = ["derive"] }
 # Same TLS setup the updater already uses, so it adds no new crates
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "system-proxy"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+# Modbus/TCP Security (TLS) over the same rustls; both already in the tree
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rustls-pki-types = { version = "1", features = ["std"] }
 tauri-plugin-clipboard-manager = "2"
 # Lists the network interfaces to send from
 if-addrs = "0.15"

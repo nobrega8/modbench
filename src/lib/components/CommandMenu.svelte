@@ -38,6 +38,7 @@
     "network",
     "simulator",
     "gateway",
+    "monitor",
     "decoder",
     "frames",
     "player",

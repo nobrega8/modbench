@@ -428,6 +428,7 @@ mod tests {
             unit_id: 1,
             timeout_ms: 1000,
             local_address: None,
+            tls: None,
         };
         let s = Session::connect(&config, None).await.unwrap();
         (sim, s)

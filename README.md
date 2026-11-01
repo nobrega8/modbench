@@ -2,6 +2,8 @@
 
 # Modbench
 
+**English** · [Español](docs/readme/README_ES.md) · [简体中文](docs/readme/README_ZHS.md) · [日本語](docs/readme/README_JP.md)
+
 [![CI](https://github.com/nobrega8/modbench/actions/workflows/ci.yml/badge.svg)](https://github.com/nobrega8/modbench/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/nobrega8/modbench)](https://github.com/nobrega8/modbench/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/nobrega8/modbench/total)](https://github.com/nobrega8/modbench/releases)
@@ -40,6 +42,7 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
 ## Features
 
 - **Manual requests**: any function code, address and quantity, over serial RTU or ASCII, Modbus TCP or UDP, or RTU over TCP or UDP.
+- **Modbus/TCP Security**: Modbus TCP inside TLS (port 802), checking the device's certificate against a CA (or trusting any) and showing a client certificate to devices that ask for one.
 - **Address notations**: show addresses 0-based, 1-based, in hex, in Modicon (`400101`) or IEC 61131-3 (`%MW100`) notation. Address fields take the last two as typed, and switch to their area.
 - **Device maps**: open a [`.mbmap.json`](https://github.com/nobrega8/mbmap-library) and read every register by name, with types, byte and word order, scaling, units, bit fields and state labels. The FC column shows the function code each register is read with, and a right-click reads one with the other function (FC03 or FC04) when a device only answers one. Browse and download over 400 shared maps from [mbmap-library](https://github.com/nobrega8/mbmap-library).
 - **Map builder**: in the Library tab, a window of its own to write a map from a manual: the device header, a table of registers (area, address as the manual numbers it, type, scale, unit, access, state labels, description) and the validator's messages on each row while you type. It saves a version 2 `.mbmap.json`. The same window edits an existing map: right-click a map in the Library, or a register on the Device map, and choose the edit entry. A changes list shows what differs from the original. **Save** writes a library map back to its own file (the Library then shows it as edited), puts a new map in the library under its vendor and model (asking before it replaces one) and writes a map opened from another folder back to that file; **Save as…** writes a file wherever you choose.
@@ -50,6 +53,7 @@ Updates then arrive with `sudo apt upgrade`. A list written for an older release
 - **Tools**:
   - **Simulator**: Modbus devices inside Modbench, each optionally shaped after a map (its reference values and addresses), to try maps and other programs without hardware. Several devices answer their own unit IDs at one address, like devices behind a gateway or on one RS-485 line; other unit IDs stay silent. It listens on Modbus TCP or UDP, RTU over TCP or UDP, or a serial port (RTU or ASCII, with the baud rate, parity and stop bits you choose). Generators make values move on their own (increment, sine, random, or a copy of another address), in a map register's own units. Save setup… keeps the interface, devices, unit IDs, maps and generators in a `.mbsim` file to open again later, or with a double-click.
   - **Gateway**: pass requests from clients on one link to the device of step 1 on another (Modbus TCP or UDP, RTU over TCP or UDP, or a serial port on either side), like a serial-to-Ethernet gateway on the bench, with every request listed. A silent device comes back as exception 0x0B, a missing link as 0x0A; it can rewrite the unit ID and refuse writes.
+  - **Bus monitor**: listen to an RS-485 line where a master already talks to its devices, without sending a byte, and see each request with its answer, decoded: values, exceptions, requests nobody answered and bad CRCs, with filters and a CSV export.
   - **Identify**: read the device's vendor, product code and revision (FC43).
   - **Find addresses**: discover which registers answer on a device without a manual.
   - **Data decoder** and **frame decoder**: hex as every type in every byte order, and frames field by field with CRC/LRC checks (also on the Raw data tab).
@@ -87,11 +91,14 @@ modbench-cli map --rtu COM3 --unit 18 device.mbmap.json --filter voltage
 modbench-cli scan --rtu COM3 --baud 9600 --from 1 --to 32
 modbench-cli id --tcp 192.168.1.10               # FC43 device identification
 modbench-cli read --udp 192.168.1.10 holding 0 10   # Modbus UDP
+modbench-cli read --tcp 192.168.1.10 --tls --ca ca.pem --cert me.pem --key me.key holding 0 1   # Modbus/TCP Security, port 802
 modbench-cli simulate device.mbmap.json --strict  # a simulated device on port 5020
 modbench-cli simulate device.mbmap.json --generators moving.json
 modbench-cli simulate device.mbmap.json --rtu-over-tcp   # RTU frames over TCP, like a gateway
 modbench-cli simulate device.mbmap.json --rtu COM5 --baud 19200 --parity E
+modbench-cli simulate device.mbmap.json --tls-cert server.pem --tls-key server.key --tls-client-ca ca.pem   # inside TLS
 modbench-cli gateway --listen tcp:0.0.0.0:5502 --rtu COM3 --baud 9600   # Modbus TCP clients -> RTU device
+modbench-cli monitor --rtu COM3 --baud 19200 --parity E   # listen to a line, never send
 modbench-cli test --tcp 192.168.1.10 device.mbmap.json start.mbtest.json --allow-writes --report out.html
 modbench-cli validate device.mbmap.json
 modbench-cli convert old-device.mbmap          # version 1 map -> old-device.mbmap.json

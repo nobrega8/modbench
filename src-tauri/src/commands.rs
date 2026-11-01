@@ -14,10 +14,12 @@ use crate::generators::{self, Generator};
 use crate::library::{self, ImportResult, LibraryEntry};
 use crate::mbmap::{self, DeviceMap, Diagnostic, Parsed, Register};
 use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
+use crate::monitor;
 use crate::online;
 use crate::planner::Area;
 use crate::poller::{self, PollCycle, PollRequest};
 use crate::sequence;
+use crate::serve;
 use crate::simulator;
 use crate::tap::{Direction, RawSink};
 
@@ -51,6 +53,8 @@ pub struct AppState {
     sim_devices: SimDevices,
     sim: std::sync::Mutex<Option<simulator::Running>>,
     gateway: std::sync::Mutex<Option<gateway::Running>>,
+    /// The bus monitor's task, while it listens.
+    monitor: std::sync::Mutex<Option<JoinHandle<()>>>,
     /// What the map builder's window should open next; it takes it on load.
     builder_target: std::sync::Mutex<Option<BuilderTarget>>,
 }
@@ -1228,6 +1232,85 @@ pub async fn gateway_start(
     let listen = running.listen.clone();
     *state.gateway.lock().unwrap() = Some(running);
     Ok(listen)
+}
+
+/// Starts listening to a serial line (RTU or ASCII), in place of a monitor
+/// already listening. Each request and answer heard is sent to every window
+/// as a "monitor" event; when the port closes or fails, "monitor-ended"
+/// carries why. Nothing is ever written to the port.
+#[tauri::command]
+pub fn monitor_start(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    port: modbus::Transport,
+) -> Result<(), ModbusError> {
+    if let Some(old) = state.monitor.lock().unwrap().take() {
+        old.abort();
+    }
+    let (name, baudrate, parity, data_bits, stop_bits, framing) = match port {
+        modbus::Transport::Rtu {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => (
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+            serve::Framing::Rtu,
+        ),
+        modbus::Transport::Ascii {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => (
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+            serve::Framing::Ascii,
+        ),
+        _ => {
+            return Err(ModbusError::Invalid(
+                "the bus monitor listens to a serial port".into(),
+            ));
+        }
+    };
+    let stream = modbus::open_serial(&name, baudrate, parity, data_bits, stop_bits)?;
+    let task = tauri::async_runtime::spawn(async move {
+        let emitter = app.clone();
+        let ended = monitor::listen(
+            stream,
+            framing,
+            baudrate,
+            std::time::Duration::from_secs(1),
+            move |e| {
+                let _ = emitter.emit("monitor", e);
+            },
+        )
+        .await;
+        let why = match ended {
+            Ok(()) => format!("{name} closed"),
+            Err(e) => format!("{name}: {e}"),
+        };
+        let _ = app.emit("monitor-ended", why);
+    });
+    *state.monitor.lock().unwrap() = Some(task);
+    Ok(())
+}
+
+/// Stops the bus monitor and frees its port.
+#[tauri::command]
+pub fn monitor_stop(state: State<'_, AppState>) {
+    if let Some(task) = state.monitor.lock().unwrap().take() {
+        task.abort();
+    }
 }
 
 /// Stops the gateway and closes its upstream link.

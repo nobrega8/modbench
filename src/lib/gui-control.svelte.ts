@@ -28,6 +28,7 @@ const TABS: Tab[] = ["registers", "map", "chart", "write", "raw", "log"];
 const TOOLS: ToolId[] = [
   "simulator",
   "gateway",
+  "monitor",
   "identify",
   "addresses",
   "network",

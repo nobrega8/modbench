@@ -19,6 +19,7 @@ use modbench_lib::export;
 use modbench_lib::gateway;
 use modbench_lib::mbmap::{self, DeviceMap, Severity};
 use modbench_lib::modbus::{self, ConnectionConfig, Parity, RawData, Session, Transport};
+use modbench_lib::monitor;
 use modbench_lib::planner::{Area, PlanLimits};
 use modbench_lib::poller::{self, PollRequest};
 
@@ -189,6 +190,17 @@ enum Command {
         /// generators (increment, sine, random, copy), see the README
         #[arg(long, value_name = "FILE")]
         generators: Option<String>,
+        /// Answer Modbus TCP inside TLS (Modbus/TCP Security) with this
+        /// certificate (PEM)
+        #[arg(long, value_name = "FILE", requires = "tls_key", conflicts_with_all = ["rtu", "ascii", "udp", "rtu_over_udp", "rtu_over_tcp"])]
+        tls_cert: Option<String>,
+        /// The private key (PEM) of --tls-cert
+        #[arg(long, value_name = "FILE", requires = "tls_cert")]
+        tls_key: Option<String>,
+        /// With --tls-cert: clients must show a certificate signed by this CA
+        /// (PEM), as the spec's mutual authentication wants
+        #[arg(long, value_name = "FILE", requires = "tls_cert")]
+        tls_client_ca: Option<String>,
     },
     /// Check a map file (.mbmap.json, or a deprecated version 1 .mbmap) against the spec
     Validate { map: String },
@@ -241,6 +253,16 @@ enum Command {
         /// Answer writes with exception 01 instead of passing them on
         #[arg(long)]
         read_only: bool,
+    },
+    /// Listen to a serial line where a master already talks to devices, and
+    /// print each request with its answer. Never sends a byte; give --rtu or
+    /// --ascii and the line's serial settings
+    Monitor {
+        #[command(flatten)]
+        conn: Conn,
+        /// Print each request as a line of JSON
+        #[arg(long)]
+        json: bool,
     },
     /// Run a test sequence (.mbtest.json: write, wait, expect, read on map
     /// registers) against a device; exits with 1 when a step fails. Writes
@@ -318,6 +340,23 @@ struct Conn {
     #[arg(long)]
     #[serde(default)]
     source: Option<String>,
+    /// Modbus/TCP Security: Modbus TCP inside TLS (default port 802)
+    #[arg(long)]
+    #[serde(default)]
+    tls: bool,
+    /// With --tls: CA certificate (PEM) the device's certificate must be
+    /// signed by (without it, any certificate is trusted)
+    #[arg(long, requires = "tls")]
+    #[serde(default)]
+    ca: Option<String>,
+    /// With --tls: this client's certificate (PEM), for devices that ask
+    #[arg(long, requires_all = ["tls", "key"])]
+    #[serde(default)]
+    cert: Option<String>,
+    /// With --tls: the private key (PEM) of --cert
+    #[arg(long, requires_all = ["tls", "cert"])]
+    #[serde(default)]
+    key: Option<String>,
 }
 
 fn default_timeout() -> u64 {
@@ -339,8 +378,15 @@ impl Conn {
     /// Connection settings; values not given come from the map, then defaults.
     fn config(&self, map: Option<&DeviceMap>) -> Result<ConnectionConfig, String> {
         let meta = map.map(|m| &m.meta);
+        if self.tls && self.tcp.is_none() {
+            return Err("--tls goes with --tcp (Modbus/TCP Security)".into());
+        }
         let transport = if let Some(t) = &self.tcp {
-            let (host, port) = host_port(t);
+            let (host, mut port) = host_port(t);
+            // No port given: Modbus/TCP Security's own.
+            if self.tls && !t.contains(':') {
+                port = modbench_lib::tls::PORT;
+            }
             Transport::Tcp { host, port }
         } else if let Some(t) = &self.rtu_over_tcp {
             let (host, port) = host_port(t);
@@ -397,11 +443,17 @@ impl Conn {
             unit_id: self.unit.or(meta.and_then(|m| m.unit_id)).unwrap_or(1),
             timeout_ms: self.timeout,
             local_address: self.source.clone(),
+            tls: self.tls.then(|| modbench_lib::tls::TlsConfig {
+                ca: self.ca.clone(),
+                cert: self.cert.clone(),
+                key: self.key.clone(),
+            }),
         })
     }
 
     fn describe(cfg: &ConnectionConfig) -> String {
         let t = match &cfg.transport {
+            Transport::Tcp { host, port } if cfg.tls.is_some() => format!("TLS {host}:{port}"),
             Transport::Tcp { host, port } => format!("TCP {host}:{port}"),
             Transport::RtuOverTcp { host, port } => format!("RTU over TCP {host}:{port}"),
             Transport::Udp { host, port } => format!("UDP {host}:{port}"),
@@ -998,7 +1050,7 @@ fn gui_tools() -> Json {
             "inputSchema": {"type": "object", "properties": {
                 "page": {"type": "string", "enum": ["main", "tools", "library", "settings"]},
                 "tab": {"type": "string", "enum": ["registers", "map", "chart", "write", "raw", "log"]},
-                "tool": {"type": "string", "enum": ["simulator", "gateway", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "sequence", "player"]}
+                "tool": {"type": "string", "enum": ["simulator", "gateway", "monitor", "identify", "addresses", "network", "request", "decoder", "frames", "stats", "alarms", "sequence", "player"]}
             }}
         }
     ])
@@ -1128,6 +1180,7 @@ async fn simulate(
     strict: bool,
     unit: Option<u8>,
     generators: Option<String>,
+    tls: Option<tokio_rustls::TlsAcceptor>,
 ) -> Result<(), String> {
     use modbench_lib::generators::{self, Generator};
     use modbench_lib::simulator::{self, Memory, SimLogger};
@@ -1173,7 +1226,8 @@ async fn simulate(
     let device = simulator::Device::new(unit, memory);
     *device.generators.lock().unwrap() = generators.unwrap_or_default();
     let devices = std::sync::Arc::new(std::sync::Mutex::new(vec![device]));
-    let running = simulator::start(listen.clone(), devices, Some(logger))
+    let secure = tls.is_some();
+    let running = simulator::start_tls(listen.clone(), tls, devices, Some(logger))
         .await
         .map_err(|e| format!("{}: {e}", where_listening(&listen)))?;
     let changing = match count {
@@ -1182,9 +1236,10 @@ async fn simulate(
         n => format!(", {n} generators"),
     };
     println!(
-        "Simulating {} on {}{changing} (Ctrl+C to stop)",
+        "Simulating {} on {}{}{changing} (Ctrl+C to stop)",
         map.as_deref().unwrap_or("an empty device"),
-        where_listening(&running.listen)
+        where_listening(&running.listen),
+        if secure { " inside TLS" } else { "" }
     );
     // Runs until the process is stopped (Ctrl+C ends it).
     std::future::pending::<()>().await;
@@ -1305,6 +1360,94 @@ async fn gateway(conn: Conn, listen: Transport, read_only: bool) -> Result<(), S
     std::future::pending::<()>().await;
     drop(running);
     Ok(())
+}
+
+/// Prints what a serial line carries until the process is stopped.
+async fn monitor_line(conn: Conn, json: bool) -> Result<(), String> {
+    let (port, baudrate, parity, data_bits, stop_bits, framing) = match conn.config(None)?.transport
+    {
+        Transport::Rtu {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => (
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+            modbench_lib::serve::Framing::Rtu,
+        ),
+        Transport::Ascii {
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+        } => (
+            port,
+            baudrate,
+            parity,
+            data_bits,
+            stop_bits,
+            modbench_lib::serve::Framing::Ascii,
+        ),
+        _ => return Err("the monitor listens to a serial port: give --rtu or --ascii".into()),
+    };
+    let stream = modbus::open_serial(&port, baudrate, parity, data_bits, stop_bits)
+        .map_err(|e| format!("{port}: {e}"))?;
+    if !json {
+        println!("Listening to {port} at {baudrate} baud (Ctrl+C to stop); nothing is sent");
+    }
+    let started = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64);
+    monitor::listen(stream, framing, baudrate, Duration::from_secs(1), |e| {
+        if json {
+            println!("{}", serde_json::to_string(&e).unwrap_or_default());
+            return;
+        }
+        let what = match (e.address, e.count) {
+            (Some(a), Some(n)) => format!(" {a} x{n}"),
+            _ => String::new(),
+        };
+        let values = match (&e.registers, &e.bits) {
+            (Some(r), _) => format!(
+                " = {}",
+                r.iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ),
+            (_, Some(b)) => format!(
+                " = {}",
+                b.iter()
+                    .map(|v| if *v { "1" } else { "0" })
+                    .collect::<String>()
+            ),
+            _ => String::new(),
+        };
+        let result = match e.outcome {
+            monitor::Outcome::Ok => format!("ok {} ms", e.ms.unwrap_or(0)),
+            monitor::Outcome::Exception => format!("exception {:02X}", e.exception.unwrap_or(0)),
+            monitor::Outcome::NoAnswer => "no answer".into(),
+            monitor::Outcome::Broadcast => "broadcast".into(),
+            monitor::Outcome::BadCheck => format!("bad CRC/LRC: {}", e.request),
+            monitor::Outcome::Unknown => format!("unknown frame: {}", e.request),
+        };
+        let unit = e.unit.map_or("  -".into(), |u| format!("{u:>3}"));
+        let function = e.function.map_or(String::new(), |f| format!("  FC{f:02}"));
+        let since = e.time_ms.saturating_sub(started);
+        println!(
+            "+{}.{:03} s  unit {unit}{function}{what}{values}  {result}",
+            since / 1000,
+            since % 1000
+        );
+    })
+    .await
+    .map_err(|e| format!("{port}: {e}"))
 }
 
 /// Where a simulator listens, for messages.
@@ -1566,6 +1709,9 @@ async fn run(cli: Cli) -> Result<(), String> {
             unit,
             public,
             generators,
+            tls_cert,
+            tls_key,
+            tls_client_ca,
         } => {
             let host = if public { "0.0.0.0" } else { "127.0.0.1" }.to_string();
             // The serial settings are read like a client's (see `Conn`).
@@ -1590,7 +1736,14 @@ async fn run(cli: Cli) -> Result<(), String> {
             } else {
                 Transport::Tcp { host, port }
             };
-            simulate(map, listen, strict, unit, generators).await?
+            let tls = match (&tls_cert, &tls_key) {
+                (Some(cert), Some(key)) => Some(
+                    modbench_lib::tls::acceptor(cert, key, tls_client_ca.as_deref())
+                        .map_err(|e| e.to_string())?,
+                ),
+                _ => None,
+            };
+            simulate(map, listen, strict, unit, generators, tls).await?
         }
         Command::Gateway {
             conn,
@@ -1603,6 +1756,7 @@ async fn run(cli: Cli) -> Result<(), String> {
             let listen = parse_listen(&listen, listen_baud, listen_parity, listen_stop_bits)?;
             gateway(conn, listen, read_only).await?
         }
+        Command::Monitor { conn, json } => monitor_line(conn, json).await?,
         Command::Test {
             conn,
             map,

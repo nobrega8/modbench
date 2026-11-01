@@ -98,6 +98,7 @@ export type Page = "main" | "tools" | "library" | "settings";
 export type ToolId =
   | "simulator"
   | "gateway"
+  | "monitor"
   | "identify"
   | "addresses"
   | "network"
@@ -145,6 +146,10 @@ export const CONNECTION_FIELDS = [
   "host",
   "tcpPort",
   "localAddress",
+  "tls",
+  "tlsCa",
+  "tlsCert",
+  "tlsKey",
   "serialPort",
   "framing",
   "baudrate",
@@ -162,6 +167,10 @@ const MAP_CONNECTION_FIELDS = [
   "transport",
   "host",
   "tcpPort",
+  "tls",
+  "tlsCa",
+  "tlsCert",
+  "tlsKey",
   "serialPort",
   "framing",
   "baudrate",
@@ -191,6 +200,13 @@ class Bench {
   /** Local address to send from over TCP/UDP, to pick the network
    * interface; empty for the system's routing. */
   localAddress = $state("");
+  /** Modbus/TCP Security: Modbus TCP inside TLS. */
+  tls = $state(false);
+  /** PEM files: the CA the device's certificate must be signed by (empty
+   * trusts any), and this client's certificate and key. */
+  tlsCa = $state("");
+  tlsCert = $state("");
+  tlsKey = $state("");
   serialPort = $state("");
   framing = $state<Framing>("rtu");
   baudrate = $state(9600);
@@ -529,6 +545,12 @@ class Bench {
     };
     if (this.transport !== "rtu" && this.localAddress.trim())
       config.local_address = this.localAddress.trim();
+    if (this.transport === "tcp" && this.tls)
+      config.tls = {
+        ca: this.tlsCa.trim() || null,
+        cert: this.tlsCert.trim() || null,
+        key: this.tlsKey.trim() || null,
+      };
     return config;
   }
 
@@ -1141,7 +1163,7 @@ class Bench {
   get connectionText(): string {
     return this.transport === "rtu"
       ? `${this.serialPort} · ${this.framing === "ascii" ? "ASCII " : ""}${this.baudrate} ${this.dataBits}${this.parity}${this.stopBits}`
-      : `${this.host}:${this.tcpPort}${this.localAddress.trim() ? ` from ${this.localAddress.trim()}` : ""}`;
+      : `${this.host}:${this.tcpPort}${this.transport === "tcp" && this.tls ? " · TLS" : ""}${this.localAddress.trim() ? ` from ${this.localAddress.trim()}` : ""}`;
   }
 
   onScanProgress(unit: number) {

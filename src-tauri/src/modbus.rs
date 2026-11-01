@@ -74,6 +74,9 @@ pub struct ConnectionConfig {
     /// interface. None leaves it to the system's routing.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_address: Option<String>,
+    /// Modbus/TCP Security: TLS around Modbus TCP (see `tls`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tls: Option<crate::tls::TlsConfig>,
 }
 
 /// Data returned by a read, matching the area that was read.
@@ -208,7 +211,7 @@ async fn with_timeout<T>(
         .map_err(|_| ModbusError::Timeout(ms))???)
 }
 
-pub(crate) fn open_serial(
+pub fn open_serial(
     port: &str,
     baudrate: u32,
     parity: Parity,
@@ -246,7 +249,7 @@ pub(crate) fn open_serial(
 
 /// What a serial port reads and writes through: the port itself, or in debug
 /// builds the socket a port alias names.
-pub(crate) trait SerialLink:
+pub trait SerialLink:
     tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + std::fmt::Debug
 {
 }
@@ -358,10 +361,26 @@ async fn open(config: &ConnectionConfig, raw: Option<RawSink>) -> Result<Context
     let wait = Duration::from_millis(config.timeout_ms.max(1));
     let slave = Slave(config.unit_id);
     let local = local_ip(config)?;
+    if config.tls.is_some() && !matches!(config.transport, Transport::Tcp { .. }) {
+        return Err(ModbusError::Invalid(
+            "TLS (Modbus/TCP Security) goes with Modbus TCP only".into(),
+        ));
+    }
     let ctx = match &config.transport {
         Transport::Tcp { host, port } => {
             let stream = connect_tcp(resolve(host, *port)?, local, config.timeout_ms).await?;
-            tcp::attach_slave(Tap::new(stream, raw), slave)
+            match &config.tls {
+                None => tcp::attach_slave(Tap::new(stream, raw), slave),
+                Some(tls) => {
+                    let connector = crate::tls::connector(tls)?;
+                    let name = crate::tls::server_name(host)?;
+                    let stream = timeout(wait, connector.connect(name, stream))
+                        .await
+                        .map_err(|_| ModbusError::Timeout(config.timeout_ms))?
+                        .map_err(crate::tls::handshake_error)?;
+                    tcp::attach_slave(Tap::new(stream, raw), slave)
+                }
+            }
         }
         Transport::RtuOverTcp { host, port } => {
             let stream = connect_tcp(resolve(host, *port)?, local, config.timeout_ms).await?;
@@ -522,6 +541,7 @@ pub async fn scan_serial(
             unit_id: scan.from,
             timeout_ms: scan.timeout_ms,
             local_address: None,
+            tls: None,
         };
         let mut session = Session::connect(&config, None).await?;
         let mut found = false;

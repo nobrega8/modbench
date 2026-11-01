@@ -107,6 +107,7 @@ fn config(addr: SocketAddr) -> ConnectionConfig {
         unit_id: 1,
         timeout_ms: 1000,
         local_address: None,
+        tls: None,
     }
 }
 
@@ -607,6 +608,7 @@ async fn a_chosen_local_address_is_used_and_a_foreign_one_explained() {
     let addr = start_device(FakeDevice::default()).await;
     let from = |ip: &str| ConnectionConfig {
         local_address: Some(ip.into()),
+        tls: None,
         ..config(addr)
     };
     let mut s = Session::connect(&from("127.0.0.1"), None).await.unwrap();

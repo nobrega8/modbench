@@ -186,6 +186,8 @@ export const api = {
   gatewayStart: (options: GatewayOptions) =>
     invoke<Transport>("gateway_start", { options }),
   gatewayStop: () => invoke<void>("gateway_stop"),
+  monitorStart: (port: Transport) => invoke<void>("monitor_start", { port }),
+  monitorStop: () => invoke<void>("monitor_stop"),
   /** Adds a device with empty memory; returns its index. */
   simAddDevice: (unit: number | null) =>
     invoke<number>("sim_add_device", { unit }),

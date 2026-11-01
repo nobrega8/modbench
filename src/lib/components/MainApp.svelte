@@ -23,6 +23,7 @@
   import { netScanner } from "#lib/netscan.svelte.ts";
   import { sim } from "#lib/simulator.svelte.ts";
   import { gateway } from "#lib/gateway.svelte.ts";
+  import { busMonitor } from "#lib/bus-monitor.svelte.ts";
   import { SETUP_EXTENSION } from "#lib/sim-setup.ts";
   import {
     diagnosticWhere,
@@ -69,6 +70,7 @@
 
   $effect(() => sim.connect());
   $effect(() => gateway.connect());
+  $effect(() => busMonitor.connect());
 
   // An assistant driving this window (off unless turned on in Settings).
   $effect(() => assistant.listen());

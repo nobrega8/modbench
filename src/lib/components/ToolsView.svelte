@@ -5,6 +5,7 @@
   import { netScanner } from "#lib/netscan.svelte.ts";
   import { sim } from "#lib/simulator.svelte.ts";
   import { gateway } from "#lib/gateway.svelte.ts";
+  import { busMonitor } from "#lib/bus-monitor.svelte.ts";
   import { bench, type ToolId } from "#lib/state.svelte.ts";
   import AddressScanTool from "./tools/AddressScanTool.svelte";
   import AlarmsTool from "./tools/AlarmsTool.svelte";
@@ -16,6 +17,7 @@
   import SequenceTool from "./tools/SequenceTool.svelte";
   import SimulatorTool from "./tools/SimulatorTool.svelte";
   import GatewayTool from "./tools/GatewayTool.svelte";
+  import MonitorTool from "./tools/MonitorTool.svelte";
   import StatsTool from "./tools/StatsTool.svelte";
   import TrendPlayerTool from "./tools/TrendPlayerTool.svelte";
 
@@ -35,6 +37,7 @@
         { id: "network" },
         { id: "simulator" },
         { id: "gateway" },
+        { id: "monitor" },
       ],
     },
     {
@@ -56,6 +59,7 @@
   function busy(id: ToolId): boolean {
     if (id === "simulator") return sim.running !== null;
     if (id === "gateway") return gateway.running !== null;
+    if (id === "monitor") return busMonitor.listening;
     if (id === "addresses")
       return bench.scanning && bench.addressProgress !== null;
     if (id === "alarms") return bench.alarms.length > 0;
@@ -95,6 +99,8 @@
         <SimulatorTool />
       {:else if tool === "gateway"}
         <GatewayTool />
+      {:else if tool === "monitor"}
+        <MonitorTool />
       {:else if tool === "identify"}
         <DeviceIdTool />
       {:else if tool === "addresses"}
