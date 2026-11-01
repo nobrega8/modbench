@@ -735,7 +735,7 @@
                 onclick={() => {
                   builder.move(index, -1);
                   local = {};
-                }}>↑</button
+                }}><Icon name="up" size={14} /></button
               >
               <button
                 class="btn icon"
@@ -745,7 +745,7 @@
                 onclick={() => {
                   builder.move(index, 1);
                   local = {};
-                }}>↓</button
+                }}><Icon name="down" size={14} /></button
               >
               <button
                 class="btn icon"

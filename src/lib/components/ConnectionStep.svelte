@@ -6,6 +6,7 @@
   import StepCard from "./StepCard.svelte";
   import InterfaceSelect from "./InterfaceSelect.svelte";
   import Select from "./Select.svelte";
+  import Icon from "./Icon.svelte";
   import { open as openFile } from "@tauri-apps/plugin-dialog";
 
   const baudrates = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
@@ -251,7 +252,8 @@
                     title={t("conn.browse")}
                     aria-label={t("conn.browse")}
                     disabled={locked}
-                    onclick={() => pickPem(f.field)}>…</button
+                    onclick={() => pickPem(f.field)}
+                    ><Icon name="folder" size={14} /></button
                   >
                 </span>
               </label>
@@ -328,7 +330,7 @@
   }
 
   .host input {
-    width: 180px;
+    width: 150px;
   }
 
   .short {

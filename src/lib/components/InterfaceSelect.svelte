@@ -49,6 +49,6 @@
     {options}
     {disabled}
     label={t("conn.networkInterface")}
-    width="190px"
+    width="170px"
   />
 </label>

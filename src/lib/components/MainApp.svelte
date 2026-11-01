@@ -161,13 +161,13 @@
   <UpdateBanner />
   <AssistantBar />
   {#if bench.page === "tools"}
-    <section class="page" in:viewIn><ToolsView /></section>
+    <main class="page" in:viewIn><ToolsView /></main>
   {:else if bench.page === "library"}
-    <section class="page" in:viewIn><LibraryView /></section>
+    <main class="page" in:viewIn><LibraryView /></main>
   {:else if bench.page === "settings"}
-    <section class="page" in:viewIn><SettingsView /></section>
+    <main class="page" in:viewIn><SettingsView /></main>
   {:else}
-    <div class="main" in:viewIn>
+    <main class="main" in:viewIn>
       <DemoBanner />
       <ConnectionStep />
       <RequestStep />
@@ -194,7 +194,7 @@
         </section>
       {/if}
       <TestStep />
-    </div>
+    </main>
   {/if}
 </div>
 
