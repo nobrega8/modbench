@@ -180,6 +180,9 @@ const MAP_CONNECTION_FIELDS = [
   "unitId",
 ] as const;
 const MAP_CONNECTION_KEY = "modbench.mapConnections";
+/** The manual request of step 2, kept with the connection. */
+const REQUEST_KEY = "modbench.request";
+const FUNCTION_CODES = [1, 2, 3, 4, 5, 6, 15, 16];
 const RAW_LIMIT = 200;
 
 const LAST_MAP_KEY = "modbench.lastMap";
@@ -405,11 +408,64 @@ class Bench {
     } catch {
       // Nothing saved yet, or storage unavailable.
     }
+    this.restoreRequest();
+  }
+
+  /** Puts back the manual request of step 2 (function, address, quantity,
+   * Loop) as it was last left. Values that do not fit are ignored. */
+  private restoreRequest() {
+    let saved: Record<string, unknown>;
+    try {
+      saved = JSON.parse(localStorage.getItem(REQUEST_KEY) ?? "{}") ?? {};
+    } catch {
+      return;
+    }
+    const int = (v: unknown, min: number, max: number) =>
+      Number.isInteger(v) && (v as number) >= min && (v as number) <= max
+        ? (v as number)
+        : null;
+    const fc = int(saved.fc, 1, 16);
+    if (fc !== null && FUNCTION_CODES.includes(fc)) this.fc = fc;
+    const address = int(saved.address, 0, 65535);
+    if (address !== null) this.address = address;
+    const max =
+      this.fc === 5 || this.fc === 6
+        ? 1
+        : this.fc <= 2
+          ? 2000
+          : this.fc === 15
+            ? 1968
+            : this.fc === 16
+              ? 123
+              : 125;
+    const quantity = int(saved.quantity, 1, max);
+    if (quantity !== null) this.setQuantity(quantity, false);
+    else if (max === 1) this.setQuantity(1, false);
+    if (typeof saved.loop === "boolean") this.loop = saved.loop;
+  }
+
+  /** Remembers the manual request of step 2, for the next start. */
+  saveRequest() {
+    if (this.demo || !settings.rememberConnection) return;
+    try {
+      localStorage.setItem(
+        REQUEST_KEY,
+        JSON.stringify({
+          fc: this.fc,
+          address: this.address,
+          quantity: this.quantity,
+          loop: this.loop,
+        }),
+      );
+    } catch {
+      // Storage unavailable: nothing to remember.
+    }
   }
 
   /** Remembers the connection settings used for the last test. */
   private saveConnection() {
     if (this.demo) return;
+    this.saveRequest();
     if (settings.rememberConnection) {
       const data: Record<string, unknown> = {};
       for (const field of CONNECTION_FIELDS) data[field] = this[field];
@@ -762,6 +818,7 @@ class Bench {
   setLoop(on: boolean) {
     this.loop = on;
     this.persistDevice();
+    this.saveRequest();
   }
 
   /** Changes the time between loop cycles; a running map poll picks it up. */
@@ -787,11 +844,12 @@ class Bench {
 
   // ---- test run
 
-  setQuantity(n: number) {
+  setQuantity(n: number, save = true) {
     this.quantity = n;
     const next = this.writeValues.slice(0, n);
     while (next.length < n) next.push(0);
     this.writeValues = next;
+    if (save) this.saveRequest();
   }
 
   private async open(): Promise<boolean> {

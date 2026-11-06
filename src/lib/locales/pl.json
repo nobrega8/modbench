@@ -452,7 +452,7 @@
   "settingsview.a_coffee_on_ko": "Kawa na Buy Me a Coffee pomaga w rozwoju.",
   "settingsview.how_long_a_changed": "Jak długo zmieniona wartość pozostaje wyróżniona.",
   "settingsview.remember_the_last_connection": "Zapamiętaj ostatnie połączenie",
-  "settingsview.step_1_is_filled": "Krok 1 jest ponownie wypełniany przy starcie.",
+  "settingsview.step_1_is_filled": "Kroki 1 i 2 są ponownie wypełniane przy starcie.",
   "settingsview.remember_connection_per_map": "Zapamiętaj połączenie każdej mapy",
   "settingsview.loading_a_map_restores": "Wczytanie mapy przywraca ostatnio użyty port lub host, prędkość, parzystość, bity stopu i ID jednostki.",
   "settingsview.assistant_control": "Pozwól asystentowi sterować Modbench",

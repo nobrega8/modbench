@@ -452,7 +452,7 @@
   "settingsview.a_coffee_on_ko": "Un café sur Buy Me a Coffee aide le développement.",
   "settingsview.how_long_a_changed": "Durée pendant laquelle une valeur modifiée reste en évidence.",
   "settingsview.remember_the_last_connection": "Mémoriser la dernière connexion",
-  "settingsview.step_1_is_filled": "L’étape 1 est préremplie au démarrage.",
+  "settingsview.step_1_is_filled": "Les étapes 1 et 2 sont préremplies au démarrage.",
   "settingsview.remember_connection_per_map": "Mémoriser la connexion de chaque carte",
   "settingsview.loading_a_map_restores": "Charger une carte rétablit le port ou l’hôte, la vitesse, la parité, les bits d’arrêt et l’ID d’unité utilisés en dernier.",
   "settingsview.assistant_control": "Laisser un assistant piloter Modbench",

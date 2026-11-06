@@ -162,6 +162,38 @@ describe("remembered choices per device", () => {
     expect(bench.loopMs).toBe(0);
   });
 
+  it("keep the manual request for the next start", async () => {
+    settings.rememberConnection = true;
+    bench.fc = 4;
+    bench.address = 100;
+    bench.setQuantity(4);
+    bench.setLoop(false);
+    const saved = JSON.parse(localStorage.getItem("modbench.request") ?? "{}");
+    expect(saved).toEqual({ fc: 4, address: 100, quantity: 4, loop: false });
+
+    // A fresh start picks it up again.
+    vi.resetModules();
+    const fresh = (await import("./state.svelte")).bench;
+    expect(fresh.fc).toBe(4);
+    expect(fresh.address).toBe(100);
+    expect(fresh.quantity).toBe(4);
+    expect(fresh.writeValues).toHaveLength(4);
+    expect(fresh.loop).toBe(false);
+  });
+
+  it("ignore a saved request that does not fit", async () => {
+    localStorage.setItem(
+      "modbench.request",
+      JSON.stringify({ fc: 7, address: -1, quantity: 5000, loop: "no" }),
+    );
+    vi.resetModules();
+    const fresh = (await import("./state.svelte")).bench;
+    expect(fresh.fc).toBe(3);
+    expect(fresh.address).toBe(0);
+    expect(fresh.quantity).toBe(10);
+    expect(fresh.loop).toBe(true);
+  });
+
   it("survive the map being edited", () => {
     openMap("/maps/meter.mbmap", ["V", "A", "W", "PF"]);
     useDevice(1);
