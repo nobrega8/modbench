@@ -385,7 +385,7 @@
   "settingsview.a_coffee_on_ko": "Чашка кофе на Buy Me a Coffee помогает разработке.",
   "settingsview.how_long_a_changed": "Как долго изменённое значение остаётся подсвеченным.",
   "settingsview.remember_the_last_connection": "Запоминать последнее подключение",
-  "settingsview.step_1_is_filled": "Шаг 1 снова заполняется при запуске.",
+  "settingsview.step_1_is_filled": "Шаги 1 и 2 снова заполняются при запуске.",
   "settingsview.remember_connection_per_map": "Запоминать подключение для каждой карты",
   "settingsview.loading_a_map_restores": "При загрузке карты восстанавливаются порт или хост, скорость, чётность, стоповые биты и ID устройства, использованные в прошлый раз.",
   "settingsview.assistant_control": "Разрешить ассистенту управлять Modbench",

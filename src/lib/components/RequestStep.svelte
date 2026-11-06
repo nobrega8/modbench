@@ -28,6 +28,7 @@
   function onFunction() {
     if (single) bench.setQuantity(1);
     else if (bench.quantity > maxQuantity) bench.setQuantity(maxQuantity);
+    else bench.saveRequest();
   }
 
   const READ_FC: Record<Area, number> = {
@@ -133,6 +134,7 @@
           onchange={(n, area) => {
             bench.address = n;
             if (area) setArea(area);
+            bench.saveRequest();
           }}
         />
       </label>

@@ -385,7 +385,7 @@
   "settingsview.a_coffee_on_ko": "Un caffè su Buy Me a Coffee aiuta lo sviluppo.",
   "settingsview.how_long_a_changed": "Per quanto tempo un valore modificato resta evidenziato.",
   "settingsview.remember_the_last_connection": "Ricorda l’ultima connessione",
-  "settingsview.step_1_is_filled": "Il passo 1 viene ricompilato all’avvio.",
+  "settingsview.step_1_is_filled": "I passi 1 e 2 vengono ricompilati all’avvio.",
   "settingsview.remember_connection_per_map": "Ricorda la connessione di ogni mappa",
   "settingsview.loading_a_map_restores": "Caricando una mappa si ripristinano porta o host, baud rate, parità, bit di stop e ID unità usati l’ultima volta.",
   "settingsview.assistant_control": "Consenti a un assistente di controllare Modbench",

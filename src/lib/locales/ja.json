@@ -385,7 +385,7 @@
   "settingsview.a_coffee_on_ko": "Buy Me a Coffee でのコーヒー 1 杯が開発の助けになります。",
   "settingsview.how_long_a_changed": "変更された値がハイライトされる時間。",
   "settingsview.remember_the_last_connection": "最後の接続を記憶",
-  "settingsview.step_1_is_filled": "起動時に手順 1 が再び入力されます。",
+  "settingsview.step_1_is_filled": "起動時に手順 1 と 2 が再び入力されます。",
   "settingsview.remember_connection_per_map": "マップごとに接続を記憶",
   "settingsview.loading_a_map_restores": "マップを読み込むと、前回そのマップで使ったポートまたはホスト、ボーレート、パリティ、ストップビット、ユニット ID を復元します。",
   "settingsview.assistant_control": "アシスタントによる Modbench の操作を許可",
