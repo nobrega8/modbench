@@ -153,14 +153,13 @@
             {t("settingsview.a_modbus_tcp_and")}
           </p>
           <div class="hero-buttons">
-            <button
-              class="btn primary"
-              onclick={() => run(() => api.openLink("repo"))}
+            <button class="btn" onclick={() => run(() => api.openLink("repo"))}
               >{t("settingsview.view_on_github")} {@render external()}</button
             >
             <button
-              class="btn"
+              class="btn primary"
               disabled={updates.checking}
+              aria-busy={updates.checking}
               onclick={() => updates.check(false)}
               >{updates.checking
                 ? t("settingsview.checking")

@@ -476,7 +476,7 @@ input[type="checkbox"]:focus-visible {
   border: 0;
   background: none;
   padding: 0 12px;
-  height: 26px;
+  height: 24px;
   border-radius: var(--r-sm);
   font-weight: 500;
   color: var(--text-2);

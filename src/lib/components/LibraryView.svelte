@@ -610,6 +610,10 @@
     font-size: 13px;
   }
 
+  th.num {
+    font-family: inherit;
+  }
+
   .act {
     text-align: right;
     white-space: nowrap;
