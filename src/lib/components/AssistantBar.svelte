@@ -54,7 +54,7 @@
   .bar {
     flex-shrink: 0;
     padding: 10px 16px;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     box-shadow:
       var(--e2),

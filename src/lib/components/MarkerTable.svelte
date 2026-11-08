@@ -140,6 +140,6 @@
     height: 3px;
     margin-right: 6px;
     vertical-align: middle;
-    border-radius: 2px;
+    border-radius: var(--r-xs);
   }
 </style>

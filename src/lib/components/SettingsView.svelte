@@ -110,9 +110,7 @@
 </script>
 
 {#snippet external()}
-  <svg class="ext" viewBox="0 0 12 12" aria-hidden="true"
-    ><path d="M4.5 2.5h5v5M9.5 2.5l-7 7" /></svg
-  >
+  <span class="ext"><Icon name="external" size={12} /></span>
 {/snippet}
 
 <div class="settings">
@@ -155,14 +153,13 @@
             {t("settingsview.a_modbus_tcp_and")}
           </p>
           <div class="hero-buttons">
-            <button
-              class="btn primary"
-              onclick={() => run(() => api.openLink("repo"))}
+            <button class="btn" onclick={() => run(() => api.openLink("repo"))}
               >{t("settingsview.view_on_github")} {@render external()}</button
             >
             <button
-              class="btn"
+              class="btn primary"
               disabled={updates.checking}
+              aria-busy={updates.checking}
               onclick={() => updates.check(false)}
               >{updates.checking
                 ? t("settingsview.checking")
@@ -229,11 +226,8 @@
             <button
               class="btn"
               onclick={() => run(() => api.openLink("support"))}
-              ><svg class="heart" viewBox="0 0 16 16" aria-hidden="true"
-                ><path
-                  d="M8 13.5S2 10 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 7.5-6 7.5z"
-                /></svg
-              >Buy Me a Coffee {@render external()}</button
+              ><span class="heart"><Icon name="heart" size={14} /></span>Buy Me
+              a Coffee {@render external()}</button
             >
           </div>
         </div>
@@ -707,7 +701,7 @@
     align-items: center;
     padding: 7px 10px;
     border: 0;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: none;
     text-align: left;
     cursor: pointer;
@@ -784,12 +778,12 @@
     align-items: center;
     text-align: center;
     padding: 34px 22px 28px;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--subtle);
   }
 
   .about img {
-    border-radius: 20px;
+    border-radius: var(--r-xl);
     margin-bottom: 14px;
   }
 
@@ -829,19 +823,12 @@
   }
 
   .heart {
-    width: 13px;
-    height: 13px;
-    fill: #ff5e5b;
+    display: inline-flex;
+    color: #ff5e5b;
   }
 
   .ext {
-    width: 10px;
-    height: 10px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+    display: inline-flex;
     opacity: 0.7;
   }
 
@@ -853,7 +840,7 @@
 
   /* ── A section: one grouped list of settings ── */
   .group {
-    border-radius: 12px;
+    border-radius: var(--r-lg);
     background: var(--subtle);
     overflow: hidden;
   }
@@ -942,7 +929,7 @@
     display: block;
     width: 96px;
     height: 62px;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     overflow: hidden;
     box-shadow: 0 0 0 1px rgb(var(--fg-rgb) / 0.1);
     transition: box-shadow 0.14s var(--ease);
@@ -997,7 +984,7 @@
     display: block;
     width: 100px;
     height: 60px;
-    border-radius: 6px;
+    border-radius: var(--r-sm);
   }
 
   .layer.light i {
@@ -1013,7 +1000,7 @@
     position: absolute;
     left: 18px;
     height: 4px;
-    border-radius: 2px;
+    border-radius: var(--r-xs);
   }
 
   .layer b:nth-of-type(1) {

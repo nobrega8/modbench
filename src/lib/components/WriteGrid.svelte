@@ -139,7 +139,7 @@
     height: 28px;
     padding: 0 6px;
     border: 0;
-    border-radius: 3px;
+    border-radius: var(--r-xs);
     background: var(--changed);
     font-family: var(--mono);
     font-size: 13px;

@@ -113,16 +113,7 @@
             disabled={locked}
             onclick={refreshPorts}
           >
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
-              ><path
-                d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              /></svg
-            >
+            <Icon name="refresh" size={14} />
           </button>
         </span>
       </label>

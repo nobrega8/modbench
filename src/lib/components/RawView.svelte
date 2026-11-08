@@ -203,7 +203,7 @@
     align-items: baseline;
     gap: 10px;
     padding: 8px 10px;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     background: var(--subtle);
   }
 
@@ -232,7 +232,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     background: var(--subtle);
     padding: 4px 0;
   }
@@ -262,7 +262,7 @@
     gap: 16px;
     margin-bottom: 10px;
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     background: var(--subtle);
     max-height: 40%;
     overflow: auto;

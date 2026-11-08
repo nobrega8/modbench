@@ -491,7 +491,7 @@
     max-height: min(640px, calc(100vh - 80px));
     padding: 0;
     border: 0;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     color: var(--text);
     box-shadow: var(--e3);
@@ -569,7 +569,7 @@
     align-items: center;
     gap: 14px;
     padding: 10px;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
   }
 
   .vendor-row {
@@ -653,7 +653,7 @@
     overflow: auto;
     padding: 14px 16px;
     border: 0;
-    border-radius: 12px;
+    border-radius: var(--r-lg);
     background: var(--card);
     color: var(--text);
     box-shadow: var(--e3);

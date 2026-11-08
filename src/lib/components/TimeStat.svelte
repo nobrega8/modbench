@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from "./Icon.svelte";
   import { t } from "#lib/i18n.svelte.ts";
   import {
     average,
@@ -59,16 +60,7 @@
       aria-label={t("time.reset")}
       onclick={onreset}
     >
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
-        ><path
-          d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v3h3"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        /></svg
-      >
+      <Icon name="reset" size={14} />
     </button>
     {#if suggested !== null}
       <button
@@ -117,7 +109,7 @@
     gap: 12px;
     height: 30px;
     padding: 0 11px;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: var(--lcd);
     color: var(--text);
     font-family: var(--mono);
@@ -147,7 +139,7 @@
     height: 30px;
     padding: 0;
     border: 0;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: rgb(var(--fg-rgb) / 0.06);
     color: var(--text-3);
     cursor: pointer;
@@ -160,7 +152,7 @@
     height: 30px;
     padding: 0 10px;
     border: 0;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: rgb(var(--fg-rgb) / 0.06);
     color: var(--text-2);
     font: inherit;

@@ -123,7 +123,7 @@
     min-width: 180px;
     max-width: calc(100vw - 16px);
     padding: 4px;
-    border-radius: 11px;
+    border-radius: var(--r-lg);
     background: var(--card);
     box-shadow: var(--e3);
     transform-origin: top left;
@@ -138,7 +138,7 @@
     min-height: 28px;
     padding: 0 10px;
     border: 0;
-    border-radius: 7px;
+    border-radius: var(--r-sm);
     background: transparent;
     color: var(--text);
     font: inherit;

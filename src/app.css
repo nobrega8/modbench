@@ -36,6 +36,14 @@
   --tx-rgb: 21 101 192;
   --rx-rgb: 19 116 58;
 
+  /* Radii nest: inner = outer - padding. A 14 card with 4 padding holds a 10,
+     a 10 holds a 6 (r-xl > r-lg > r-sm); r-md is a stand-alone control. */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+
   --e1: 0 1px 2px rgb(17 17 17 / 0.05);
   --e2: 0 1px 2px rgb(17 17 17 / 0.04), 0 4px 12px -2px rgb(17 17 17 / 0.06);
   --e3:
@@ -176,6 +184,8 @@
     "cv05" 1,
     "cv08" 1,
     "ss03" 1;
+  /* Digits are the product: they line up in every column, label and counter */
+  font-variant-numeric: tabular-nums;
   color: var(--text);
   background: var(--window);
   -webkit-font-smoothing: antialiased;
@@ -209,7 +219,7 @@ select {
 :where(a, button, summary, [role="tab"], [tabindex]):focus-visible {
   outline: none;
   box-shadow: var(--ring-focus);
-  border-radius: 8px;
+  border-radius: var(--r-md);
 }
 
 /* ───────────── controls ───────────── */
@@ -219,7 +229,7 @@ select {
   height: 30px;
   padding: 0 11px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--r-md);
   background: var(--field);
   color: var(--text);
   min-width: 0;
@@ -292,7 +302,7 @@ select.input option {
   height: 30px;
   padding: 0 13px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   background: rgb(var(--fg-rgb) / 0.07);
   color: var(--text);
   font-size: 13px;
@@ -390,7 +400,7 @@ input[type="checkbox"]:not(.switch) {
   width: 16px;
   height: 16px;
   margin: 0;
-  border-radius: 5px;
+  border-radius: var(--r-sm);
   background: rgb(var(--fg-rgb) / 0.12);
   cursor: pointer;
   vertical-align: middle;
@@ -458,7 +468,7 @@ input[type="checkbox"]:focus-visible {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  border-radius: 10px;
+  border-radius: var(--r-lg);
   background: rgb(var(--fg-rgb) / 0.06);
 }
 
@@ -466,8 +476,8 @@ input[type="checkbox"]:focus-visible {
   border: 0;
   background: none;
   padding: 0 12px;
-  height: 26px;
-  border-radius: 7px;
+  height: 24px;
+  border-radius: var(--r-sm);
   font-weight: 500;
   color: var(--text-2);
   cursor: pointer;
@@ -503,6 +513,41 @@ input[type="checkbox"]:focus-visible {
 .mono {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* A button that is working: a small ring turns beside its label */
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
+
+.btn[aria-busy="true"]::after {
+  content: "";
+  width: 11px;
+  height: 11px;
+  margin-left: 6px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: btn-spin 0.7s linear infinite;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Headings break into even lines, paragraphs avoid a one-word last line */
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 /* Scrollbars: a slim pill */
@@ -546,7 +591,7 @@ input[type="checkbox"]:focus-visible {
   top: 0;
   left: 0;
   z-index: -1;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   background: var(--card);
   box-shadow: var(--e1);
   pointer-events: none;

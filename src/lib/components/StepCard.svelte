@@ -43,7 +43,7 @@
     display: grid;
     grid-template-columns: 80px 1fr;
     background: var(--card);
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     box-shadow: var(--e2);
     min-height: 0;
   }

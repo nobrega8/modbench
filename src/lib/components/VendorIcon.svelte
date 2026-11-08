@@ -82,7 +82,7 @@
     display: inline-grid;
     place-items: center;
     flex: none;
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     background: var(--subtle);
     color: var(--text-3);
     font-weight: 600;

@@ -257,7 +257,7 @@
   .strip {
     position: relative;
     height: 14px;
-    border-radius: 4px;
+    border-radius: var(--r-xs);
     background: var(--subtle);
     overflow: hidden;
   }

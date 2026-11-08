@@ -102,7 +102,7 @@
     bottom: 0;
     left: 0;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: var(--r-lg);
     background: var(--card);
     box-shadow: var(--e3);
     transform-origin: bottom center;
@@ -150,7 +150,7 @@
     margin: -1px 0;
     padding: 0 9px;
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     background: rgb(var(--fg-rgb) / 0.07);
     color: var(--text);
     font: inherit;
@@ -171,7 +171,7 @@
     height: 22px;
     padding: 0;
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     background: none;
     color: var(--text-3);
     cursor: pointer;

@@ -402,13 +402,13 @@
     flex-direction: column;
     gap: 14px;
     padding: 14px;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     background: var(--subtle);
   }
 
   .about {
     padding: 10px 12px;
-    border-radius: 8px;
+    border-radius: var(--r-md);
     background: var(--card);
   }
 

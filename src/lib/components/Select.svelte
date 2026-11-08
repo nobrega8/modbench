@@ -327,7 +327,7 @@
     max-width: calc(100vw - 16px);
     overflow-y: auto;
     padding: 4px;
-    border-radius: 11px;
+    border-radius: var(--r-lg);
     background: var(--card);
     box-shadow: var(--e3);
     transform-origin: top left;
@@ -345,7 +345,7 @@
     gap: 12px;
     min-height: 28px;
     padding: 0 8px 0 10px;
-    border-radius: 7px;
+    border-radius: var(--r-sm);
     color: var(--text);
     white-space: nowrap;
     cursor: pointer;

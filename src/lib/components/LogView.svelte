@@ -187,7 +187,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
   }
 
   table {
@@ -218,7 +218,6 @@
 
   tr.note td {
     color: var(--text-2);
-    font-style: italic;
   }
 
   .mono {

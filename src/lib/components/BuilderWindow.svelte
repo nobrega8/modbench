@@ -77,7 +77,7 @@
   }
 
   .brand img {
-    border-radius: 5px;
+    border-radius: var(--r-sm);
     pointer-events: none;
   }
 
@@ -93,7 +93,7 @@
     flex-direction: column;
     padding: 20px 22px;
     background: var(--card);
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     box-shadow: var(--e2);
   }
 </style>

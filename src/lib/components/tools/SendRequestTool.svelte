@@ -495,7 +495,7 @@
 
   .tag {
     padding: 1px 6px;
-    border-radius: 4px;
+    border-radius: var(--r-xs);
     background: var(--subtle);
     font-size: 11px;
     color: var(--text-2);

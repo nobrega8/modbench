@@ -90,7 +90,7 @@
     gap: 12px;
     margin-bottom: 10px;
     padding: 14px;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     background: var(--subtle);
   }
 

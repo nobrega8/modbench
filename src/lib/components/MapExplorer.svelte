@@ -248,7 +248,7 @@
     height: min(640px, calc(100vh - 80px));
     padding: 0;
     border: 0;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     color: var(--text);
     box-shadow: var(--e3);
@@ -305,7 +305,7 @@
 
   .facts span {
     padding: 1px 7px;
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     background: rgb(var(--fg-rgb) / 0.06);
     color: var(--text-2);
     font-size: 12px;

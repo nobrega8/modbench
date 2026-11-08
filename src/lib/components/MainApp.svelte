@@ -238,7 +238,7 @@
     margin-right: 8px;
     padding: 0 6px 0 10px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--r-md);
     background: rgb(var(--fg-rgb) / 0.05);
     color: var(--text-3);
     font: inherit;
@@ -260,7 +260,7 @@
   .cmd kbd {
     margin-left: 6px;
     padding: 1px 6px;
-    border-radius: 5px;
+    border-radius: var(--r-sm);
     background: var(--card);
     box-shadow: var(--e1);
     font-family: var(--ui);
@@ -277,7 +277,7 @@
   }
 
   .brand img {
-    border-radius: 5px;
+    border-radius: var(--r-sm);
     pointer-events: none;
   }
 
@@ -288,7 +288,7 @@
     height: 30px;
     padding: 0 14px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--r-md);
     background: none;
     font-weight: 500;
     color: var(--text-2);
@@ -310,7 +310,7 @@
   }
 
   .topbar nav :global(.pill) {
-    border-radius: 8px;
+    border-radius: var(--r-md);
   }
 
   .main {
@@ -330,7 +330,7 @@
     flex-direction: column;
     padding: 20px 22px;
     background: var(--card);
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     box-shadow: var(--e2);
   }
 
@@ -343,7 +343,7 @@
   }
 
   .map-error {
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: rgb(var(--alert-rgb) / 0.08);
     max-height: 180px;
     overflow: auto;

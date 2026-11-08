@@ -1223,7 +1223,7 @@
     gap: 4px 12px;
     margin: 0 0 8px;
     padding: 8px 10px;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: rgb(var(--alert-rgb) / 0.12);
     color: rgb(var(--alert-rgb));
     font-size: 13px;
@@ -1240,7 +1240,7 @@
     gap: 8px 12px;
     margin: 0 0 8px;
     padding: 8px 10px;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: var(--subtle);
     font-size: 13px;
     color: var(--text-2);
@@ -1262,7 +1262,7 @@
     list-style: none;
     max-height: 120px;
     overflow: auto;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: var(--subtle);
     color: var(--text-2);
   }
@@ -1279,7 +1279,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
   }
 
   table {
@@ -1319,7 +1319,7 @@
     gap: 8px;
     margin: 8px 0;
     padding: 8px 12px;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     background: var(--card);
   }
 
@@ -1403,7 +1403,7 @@
     font-size: 12px;
     font-weight: 500;
     padding: 2px 8px;
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     background: var(--field);
     color: var(--text-2);
     white-space: nowrap;
@@ -1417,7 +1417,7 @@
   .refmark {
     margin-left: 8px;
     padding: 0 5px;
-    border-radius: 4px;
+    border-radius: var(--r-xs);
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -1536,10 +1536,6 @@
     font-weight: 400;
     font-style: italic;
     color: var(--text-3);
-  }
-
-  .grp.custom {
-    font-style: italic;
   }
 
   .add-row td {
