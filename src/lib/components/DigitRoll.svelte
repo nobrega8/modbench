@@ -39,7 +39,9 @@
       <span class:off={ch.off}>{ch.c}</span>
     {:else}
       <span class="col" class:off={ch.off}
-        ><span class="strip" class:fast
+        ><span
+          class="strip"
+          class:fast
           style:transform="translateY({-ch.digit * 10}%)"
           >{#each { length: 10 } as _, n (n)}<span>{n}</span>{/each}</span
         ></span
