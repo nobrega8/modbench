@@ -400,7 +400,7 @@
     height: 44px;
     padding: 0 12px;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     background: var(--field);
     color: var(--text);
     text-align: left;
@@ -488,7 +488,7 @@
     flex-direction: column;
     gap: 6px;
     padding: 8px;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     box-shadow: var(--e3);
     transform-origin: top left;
@@ -515,7 +515,7 @@
     width: 100%;
     padding: 7px 10px;
     border: 0;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: none;
     color: var(--text);
     text-align: left;
@@ -539,7 +539,7 @@
   .tag {
     flex: none;
     padding: 1px 7px;
-    border-radius: 5px;
+    border-radius: var(--r-sm);
     background: var(--accent);
     color: var(--on-accent);
     font-size: 10px;

@@ -508,7 +508,7 @@
     margin-bottom: 10px;
     padding: 10px 12px;
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -536,7 +536,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
   }
 
   table {

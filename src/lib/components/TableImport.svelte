@@ -273,7 +273,7 @@
     height: min(640px, calc(100vh - 80px));
     padding: 0;
     border: 0;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     color: var(--text);
     box-shadow: var(--e3);
@@ -363,7 +363,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     box-shadow: inset 0 0 0 1px var(--border);
   }
 

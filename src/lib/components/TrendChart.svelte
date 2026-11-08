@@ -527,7 +527,7 @@
     flex: none;
     width: 12px;
     height: 3px;
-    border-radius: 2px;
+    border-radius: var(--r-xs);
   }
 
   .name {
@@ -547,7 +547,7 @@
   .remove {
     padding: 0 4px;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--r-xs);
     background: none;
     color: var(--text-3);
     font-size: 14px;
@@ -665,7 +665,7 @@
     flex-direction: column;
     gap: 3px;
     padding: 8px 10px;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: var(--card);
     box-shadow: var(--e3);
     font-size: 12px;

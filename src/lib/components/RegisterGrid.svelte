@@ -850,7 +850,7 @@
   .cell {
     padding: 4px 6px;
     background: var(--cell);
-    border-radius: 3px;
+    border-radius: var(--r-xs);
     font-family: var(--mono);
     font-size: 13px;
     font-weight: 600;
@@ -887,7 +887,7 @@
     height: 24px;
     padding: 0;
     border: 0;
-    border-radius: 3px;
+    border-radius: var(--r-xs);
     background: var(--cell);
     font-family: var(--mono);
     font-size: 12px;

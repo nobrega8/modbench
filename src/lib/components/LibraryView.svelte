@@ -282,6 +282,7 @@
     <button
       class="btn accent"
       disabled={busy}
+      aria-busy={busy}
       aria-haspopup="menu"
       aria-expanded={menuOpen}
       onclick={() => (menuOpen = !menuOpen)}
@@ -479,7 +480,7 @@
     z-index: 10;
     width: 220px;
     padding: 5px;
-    border-radius: 12px;
+    border-radius: var(--r-lg);
     background: var(--card);
     box-shadow: var(--e3);
     transform-origin: top right;
@@ -493,7 +494,7 @@
     width: 100%;
     padding: 8px 10px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--r-md);
     background: none;
     text-align: left;
     cursor: pointer;
@@ -556,7 +557,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
   }
 
   table {

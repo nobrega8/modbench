@@ -46,7 +46,7 @@
     position: relative;
     overflow: hidden;
     height: 12px;
-    border-radius: 6px;
+    border-radius: var(--r-sm);
     background: rgb(var(--fg-rgb) / 0.06);
   }
 
@@ -54,7 +54,7 @@
     flex: none;
     width: 28px;
     height: 28px;
-    border-radius: 8px;
+    border-radius: var(--r-md);
   }
 
   .end {

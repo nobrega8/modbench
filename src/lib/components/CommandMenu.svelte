@@ -250,7 +250,7 @@
     margin: 12vh auto auto;
     padding: 0;
     border: 0;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     color: var(--text);
     box-shadow: var(--e3);
@@ -296,7 +296,7 @@
 
   kbd {
     padding: 1px 6px;
-    border-radius: 5px;
+    border-radius: var(--r-sm);
     background: rgb(var(--fg-rgb) / 0.06);
     color: var(--text-3);
     font-family: var(--ui);
@@ -311,7 +311,7 @@
 
   /* The highlight that slides to the chosen row (lib/motion.ts slidePill) */
   .list :global(.pill) {
-    border-radius: 8px;
+    border-radius: var(--r-md);
     background: var(--accent-soft);
     box-shadow: none;
   }
@@ -333,7 +333,7 @@
     height: 36px;
     padding: 0 10px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--r-md);
     background: none;
     color: var(--text-2);
     font: inherit;

@@ -71,8 +71,11 @@
         >{t("action.dismiss")}</button
       >
     {:else}
-      <button class="btn accent" disabled={downloading} onclick={install}
-        >{t("updatebanner.install_and_restart")}</button
+      <button
+        class="btn accent"
+        disabled={downloading}
+        aria-busy={downloading}
+        onclick={install}>{t("updatebanner.install_and_restart")}</button
       >
       <button
         class="btn"
@@ -89,7 +92,7 @@
     align-items: center;
     gap: 12px;
     padding: 8px 12px;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     box-shadow: var(--e2);
   }

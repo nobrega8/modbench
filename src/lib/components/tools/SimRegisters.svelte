@@ -341,7 +341,7 @@
     height: 26px;
     padding: 0 8px;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--r-xs);
     background: var(--cell);
     color: var(--text);
     font-size: 13px;
@@ -387,7 +387,7 @@
     flex-direction: column;
     gap: 12px;
     padding: 14px;
-    border-radius: 12px;
+    border-radius: var(--r-lg);
     background: var(--card);
     box-shadow: var(--e3);
   }

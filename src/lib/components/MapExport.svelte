@@ -153,7 +153,7 @@
     width: min(560px, calc(100vw - 48px));
     padding: 0;
     border: 0;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     color: var(--text);
     box-shadow: var(--e3);
@@ -219,7 +219,7 @@
     flex-direction: column;
     gap: 2px;
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     box-shadow: inset 0 0 0 1px var(--border);
     cursor: pointer;
     font-size: 12px;

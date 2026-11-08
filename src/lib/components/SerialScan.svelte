@@ -329,7 +329,7 @@
 
   .bar {
     height: 4px;
-    border-radius: 2px;
+    border-radius: var(--r-xs);
     background: var(--border);
     overflow: hidden;
   }

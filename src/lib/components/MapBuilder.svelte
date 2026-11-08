@@ -841,7 +841,7 @@
 
   .card {
     background: var(--field);
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     padding: 10px 14px;
   }
 
@@ -914,7 +914,7 @@
     flex: 1;
     min-height: 0;
     overflow: auto;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
   }
 
   table {

@@ -161,7 +161,7 @@
     padding: 6px 10px;
     color: var(--text-2);
     border: 0;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: none;
     text-align: left;
     cursor: pointer;
@@ -272,14 +272,16 @@
 
   .panel :global(.bar) {
     height: 4px;
-    border-radius: 2px;
+    border-radius: var(--r-xs);
     background: var(--border);
     overflow: hidden;
   }
 
   .panel :global(.bar > div) {
+    width: 100%;
     height: 100%;
     background: var(--tx);
-    transition: width 0.2s var(--ease);
+    transform-origin: left;
+    transition: transform 0.2s var(--ease);
   }
 </style>

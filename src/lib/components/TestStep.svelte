@@ -75,24 +75,13 @@
         class="face"
         class:shown={!bench.running}
         aria-hidden={bench.running}
-        ><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"
-          ><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg
-        >{t("test.start")}</span
+        ><Icon name="play" size={14} />{t("test.start")}</span
       >
       <span
         class="face"
         class:shown={bench.running}
         aria-hidden={!bench.running}
-        ><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"
-          ><rect
-            x="2.5"
-            y="2.5"
-            width="11"
-            height="11"
-            rx="1"
-            fill="currentColor"
-          /></svg
-        >{t("test.stop")}</span
+        ><Icon name="stop" size={14} />{t("test.stop")}</span
       >
     </button>
 
@@ -241,7 +230,7 @@
     height: 44px;
     padding: 0 20px;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     background: var(--accent);
     color: var(--on-accent);
     font-size: 15px;
@@ -428,7 +417,7 @@
     gap: 10px;
     margin: 0 0 10px;
     padding: 8px 12px;
-    border-radius: 9px;
+    border-radius: var(--r-md);
     background: var(--subtle);
     color: var(--text-2);
   }

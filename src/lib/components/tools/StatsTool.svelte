@@ -155,7 +155,7 @@
     display: block;
     height: 8px;
     margin-top: 6px;
-    border-radius: 4px;
+    border-radius: var(--r-xs);
     background: var(--subtle);
     overflow: hidden;
   }

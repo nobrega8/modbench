@@ -135,7 +135,7 @@
         aria-valuemax={100}
         aria-valuenow={Math.round(progress * 100)}
       >
-        <div style:width="{progress * 100}%"></div>
+        <div style:transform="scaleX({progress})"></div>
       </div>
     {/if}
 
@@ -196,7 +196,7 @@
     margin-top: 12px;
     padding: 12px;
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--r-lg);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -221,7 +221,7 @@
 
   .bar {
     height: 4px;
-    border-radius: 2px;
+    border-radius: var(--r-xs);
     background: var(--border);
     overflow: hidden;
   }

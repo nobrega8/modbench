@@ -75,7 +75,7 @@
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    border-radius: 14px;
+    border-radius: var(--r-xl);
     background: var(--card);
     box-shadow: var(--e2);
     flex-shrink: 0;
