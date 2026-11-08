@@ -12,6 +12,17 @@
     dim?: number;
   } = $props();
 
+  // Changes arriving faster than a roll lasts would restart it before it gets
+  // anywhere, and the digits only jitter. While they do, just show the value.
+  let last = 0;
+  const fast = $derived.by(() => {
+    void text;
+    const now = performance.now();
+    const quick = now - last < 500;
+    last = now;
+    return quick;
+  });
+
   const chars = $derived(
     [...text].map((c, i) => ({
       c,
@@ -28,7 +39,8 @@
       <span class:off={ch.off}>{ch.c}</span>
     {:else}
       <span class="col" class:off={ch.off}
-        ><span class="strip" style:transform="translateY({-ch.digit * 10}%)"
+        ><span class="strip" class:fast
+          style:transform="translateY({-ch.digit * 10}%)"
           >{#each { length: 10 } as _, n (n)}<span>{n}</span>{/each}</span
         ></span
       >
@@ -53,6 +65,10 @@
     display: flex;
     flex-direction: column;
     transition: transform 0.38s var(--ease);
+  }
+
+  .strip.fast {
+    transition: none;
   }
 
   .off {

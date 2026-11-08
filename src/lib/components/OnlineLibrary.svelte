@@ -6,6 +6,7 @@
   import { slideIn, smoothResize } from "#lib/motion.ts";
   import { bench } from "#lib/state.svelte.ts";
   import type { OnlineEntry, Parsed } from "#lib/types.ts";
+  import { tick } from "svelte";
   import { fade } from "svelte/transition";
   import Icon from "./Icon.svelte";
   import MapStatus from "./MapStatus.svelte";
@@ -21,6 +22,9 @@
   let { open = $bindable(), onadded }: Props = $props();
 
   let dialog: HTMLDialogElement | undefined = $state();
+  let listEl: HTMLElement | undefined = $state();
+  /** Where the list of vendors was scrolled to when one was opened. */
+  let vendorsScroll = 0;
   let searchBox: HTMLInputElement | undefined = $state();
   let entries = $state.raw<OnlineEntry[] | null>(null);
   let loadError = $state<string | null>(null);
@@ -140,9 +144,12 @@
 
   function openVendor(name: string) {
     dir = 1;
+    vendorsScroll = listEl?.scrollTop ?? 0;
     vendor = vendorKey(name);
     search = "";
     searchBox?.focus();
+    // The vendor's own list starts at the top, not where the vendors were.
+    tick().then(() => listEl && (listEl.scrollTop = 0));
   }
 
   function back() {
@@ -150,6 +157,7 @@
     vendor = null;
     search = "";
     searchBox?.focus();
+    tick().then(() => listEl && (listEl.scrollTop = vendorsScroll));
   }
 
   /** Esc inside a vendor goes back to the vendors; on them it closes. */
@@ -290,7 +298,7 @@
     />
   </header>
 
-  <div class="list" onscroll={() => infoPop?.hidePopover()}>
+  <div class="list" bind:this={listEl} onscroll={() => infoPop?.hidePopover()}>
     <div data-size>
       {#key view}
         <div in:slideIn={{ dir }}>
