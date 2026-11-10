@@ -342,7 +342,8 @@ pub async fn check_device(
     let mut slot = state.session.lock().await;
     let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
     let (results, _) = poller::poll_once(session, &request).await;
-    Ok(check::evaluate(&map, &results))
+    let identity = crate::identify::read_for(session, &map).await;
+    Ok(check::evaluate(&map, &results, &identity))
 }
 
 /// Runs a test sequence on the open connection (see `sequence`), reporting

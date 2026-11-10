@@ -1269,6 +1269,23 @@ impl Session {
         Ok(identity)
     }
 
+    /// Reports the server id (FC17): the data after the byte count, which are
+    /// the server id, the run indicator and what the device adds. The
+    /// library only accepts 0x00 and 0xFF as run indicator; a device that
+    /// answers anything else is an error here.
+    pub async fn read_server_id(&mut self) -> Result<Vec<u8>, ModbusError> {
+        match self.send_probe(17, Request::ReportServerId).await? {
+            Response::ReportServerId(id, run, data) => {
+                let mut bytes = vec![id, if run { 0xFF } else { 0x00 }];
+                bytes.extend(data);
+                Ok(bytes)
+            }
+            _ => Err(ModbusError::Protocol(
+                "the answer is not a server id report".into(),
+            )),
+        }
+    }
+
     /// Sends one harmless request per function code of `READ_FUNCTIONS`, at
     /// `address` where the function takes one, and says how the device
     /// answered each. With `writes`, also tries `WRITE_FUNCTIONS` by writing

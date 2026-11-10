@@ -12,8 +12,8 @@ use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 
 use crate::firmware;
 use crate::mbmap::{
-    Checker, Loc, Meta, RawRow, Source, apply_meta, join_order, parse_i128, parse_int, parse_type,
-    sentinel_range,
+    Checker, Identify, IdentifyField, IdentifyType, Loc, Meta, RawRow, Role, Source, apply_meta,
+    join_order, parse_i128, parse_int, parse_type, sentinel_range,
 };
 
 /// A JSON value that keeps the order of object keys and rejects duplicates.
@@ -198,6 +198,7 @@ pub(crate) fn read(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> 
     let mut seen: Vec<&str> = Vec::new();
     let mut file_order: (Option<bool>, Option<bool>) = (None, None);
     let mut registers: Option<&Vec<J>> = None;
+    let mut identify: Option<(String, &J)> = None;
 
     for (key, value) in &entries {
         let at = child("", key);
@@ -325,6 +326,7 @@ pub(crate) fn read(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> 
                 }
             }
             ("registers", J::Arr(items)) => registers = Some(items),
+            ("identify", other) => identify = Some((at, other)),
             ("models", J::Arr(items)) => {
                 if items.is_empty() {
                     ck.error(
@@ -397,6 +399,9 @@ pub(crate) fn read(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> 
             (_, other) => meta.extra.push((key.clone(), other.to_text())),
         }
     }
+    if let Some((at, value)) = identify {
+        meta.identify = read_identify(ck, &at, value, &meta);
+    }
     if meta.firmware_range().is_inverted() {
         ck.error(
             Loc::pointer("/firmware_min"),
@@ -437,6 +442,179 @@ pub(crate) fn read(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> 
         })
         .collect();
     Some((meta, rows))
+}
+
+/// The `identify` block (spec section 4.8). Every problem is reported
+/// as `bad-identify`, at the key that breaks the rule.
+fn read_identify(ck: &mut Checker, at: &str, value: &J, meta: &Meta) -> Option<Identify> {
+    let J::Obj(entries) = value else {
+        wrong_type(ck, at, "an object", value);
+        return None;
+    };
+    let errors_before = ck.out.len();
+    let bad = |ck: &mut Checker, pointer: String, message: String| {
+        ck.error(Loc::pointer(pointer), "bad-identify", message);
+    };
+    let get = |key: &str| entries.iter().find(|(k, _)| k == key).map(|(_, v)| v);
+    let function = match get("function") {
+        Some(J::Num(n)) if matches!(n.as_u64(), Some(17 | 43)) => n.as_u64().unwrap_or(0) as u8,
+        _ => {
+            bad(
+                ck,
+                child(at, "function"),
+                "function must be 17 or 43".into(),
+            );
+            0
+        }
+    };
+    let items = match get("fields") {
+        Some(J::Arr(items)) if !items.is_empty() => items.as_slice(),
+        _ => {
+            bad(
+                ck,
+                child(at, "fields"),
+                "fields must be a non-empty array".into(),
+            );
+            &[]
+        }
+    };
+    let fc17 = function == 17;
+    let fc43 = function == 43;
+    let mut fields: Vec<IdentifyField> = Vec::new();
+    let (mut model_seen, mut serial_seen) = (false, false);
+    for (i, item) in items.iter().enumerate() {
+        let here = child(&child(at, "fields"), &i.to_string());
+        let J::Obj(keys) = item else {
+            bad(ck, here, "a field must be an object".into());
+            continue;
+        };
+        let key = |k: &str| keys.iter().find(|(n, _)| n == k).map(|(_, v)| v);
+        let at_key = |k: &str| child(&here, k);
+        let mut field = IdentifyField {
+            name: String::new(),
+            role: None,
+            offset: None,
+            ty: None,
+            length: None,
+            enum_labels: Vec::new(),
+            enum_ref: None,
+            object: None,
+        };
+        match key("name") {
+            Some(J::Str(s)) if !s.trim().is_empty() => field.name = s.clone(),
+            _ => bad(ck, at_key("name"), "a field needs a non-empty name".into()),
+        }
+        match key("role") {
+            None => {}
+            Some(J::Str(s)) => match Role::parse(s) {
+                Some(Role::Model) if model_seen => bad(
+                    ck,
+                    at_key("role"),
+                    "only one field can have the role \"model\"".into(),
+                ),
+                Some(Role::Serial) if serial_seen => bad(
+                    ck,
+                    at_key("role"),
+                    "only one field can have the role \"serial\"".into(),
+                ),
+                Some(role) => {
+                    model_seen |= role == Role::Model;
+                    serial_seen |= role == Role::Serial;
+                    field.role = Some(role);
+                }
+                None => bad(
+                    ck,
+                    at_key("role"),
+                    format!("role must be \"model\", \"firmware\" or \"serial\", not {s:?}"),
+                ),
+            },
+            Some(_) => bad(ck, at_key("role"), "role must be a string".into()),
+        }
+        let whole = |v: Option<&J>, min: u64, max: u64| match v {
+            Some(J::Num(n)) => n.as_u64().filter(|n| (min..=max).contains(n)),
+            _ => None,
+        };
+        if fc17 {
+            match whole(key("offset"), 0, u64::from(u32::MAX)) {
+                Some(n) => field.offset = Some(n as u32),
+                None => bad(
+                    ck,
+                    at_key("offset"),
+                    "an FC17 field needs an offset, a whole number from 0".into(),
+                ),
+            }
+            match key("type") {
+                Some(J::Str(s)) if s == "uint8" => field.ty = Some(IdentifyType::Uint8),
+                Some(J::Str(s)) if s == "uint16" => field.ty = Some(IdentifyType::Uint16),
+                Some(J::Str(s)) if s == "string" => field.ty = Some(IdentifyType::String),
+                _ => bad(
+                    ck,
+                    at_key("type"),
+                    "an FC17 field needs a type: uint8, uint16 or string".into(),
+                ),
+            }
+            match key("length") {
+                None => {
+                    if field.ty == Some(IdentifyType::String) {
+                        bad(ck, at_key("length"), "a string field needs a length".into());
+                    }
+                }
+                Some(v) => match whole(Some(v), 1, u64::from(u32::MAX)) {
+                    Some(n) => field.length = Some(n as u32),
+                    None => bad(
+                        ck,
+                        at_key("length"),
+                        "length must be a whole number from 1".into(),
+                    ),
+                },
+            }
+            match key("enum") {
+                None => {}
+                Some(J::Str(name)) => match meta.enums.iter().find(|(n, _)| n == name) {
+                    Some((_, labels)) if !labels.is_empty() => {
+                        field.enum_ref = Some(name.clone());
+                        field.enum_labels = labels.clone();
+                    }
+                    _ => bad(
+                        ck,
+                        at_key("enum"),
+                        format!("no valid enum table named {name:?}"),
+                    ),
+                },
+                Some(table @ J::Obj(_)) => {
+                    let mut scratch = Checker::default();
+                    match enum_table(&mut scratch, &at_key("enum"), table) {
+                        Some(labels) => field.enum_labels = labels,
+                        None => bad(ck, at_key("enum"), "enum is not a valid table".into()),
+                    }
+                }
+                Some(_) => bad(
+                    ck,
+                    at_key("enum"),
+                    "enum must be a table name or an object".into(),
+                ),
+            }
+            if key("object").is_some() {
+                bad(ck, at_key("object"), "object is only for FC43".into());
+            }
+        } else if fc43 {
+            match whole(key("object"), 0, 255) {
+                Some(n) => field.object = Some(n as u8),
+                None => bad(
+                    ck,
+                    at_key("object"),
+                    "an FC43 field needs an object id from 0 to 255".into(),
+                ),
+            }
+            for k in ["offset", "type", "length", "enum"] {
+                if key(k).is_some() {
+                    bad(ck, at_key(k), format!("{k} is only for FC17"));
+                }
+            }
+        }
+        fields.push(field);
+    }
+    (ck.out.len() == errors_before).then_some(Identify { function, fields })
 }
 
 fn expected_type(key: &str) -> &'static str {
@@ -624,6 +802,17 @@ fn read_register(
             ),
             ("enum", J::Str(name)) => set(&mut row, format!("@{name}")),
             ("firmware_min" | "firmware_max" | "role", J::Str(s)) => set(&mut row, s.clone()),
+            ("read_alone", J::Bool(b)) => {
+                if *b {
+                    set(&mut row, "true".into())
+                }
+            }
+            ("read_group", J::Str(s)) if s.is_empty() => ck.error(
+                Loc::pointer(&here),
+                "bad-read",
+                "read_group cannot be an empty string".into(),
+            ),
+            ("read_group", J::Str(s)) => set(&mut row, s.clone()),
             ("enum", J::Obj(_)) => {
                 row.enum_table = Some(enum_table(ck, &here, value).unwrap_or_default())
             }
@@ -631,10 +820,11 @@ fn read_register(
                 "name" | "group" | "unit" | "description" | "scale_factor" | "comment" | "area"
                 | "type" | "access" | "address" | "length" | "bit" | "bits" | "scale" | "offset"
                 | "write_min" | "write_max" | "reference" | "byte_order" | "word_order" | "enum"
-                | "firmware_min" | "firmware_max" | "role",
+                | "firmware_min" | "firmware_max" | "role" | "read_alone" | "read_group",
                 other,
             ) => {
                 let expected = match key.as_str() {
+                    "read_alone" => "a boolean",
                     "address" | "length" | "bit" | "bits" => "an integer",
                     "scale" | "offset" | "write_min" | "write_max" => "a number",
                     "reference" => "a number, boolean or string",

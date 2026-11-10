@@ -151,14 +151,21 @@ pub async fn poll_once(session: &mut Session, req: &PollRequest) -> (Vec<PointRe
     let readable: Vec<usize> = (0..regs.len())
         .filter(|&i| regs[i].access.readable())
         .collect();
+    let joins = planner::joins(
+        readable
+            .iter()
+            .map(|&i| (regs[i].read_alone, regs[i].read_group.as_deref())),
+    );
     let points: Vec<Point> = readable
         .iter()
-        .map(|&i| {
+        .zip(joins)
+        .map(|(&i, join)| {
             let r = regs[i];
             Point {
                 area: r.area,
                 address: r.address,
                 count: r.count(),
+                join,
             }
         })
         .collect();

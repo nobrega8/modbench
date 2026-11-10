@@ -9,6 +9,7 @@ pub mod firmware;
 pub mod gateway;
 pub mod generators;
 pub mod gui_control;
+pub mod identify;
 pub mod library;
 pub mod mapfind;
 pub mod mbmap;

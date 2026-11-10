@@ -696,12 +696,15 @@ fn node_red(map: &DeviceMap, target: &Target) -> String {
         .iter()
         .filter(|r| !skipped.common(r))
         .collect();
+    let joins = planner::joins(regs.iter().map(|r| (r.read_alone, r.read_group.as_deref())));
     let points: Vec<Point> = regs
         .iter()
-        .map(|r| Point {
+        .zip(joins)
+        .map(|(r, join)| Point {
             area: r.area,
             address: r.address,
             count: r.count(),
+            join,
         })
         .collect();
     let limits = PlanLimits {

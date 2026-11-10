@@ -60,6 +60,22 @@ export interface LocalInterface {
 export type RawData =
   { kind: "bits"; values: boolean[] } | { kind: "registers"; values: number[] };
 
+export interface IdentifyField {
+  name: string;
+  role?: "model" | "firmware" | "serial" | null;
+  offset?: number | null;
+  type?: "uint8" | "uint16" | "string" | null;
+  length?: number | null;
+  enum?: [number, string][];
+  enum_ref?: string | null;
+  object?: number | null;
+}
+
+export interface Identify {
+  function: 17 | 43;
+  fields: IdentifyField[];
+}
+
 export interface Meta {
   vendor: string;
   model: string;
@@ -92,6 +108,8 @@ export interface Meta {
   firmware_min?: string | null;
   firmware_max?: string | null;
   sources?: Source[];
+  /** How to read the device identity with FC17 or FC43 (spec 4.8). */
+  identify?: Identify | null;
 }
 
 /** A document a map was built or checked from. */
@@ -137,6 +155,10 @@ export interface Register {
   firmware_max?: string | null;
   /** What this register tells about the device. */
   role?: "model" | "firmware" | "serial" | null;
+  /** Read in a request of its own (spec 4.9). */
+  read_alone?: boolean;
+  /** Only read together with registers of the same group (spec 4.9). */
+  read_group?: string | null;
 }
 
 export interface DeviceMap {

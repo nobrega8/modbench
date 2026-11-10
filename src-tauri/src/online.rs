@@ -347,6 +347,26 @@ async fn fetch_icon(home: &Url) -> Option<(&'static str, Vec<u8>)> {
             return Some(found);
         }
     }
+    icon_from_service(&client, home.host_str()?).await
+}
+
+/// The icon from a public favicon service, for sites that refuse automated
+/// requests (403 to non-browser clients, bot challenges) or are down. Both
+/// services answer 404 with a placeholder when they have no icon, which
+/// `get` rejects.
+async fn icon_from_service(client: &Client, host: &str) -> Option<(&'static str, Vec<u8>)> {
+    let host = host.strip_prefix("www.").unwrap_or(host);
+    for url in [
+        format!("https://icons.duckduckgo.com/ip3/{host}.ico"),
+        format!("https://www.google.com/s2/favicons?domain={host}&sz=64"),
+    ] {
+        let Ok(url) = Url::parse(&url) else { continue };
+        if let Ok((_, _, bytes)) = get(client, url, MAX_ICON_BYTES).await
+            && let Some(mime) = image_type(&bytes)
+        {
+            return Some((mime, bytes));
+        }
+    }
     None
 }
 
