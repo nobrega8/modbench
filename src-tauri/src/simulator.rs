@@ -914,7 +914,7 @@ mod tests {
             load("examples/example-corp/em-200.mbmap.json"),
             load("maps/carlo-gavazzi/em24-ethernet.mbmap.json"),
             // No identity registers: never suggested
-            load("maps/bmr/fcr0507.mbmap.json"),
+            load("maps/abb/acs355.mbmap.json"),
         ];
         for (shape, expected) in [(1, "em-200.mbmap.json"), (2, "em24-ethernet.mbmap.json")] {
             let device = Device::new(Some(1), Memory::from_map(&maps[shape].1, true));
@@ -932,7 +932,7 @@ mod tests {
                 first.matched.iter().any(|m| m.starts_with("model")),
                 "{first:?}"
             );
-            assert!(!found.matches.iter().any(|m| m.path.contains("fcr0507")));
+            assert!(!found.matches.iter().any(|m| m.path.contains("acs355")));
             // One request per distinct identity register
             assert_eq!(*reads.lock().unwrap(), found.reads);
         }

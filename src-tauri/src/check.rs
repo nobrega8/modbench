@@ -178,9 +178,16 @@ fn check_row(reg: &Register, result: Option<&PointResult>) -> CheckRow {
     row
 }
 
-/// The model and the firmware the device reports, against the map.
-fn findings(map: &DeviceMap, results: &HashMap<usize, &PointResult>) -> Vec<Finding> {
+/// The model and the firmware the device reports, against the map. The
+/// registers with a role come first; `identity` (what the `identify` block
+/// read, spec section 4.8) fills the roles no register gave.
+fn findings(
+    map: &DeviceMap,
+    results: &HashMap<usize, &PointResult>,
+    identity: &[(Role, String)],
+) -> Vec<Finding> {
     let mut out = Vec::new();
+    let mut model: Option<String> = None;
     let mut firmware_parts = Vec::new();
     for (i, reg) in map.registers.iter().enumerate() {
         let Some(role @ (Role::Model | Role::Firmware)) = reg.role else {
@@ -192,83 +199,110 @@ fn findings(map: &DeviceMap, results: &HashMap<usize, &PointResult>) -> Vec<Find
         };
         let found = text_of(reg, value);
         if role == Role::Model {
-            let names: Vec<&String> = if map.meta.models.is_empty() {
-                vec![&map.meta.model]
-            } else {
-                map.meta.models.iter().collect()
-            };
-            let ok = names
-                .iter()
-                .any(|n| n.trim().eq_ignore_ascii_case(found.trim()));
-            out.push(Finding {
-                what: "Model".into(),
-                status: if ok { Status::Pass } else { Status::Fail },
-                detail: if ok {
-                    found
-                } else {
-                    format!(
-                        "the device says {found}; the map is for {}",
-                        names
-                            .iter()
-                            .map(|n| n.as_str())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                },
-            });
+            model = Some(found);
         } else {
             firmware_parts.push(found);
         }
     }
+    let from_identity = |wanted: Role| {
+        identity
+            .iter()
+            .filter(move |(r, _)| *r == wanted)
+            .map(|(_, text)| text.clone())
+    };
+    if model.is_none() {
+        model = from_identity(Role::Model).next();
+    }
+    if firmware_parts.is_empty() {
+        firmware_parts.extend(from_identity(Role::Firmware));
+    }
+    if let Some(found) = model {
+        out.push(model_finding(map, found));
+    }
     if !firmware_parts.is_empty() {
-        let text = firmware_parts.join(".");
-        let range = map.meta.firmware_range();
-        let range_text = {
-            let part = |v: &Option<firmware::Version>| {
-                v.as_ref()
-                    .map_or("any".to_string(), |v| firmware::display(v))
-            };
-            format!("{} to {}", part(&range.min), part(&range.max))
-        };
-        out.push(match firmware::find(&text) {
-            Some(version) if range.is_open() => Finding {
-                what: "Firmware".into(),
-                status: Status::Pass,
-                detail: format!(
-                    "{} (the map declares no range)",
-                    firmware::display(&version)
-                ),
-            },
-            Some(version) if range.contains(&version) => Finding {
-                what: "Firmware".into(),
-                status: Status::Pass,
-                detail: format!(
-                    "{} (the map covers {range_text})",
-                    firmware::display(&version)
-                ),
-            },
-            Some(version) => Finding {
-                what: "Firmware".into(),
-                status: Status::Fail,
-                detail: format!(
-                    "{} is outside the map's range ({range_text})",
-                    firmware::display(&version)
-                ),
-            },
-            None => Finding {
-                what: "Firmware".into(),
-                status: Status::NotRead,
-                detail: format!("could not read a version from {text:?}"),
-            },
-        });
+        out.push(firmware_finding(map, &firmware_parts.join(".")));
     }
     out
 }
 
+fn model_finding(map: &DeviceMap, found: String) -> Finding {
+    let names: Vec<&String> = if map.meta.models.is_empty() {
+        vec![&map.meta.model]
+    } else {
+        map.meta.models.iter().collect()
+    };
+    let ok = names
+        .iter()
+        .any(|n| n.trim().eq_ignore_ascii_case(found.trim()));
+    Finding {
+        what: "Model".into(),
+        status: if ok { Status::Pass } else { Status::Fail },
+        detail: if ok {
+            found
+        } else {
+            format!(
+                "the device says {found}; the map is for {}",
+                names
+                    .iter()
+                    .map(|n| n.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        },
+    }
+}
+
+fn firmware_finding(map: &DeviceMap, text: &str) -> Finding {
+    let range = map.meta.firmware_range();
+    let range_text = {
+        let part = |v: &Option<firmware::Version>| {
+            v.as_ref()
+                .map_or("any".to_string(), |v| firmware::display(v))
+        };
+        format!("{} to {}", part(&range.min), part(&range.max))
+    };
+    match firmware::find(text) {
+        Some(version) if range.is_open() => Finding {
+            what: "Firmware".into(),
+            status: Status::Pass,
+            detail: format!(
+                "{} (the map declares no range)",
+                firmware::display(&version)
+            ),
+        },
+        Some(version) if range.contains(&version) => Finding {
+            what: "Firmware".into(),
+            status: Status::Pass,
+            detail: format!(
+                "{} (the map covers {range_text})",
+                firmware::display(&version)
+            ),
+        },
+        Some(version) => Finding {
+            what: "Firmware".into(),
+            status: Status::Fail,
+            detail: format!(
+                "{} is outside the map's range ({range_text})",
+                firmware::display(&version)
+            ),
+        },
+        None => Finding {
+            what: "Firmware".into(),
+            status: Status::NotRead,
+            detail: format!("could not read a version from {text:?}"),
+        },
+    }
+}
+
 /// Checks every register of `map` against what one read of all of them
 /// gave. `results` hold `PointResult::index` as a position in
-/// `map.registers`.
-pub fn evaluate(map: &DeviceMap, results: &[PointResult]) -> CheckReport {
+/// `map.registers`. `identity` holds what the map's `identify` block read
+/// from the device, by role (empty when the map has none).
+pub fn evaluate(
+    map: &DeviceMap,
+    results: &[PointResult],
+    identity: &[(Role, String)],
+) -> CheckReport {
     let by_index: HashMap<usize, &PointResult> = results.iter().map(|r| (r.index, r)).collect();
     let rows: Vec<CheckRow> = map
         .registers
@@ -276,7 +310,7 @@ pub fn evaluate(map: &DeviceMap, results: &[PointResult]) -> CheckReport {
         .enumerate()
         .map(|(i, reg)| check_row(reg, by_index.get(&i).copied()))
         .collect();
-    let findings = findings(map, &by_index);
+    let findings = findings(map, &by_index, identity);
     let count = |s: Status| {
         rows.iter().filter(|r| r.status == s).count()
             + findings.iter().filter(|f| f.status == s).count()
@@ -535,7 +569,7 @@ mod tests {
         dead.error = Some("timeout".into());
         results.push(dead);
 
-        let report = evaluate(&map, &results);
+        let report = evaluate(&map, &results, &[]);
         let status: Vec<Status> = report.rows.iter().map(|r| r.status).collect();
         assert_eq!(
             status,
@@ -581,7 +615,7 @@ mod tests {
             point(3, Some(Value::Uint(0))),
             point(5, Some(Value::Uint(0))),
         ];
-        let report = evaluate(&map, &results);
+        let report = evaluate(&map, &results, &[]);
         assert!(!report.failed());
         assert_eq!(report.fail, 0);
     }
@@ -589,7 +623,7 @@ mod tests {
     #[test]
     fn the_report_is_one_escaped_page() {
         let map = map();
-        let report = evaluate(&map, &[]);
+        let report = evaluate(&map, &[], &[]);
         let ctx = ReportContext {
             map: "V <b> M1".into(),
             map_file: "m.mbmap.json".into(),

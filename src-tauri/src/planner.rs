@@ -17,6 +17,37 @@ impl Area {
     }
 }
 
+/// How a point may be joined with its neighbours (spec section 4.9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Join {
+    /// Joined with any other free point.
+    #[default]
+    Free,
+    /// Read in a request that holds no other point.
+    Alone,
+    /// Joined only with points of the same group.
+    Group(u32),
+}
+
+/// The `Join` of each register of a list: `read_alone` wins over `read_group`,
+/// and equal group names get the same id.
+pub fn joins<'a>(hints: impl Iterator<Item = (bool, Option<&'a str>)>) -> Vec<Join> {
+    let mut ids: Vec<&str> = Vec::new();
+    hints
+        .map(|(alone, group)| match (alone, group) {
+            (true, _) => Join::Alone,
+            (false, Some(g)) => {
+                let id = ids.iter().position(|x| *x == g).unwrap_or_else(|| {
+                    ids.push(g);
+                    ids.len() - 1
+                });
+                Join::Group(id as u32)
+            }
+            (false, None) => Join::Free,
+        })
+        .collect()
+}
+
 /// One thing to read: `count` consecutive addresses starting at `address`
 /// (bits for coil/discrete, registers otherwise).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,6 +55,7 @@ pub struct Point {
     pub area: Area,
     pub address: u16,
     pub count: u16,
+    pub join: Join,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,24 +105,73 @@ impl Block {
 /// larger than the area's block limit get a block of their own, so the
 /// device can report the error for that point alone.
 pub fn plan(points: &[Point], limits: PlanLimits) -> Vec<Block> {
-    let mut order: Vec<usize> = (0..points.len()).collect();
-    order.sort_by_key(|&i| (points[i].area, points[i].address, points[i].count));
+    let max_of = |area: Area| {
+        if area.is_bit() {
+            limits.max_bits
+        } else {
+            limits.max_registers
+        }
+        .max(1) as u32
+    };
 
+    // Points that share words with a register read alone are that register
+    // (bit fields, alternative readings): they form one block with it.
+    let mut taken = vec![false; points.len()];
     let mut blocks: Vec<Block> = Vec::new();
+    let mut alone: Vec<usize> = (0..points.len())
+        .filter(|&i| points[i].join == Join::Alone)
+        .collect();
+    alone.sort_by_key(|&i| (points[i].area, points[i].address, points[i].count));
+    let span = |p: &Point| (p.address as u32, p.address as u32 + p.count.max(1) as u32);
+    for i in alone {
+        if taken[i] {
+            continue;
+        }
+        let (mut lo, mut hi) = span(&points[i]);
+        let mut members = vec![i];
+        taken[i] = true;
+        let mut grew = true;
+        while grew {
+            grew = false;
+            for (j, q) in points.iter().enumerate() {
+                if taken[j] || q.area != points[i].area {
+                    continue;
+                }
+                let (s, e) = span(q);
+                if s < hi && e > lo {
+                    lo = lo.min(s);
+                    hi = hi.max(e);
+                    members.push(j);
+                    taken[j] = true;
+                    grew = true;
+                }
+            }
+        }
+        members.sort_by_key(|&j| (points[j].address, points[j].count));
+        blocks.push(Block {
+            area: points[i].area,
+            address: lo as u16,
+            count: (hi - lo) as u16,
+            points: members,
+        });
+    }
+
+    // The rest are joined with a neighbour of the same kind only; a point of
+    // another kind between two of them keeps them apart.
+    let mut order: Vec<usize> = (0..points.len()).filter(|&i| !taken[i]).collect();
+    order.sort_by_key(|&i| (points[i].area, points[i].address, points[i].count));
+    let first_free = blocks.len();
+    let mut last_join = Join::Free;
     for i in order {
         let p = points[i];
         let count = p.count.max(1);
         let start = p.address as u32;
         let end = start + count as u32;
-        let max = if p.area.is_bit() {
-            limits.max_bits
-        } else {
-            limits.max_registers
-        }
-        .max(1) as u32;
+        let max = max_of(p.area);
 
-        if let Some(last) = blocks.last_mut() {
+        if let Some(last) = blocks[first_free..].last_mut() {
             let fits = last.area == p.area
+                && last_join == p.join
                 && start <= last.end() + limits.max_gap as u32
                 && end.max(last.end()) - last.address as u32 <= max;
             if fits {
@@ -99,6 +180,7 @@ pub fn plan(points: &[Point], limits: PlanLimits) -> Vec<Block> {
                 continue;
             }
         }
+        last_join = p.join;
         blocks.push(Block {
             area: p.area,
             address: p.address,
@@ -106,6 +188,7 @@ pub fn plan(points: &[Point], limits: PlanLimits) -> Vec<Block> {
             points: vec![i],
         });
     }
+    blocks.sort_by_key(|b| (b.area, b.address));
     blocks
 }
 
@@ -118,6 +201,7 @@ mod tests {
             area,
             address,
             count,
+            join: Join::Free,
         }
     }
 
@@ -126,6 +210,90 @@ mod tests {
             .iter()
             .map(|b| (b.area, b.address, b.count))
             .collect()
+    }
+
+    fn joined(area: Area, address: u16, count: u16, join: Join) -> Point {
+        Point {
+            join,
+            ..pt(area, address, count)
+        }
+    }
+
+    #[test]
+    fn read_alone_gets_a_request_of_its_own() {
+        let points = [
+            pt(Area::Holding, 0, 1),
+            joined(Area::Holding, 1, 1, Join::Alone),
+            pt(Area::Holding, 2, 1),
+        ];
+        assert_eq!(
+            spans(&plan(&points, PlanLimits::default())),
+            [
+                (Area::Holding, 0, 1),
+                (Area::Holding, 1, 1),
+                (Area::Holding, 2, 1)
+            ]
+        );
+    }
+
+    #[test]
+    fn read_alone_keeps_the_registers_on_the_same_words() {
+        // A bit field of the same word is the same register.
+        let points = [
+            joined(Area::Holding, 5, 2, Join::Alone),
+            pt(Area::Holding, 5, 1),
+            pt(Area::Holding, 7, 1),
+        ];
+        let blocks = plan(&points, PlanLimits::default());
+        assert_eq!(
+            spans(&blocks),
+            [(Area::Holding, 5, 2), (Area::Holding, 7, 1)]
+        );
+        assert_eq!(blocks[0].points, [1, 0]);
+    }
+
+    #[test]
+    fn read_group_joins_only_its_own_group() {
+        let g = |a, n, id| joined(Area::Holding, a, n, Join::Group(id));
+        let points = [
+            g(0, 1, 0),
+            g(1, 1, 0),
+            g(2, 1, 1),
+            pt(Area::Holding, 3, 1),
+            g(4, 1, 0),
+        ];
+        assert_eq!(
+            spans(&plan(&points, PlanLimits::default())),
+            [
+                (Area::Holding, 0, 2),
+                (Area::Holding, 2, 1),
+                (Area::Holding, 3, 1),
+                (Area::Holding, 4, 1)
+            ]
+        );
+    }
+
+    #[test]
+    fn joins_numbers_groups_and_lets_alone_win() {
+        assert_eq!(
+            joins(
+                [
+                    (false, Some("a")),
+                    (false, None),
+                    (true, Some("a")),
+                    (false, Some("b")),
+                    (false, Some("a"))
+                ]
+                .into_iter()
+            ),
+            [
+                Join::Group(0),
+                Join::Free,
+                Join::Alone,
+                Join::Group(1),
+                Join::Group(0)
+            ]
+        );
     }
 
     #[test]

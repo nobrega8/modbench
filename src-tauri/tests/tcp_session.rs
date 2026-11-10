@@ -334,6 +334,8 @@ fn register(name: &str, area: Area, address: u16, ty: DataType) -> modbench_lib:
         firmware_min: None,
         firmware_max: None,
         role: None,
+        read_alone: false,
+        read_group: None,
     }
 }
 

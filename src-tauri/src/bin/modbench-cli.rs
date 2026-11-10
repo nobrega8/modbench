@@ -683,7 +683,18 @@ async fn check_device(
     json: bool,
 ) -> Result<(String, bool), String> {
     let (map, cfg, results) = poll_map(conn, path, None).await?;
-    let report = check::evaluate(&map, &results);
+    let identity = match (&map.meta.identify, conn.config(Some(&map))) {
+        (Some(_), Ok(cfg)) => match Session::connect(&cfg, None).await {
+            Ok(mut session) => {
+                let found = modbench_lib::identify::read_for(&mut session, &map).await;
+                session.disconnect().await;
+                found
+            }
+            Err(_) => Vec::new(),
+        },
+        _ => Vec::new(),
+    };
+    let report = check::evaluate(&map, &results, &identity);
     if let Some(out) = report_path {
         let identification = match read_id(conn, 1).await {
             Ok((_, id)) => id

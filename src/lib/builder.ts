@@ -182,6 +182,8 @@ const COMPARED: (keyof Register)[] = [
   "firmware_min",
   "firmware_max",
   "role",
+  "read_alone",
+  "read_group",
   "extra",
 ];
 

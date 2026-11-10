@@ -86,7 +86,7 @@ pub enum Role {
 }
 
 impl Role {
-    fn parse(text: &str) -> Option<Role> {
+    pub(crate) fn parse(text: &str) -> Option<Role> {
         match text {
             "model" => Some(Role::Model),
             "firmware" => Some(Role::Firmware),
@@ -95,13 +95,50 @@ impl Role {
         }
     }
 
-    fn name(self) -> &'static str {
+    pub(crate) fn name(self) -> &'static str {
         match self {
             Role::Model => "model",
             Role::Firmware => "firmware",
             Role::Serial => "serial",
         }
     }
+}
+
+/// How to read the identity of the device with Report Slave ID (FC17) or
+/// Read Device Identification (FC43) (spec section 4.8).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Identify {
+    /// 17 or 43.
+    pub function: u8,
+    pub fields: Vec<IdentifyField>,
+}
+
+/// How an FC17 field is decoded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IdentifyType {
+    Uint8,
+    Uint16,
+    String,
+}
+
+/// One value to take from the answer of an `identify` request. FC17 fields
+/// have `offset` and `ty`; FC43 fields have `object`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IdentifyField {
+    pub name: String,
+    pub role: Option<Role>,
+    pub offset: Option<u32>,
+    #[serde(rename = "type")]
+    pub ty: Option<IdentifyType>,
+    pub length: Option<u32>,
+    /// Labels for raw numbers, resolved from a named or inline table.
+    #[serde(rename = "enum", default)]
+    pub enum_labels: Vec<(i64, String)>,
+    /// Name of the table the labels come from, when the file named one.
+    #[serde(default)]
+    pub enum_ref: Option<String>,
+    pub object: Option<u8>,
 }
 
 /// A document the map was built or checked from (spec section 3.3).
@@ -163,6 +200,9 @@ pub struct Meta {
     pub firmware_max: Option<String>,
     #[serde(default)]
     pub sources: Vec<Source>,
+    /// How to read the identity with FC17 or FC43 (spec section 4.8).
+    #[serde(default)]
+    pub identify: Option<Identify>,
 }
 
 impl Meta {
@@ -272,6 +312,12 @@ pub struct Register {
     /// What this register tells about the device, if anything.
     #[serde(default)]
     pub role: Option<Role>,
+    /// The register is read in a request of its own (spec section 4.9).
+    #[serde(default)]
+    pub read_alone: bool,
+    /// The register is only read together with registers of this group.
+    #[serde(default)]
+    pub read_group: Option<String>,
 }
 
 impl Register {
@@ -709,6 +755,7 @@ impl From<&Loc> for Loc {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct Checker {
     pub out: Vec<Diagnostic>,
 }
@@ -1479,6 +1526,8 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>, version: u8) -> Optio
             firmware_min,
             firmware_max,
             role,
+            read_alone: cell("read_alone") == "true",
+            read_group: Some(cell("read_group").to_string()).filter(|g| !g.is_empty()),
         });
     }
 
@@ -1793,6 +1842,9 @@ pub fn to_string(map: &DeviceMap) -> String {
             .collect();
         top.push(("sentinels".into(), block(entries)));
     }
+    if let Some(identify) = &m.identify {
+        top.push(("identify".into(), identify_json(identify)));
+    }
     for (k, v) in &m.extra {
         top.push((k.clone(), json_str(v)));
     }
@@ -1863,6 +1915,12 @@ pub fn to_string(map: &DeviceMap) -> String {
             if let Some(role) = r.role {
                 f.push(("role", json_str(role.name())));
             }
+            if r.read_alone {
+                f.push(("read_alone", "true".into()));
+            }
+            if let Some(group) = &r.read_group {
+                f.push(("read_group", json_str(group)));
+            }
             if !r.description.is_empty() {
                 f.push(("description", json_str(&r.description)));
             }
@@ -1897,6 +1955,58 @@ pub fn to_string(map: &DeviceMap) -> String {
     format!("{{\n{}\n}}\n", body.join(",\n"))
 }
 
+fn identify_json(identify: &Identify) -> String {
+    let fields: Vec<String> = identify
+        .fields
+        .iter()
+        .map(|f| {
+            let mut parts = vec![format!("\"name\": {}", json_str(&f.name))];
+            if let Some(n) = f.offset {
+                parts.push(format!("\"offset\": {n}"));
+            }
+            if let Some(ty) = f.ty {
+                let name = match ty {
+                    IdentifyType::Uint8 => "uint8",
+                    IdentifyType::Uint16 => "uint16",
+                    IdentifyType::String => "string",
+                };
+                parts.push(format!("\"type\": \"{name}\""));
+            }
+            if let Some(n) = f.length {
+                parts.push(format!("\"length\": {n}"));
+            }
+            if let Some(n) = f.object {
+                parts.push(format!("\"object\": {n}"));
+            }
+            if let Some(role) = f.role {
+                parts.push(format!("\"role\": {}", json_str(role.name())));
+            }
+            match &f.enum_ref {
+                Some(name) => parts.push(format!("\"enum\": {}", json_str(name))),
+                None if !f.enum_labels.is_empty() => parts.push(format!(
+                    "\"enum\": {}",
+                    json_table(f.enum_labels.iter().cloned())
+                )),
+                None => {}
+            }
+            format!("      {{{}}}", parts.join(", "))
+        })
+        .collect();
+    format!(
+        "{{
+    \"function\": {},
+    \"fields\": [
+{}
+    ]
+  }}",
+        identify.function,
+        fields.join(
+            ",
+"
+        )
+    )
+}
+
 /// File name of a map converted to version 2: `x.mbmap` becomes `x.mbmap.json`.
 pub fn v2_file_name(name: &str) -> String {
     if name.to_ascii_lowercase().ends_with(".mbmap.json") {
@@ -1915,6 +2025,89 @@ pub fn is_map_file(name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The 2.1 samples of the mbmap-library submodule give the errors its
+    /// `tests/expected.json` lists, at the same pointers.
+    #[test]
+    fn spec_2_1_samples_match_the_library_expectations() {
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../vendor/mbmap-library/tests");
+        let Ok(expected) = std::fs::read_to_string(root.join("expected.json")) else {
+            return; // submodule not checked out
+        };
+        let expected: serde_json::Value = serde_json::from_str(&expected).unwrap();
+        for name in [
+            "valid/identify.mbmap.json",
+            "valid/identify-fc43.mbmap.json",
+            "valid/read-hints.mbmap.json",
+            "invalid/identify.mbmap.json",
+            "invalid/identify-fc43.mbmap.json",
+            "invalid/identify-function.mbmap.json",
+            "invalid/read-hints.mbmap.json",
+        ] {
+            let Ok(text) = std::fs::read(root.join(name)) else {
+                continue;
+            };
+            let parsed = parse(&text);
+            let mut got: Vec<(String, String)> = parsed
+                .errors()
+                .map(|d| (d.pointer.clone().unwrap_or_default(), d.code.to_string()))
+                .collect();
+            got.sort();
+            let mut want: Vec<(String, String)> = expected[name]["errors"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| {
+                    (
+                        e[0].as_str().unwrap().to_string(),
+                        e[1].as_str().unwrap().to_string(),
+                    )
+                })
+                .collect();
+            want.sort();
+            assert_eq!(got, want, "{name}");
+            let warnings = parsed
+                .diagnostics
+                .iter()
+                .filter(|d| d.severity == Severity::Warning)
+                .count();
+            assert_eq!(
+                warnings,
+                expected[name]["warnings"].as_array().unwrap().len(),
+                "{name}: warnings {:#?}",
+                parsed.diagnostics
+            );
+        }
+    }
+
+    #[test]
+    fn identify_and_read_hints_round_trip() {
+        let text = r#"{
+  "mbmap": 2,
+  "vendor": "T",
+  "model": "M",
+  "enums": {"codes": {"1": "A"}},
+  "identify": {"function": 17, "fields": [{"name": "Type", "offset": 0, "type": "uint8", "role": "model", "enum": "codes"}]},
+  "registers": [
+    {"name": "A", "area": "holding", "address": 0, "type": "uint16", "read_alone": true},
+    {"name": "B", "area": "holding", "address": 1, "type": "uint16", "read_group": "g"}
+  ]
+}"#;
+        let parsed = parse(text.as_bytes());
+        assert!(
+            parsed.errors().next().is_none(),
+            "{:#?}",
+            parsed.diagnostics
+        );
+        let map = parsed.map.unwrap();
+        assert!(map.registers[0].read_alone);
+        assert_eq!(map.registers[1].read_group.as_deref(), Some("g"));
+        assert_eq!(map.meta.identify.as_ref().unwrap().function, 17);
+        assert!(map.meta.extra.is_empty());
+        let written = to_string(&map);
+        assert_eq!(parse(written.as_bytes()).map.unwrap(), map, "{written}");
+    }
 
     const HEAD: &str = "@mbmap=1\n@vendor=Test\n@model=T1\n";
 
