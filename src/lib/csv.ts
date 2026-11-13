@@ -66,8 +66,12 @@ export function valuesCsv(
   indexes: number[],
   results: Map<number, PointResult>,
   sep: Separator,
+  header: [string, string | number][] = [],
 ): string {
   const lines = [
+    // Header lines start with "#": the read parameters and what the device
+    // answered to FC17 and FC43.
+    ...header.map(([k, v]) => csvRow([`# ${k}`, v], sep)),
     csvRow(
       ["name", "group", "area", "address", "value", "unit", "raw", "error"],
       sep,

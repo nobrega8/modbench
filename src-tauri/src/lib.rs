@@ -153,6 +153,7 @@ pub fn run() {
             commands::library_duplicate,
             commands::vendor_icon,
             commands::read_device_id,
+            commands::read_server_id,
             commands::check_functions,
             commands::largest_read,
             commands::scan_addresses,

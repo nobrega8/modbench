@@ -173,6 +173,7 @@ export const api = {
     invoke<void>("append_text", { path, text }),
   readDeviceId: (level: number) =>
     invoke<DeviceIdentity>("read_device_id", { level }),
+  readServerId: () => invoke<number[]>("read_server_id"),
   checkFunctions: (address: number, writes: boolean) =>
     invoke<FunctionCheck[]>("check_functions", { address, writes }),
   largestRead: (area: Area, address: number) =>

@@ -1092,6 +1092,15 @@ pub async fn read_device_id(
     session.read_device_id(level).await
 }
 
+/// Reports the server id (FC17): server id, run indicator and what the
+/// device adds, as raw bytes.
+#[tauri::command]
+pub async fn read_server_id(state: State<'_, AppState>) -> Result<Vec<u8>, ModbusError> {
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    session.read_server_id().await
+}
+
 /// Tries each read function code once at `address`, and with `writes` the
 /// write function codes too (writing back what was read), and says how the
 /// device answered.

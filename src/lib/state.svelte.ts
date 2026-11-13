@@ -1408,6 +1408,82 @@ class Bench {
   }
 
   /**
+   * The header of a values export: how the values were read (connection,
+   * unit, the map's settings and its `identify` block) and what the device
+   * answers to FC17 and FC43. The device is asked only when the link is not
+   * busy reading in a loop; a failed answer is written as the error.
+   */
+  async exportHeader(): Promise<[string, string | number][]> {
+    const open = this.map;
+    if (!open) return [];
+    const meta = open.map.meta;
+    const ctx = this.reportContext(open, []);
+    const hex = (bytes: number[]) =>
+      bytes.map((b) => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+    const rows: [string, string | number][] = [
+      ["map", ctx.map],
+      ["map file", ctx.map_file],
+      ["map revision", ctx.map_revision ?? ""],
+      ["exported", ctx.when],
+      ["connection", ctx.connection],
+      ["unit id", ctx.unit_id],
+      ["address base", meta.address_base ?? ""],
+      ["byte order", meta.byte_order ?? ""],
+      ["max read registers", meta.max_read_registers ?? ""],
+      ["max read bits", meta.max_read_bits ?? ""],
+    ];
+    const ident = meta.identify;
+    if (ident) {
+      rows.push(["identify function", `FC${ident.function}`]);
+      for (const f of ident.fields) {
+        const where =
+          ident.function === 17
+            ? `offset ${f.offset ?? "?"} ${f.type ?? ""}${f.length ? `[${f.length}]` : ""}`
+            : `object 0x${(f.object ?? 0).toString(16).toUpperCase().padStart(2, "0")}`;
+        rows.push([`identify field ${f.name}`, `${where}${f.role ? ` (${f.role})` : ""}`]);
+      }
+    }
+    if (this.scanning || this.running) {
+      rows.push(
+        ["FC17 response", "not asked: the map is being read"],
+        ["FC43 response", "not asked: the map is being read"],
+      );
+      return rows;
+    }
+    try {
+      await this.withLink(async () => {
+        try {
+          rows.push(["FC17 response", hex(await api.readServerId())]);
+        } catch (e) {
+          rows.push(["FC17 response", `error: ${errorText(e)}`]);
+        }
+        let id: DeviceIdentity | null = null;
+        try {
+          id = await api.readDeviceId(3);
+        } catch {
+          try {
+            id = await api.readDeviceId(1);
+          } catch (e) {
+            rows.push(["FC43 response", `error: ${errorText(e)}`]);
+          }
+        }
+        if (id) {
+          rows.push(["FC43 conformity", `0x${id.conformity.toString(16).toUpperCase().padStart(2, "0")}`]);
+          for (const o of id.objects)
+            rows.push([
+              `FC43 object 0x${o.id.toString(16).toUpperCase().padStart(2, "0")} ${o.name}`,
+              o.value,
+            ]);
+        }
+      });
+    } catch (e) {
+      rows.push(["FC17 response", `error: ${errorText(e)}`]);
+      rows.push(["FC43 response", `error: ${errorText(e)}`]);
+    }
+    return rows;
+  }
+
+  /**
    * Tries each read function code once at `address`, over the connection of
    * step 1. With `writes`, also the write function codes, which write back
    * what was just read there: always asked first. Null when not confirmed.

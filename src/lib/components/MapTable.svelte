@@ -218,6 +218,7 @@
     });
     if (!path) return;
     try {
+      const header = await bench.exportHeader();
       await api.saveText(
         path,
         valuesCsv(
@@ -225,6 +226,7 @@
           rows.map((r) => r.index),
           bench.mapResults,
           settings.csvSeparator,
+          header,
         ),
       );
       exportNote = { ok: true, text: t("maptable.saved") };
