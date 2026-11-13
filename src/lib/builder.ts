@@ -184,6 +184,7 @@ const COMPARED: (keyof Register)[] = [
   "role",
   "read_alone",
   "read_group",
+  "parts",
   "extra",
 ];
 

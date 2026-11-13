@@ -159,6 +159,19 @@ export interface Register {
   read_alone?: boolean;
   /** Only read together with registers of the same group (spec 4.9). */
   read_group?: string | null;
+  /** Named values inside a block register (spec 4.10). */
+  parts?: Part[];
+}
+
+/** A named value inside a block register (spec 4.10). */
+export interface Part {
+  name: string;
+  /** Registers from the first one of the block. */
+  offset: number;
+  type: DataType;
+  /** Registers taken. */
+  length: number;
+  description?: string;
 }
 
 export interface DeviceMap {

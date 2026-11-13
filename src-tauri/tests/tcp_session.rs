@@ -336,6 +336,7 @@ fn register(name: &str, area: Area, address: u16, ty: DataType) -> modbench_lib:
         role: None,
         read_alone: false,
         read_group: None,
+        parts: Vec::new(),
     }
 }
 

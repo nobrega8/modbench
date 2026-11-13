@@ -10,10 +10,11 @@ use std::fmt;
 
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 
+use crate::codec::DataType;
 use crate::firmware;
 use crate::mbmap::{
-    Checker, Identify, IdentifyField, IdentifyType, Loc, Meta, RawRow, Role, Source, apply_meta,
-    join_order, parse_i128, parse_int, parse_type, sentinel_range,
+    Checker, Identify, IdentifyField, IdentifyType, Loc, Meta, Part, RawRow, Role, Source,
+    apply_meta, join_order, parse_i128, parse_int, parse_type, sentinel_range,
 };
 
 /// A JSON value that keeps the order of object keys and rejects duplicates.
@@ -176,6 +177,158 @@ fn enum_table(ck: &mut Checker, at: &str, value: &J) -> Option<Vec<(i64, String)
 }
 
 const ORDERS: [&str; 2] = ["big", "little"];
+
+fn bad_parts(ck: &mut Checker, at: &str, message: String) {
+    ck.error(Loc::pointer(at), "bad-parts", message);
+}
+
+/// A whole number of a part, from `min` up to what a register count can hold.
+fn part_number(ck: &mut Checker, at: &str, value: &J, min: i64, what: &str) -> Option<u16> {
+    let J::Num(n) = value else {
+        wrong_type(ck, at, "an integer", value);
+        return None;
+    };
+    match n.as_i64() {
+        Some(v) if v >= min && v <= i64::from(u16::MAX) => Some(v as u16),
+        _ => {
+            bad_parts(
+                ck,
+                at,
+                format!("{what} must be a whole number from {min}, not {n}"),
+            );
+            None
+        }
+    }
+}
+
+/// The parts of a string register (spec 4.10): named values inside one block.
+fn check_parts(ck: &mut Checker, at: &str, value: &J, row: &RawRow) -> Vec<Part> {
+    let mut parts: Vec<Part> = Vec::new();
+    let J::Arr(items) = value else {
+        wrong_type(ck, at, "an array of objects", value);
+        return parts;
+    };
+    if items.is_empty() {
+        bad_parts(ck, at, "parts cannot be empty".into());
+        return parts;
+    }
+    let is_string = row
+        .cells
+        .get("type")
+        .is_some_and(|t| t.eq_ignore_ascii_case("string"));
+    let size = row
+        .cells
+        .get("length")
+        .and_then(|l| parse_int(l))
+        .filter(|&n| is_string && n >= 1);
+    let Some(size) = size else {
+        bad_parts(
+            ck,
+            at,
+            "parts are only for a string register with a valid length".into(),
+        );
+        return parts;
+    };
+    for (i, item) in items.iter().enumerate() {
+        let here = child(at, &i.to_string());
+        let J::Obj(fields) = item else {
+            wrong_type(ck, &here, "an object", item);
+            continue;
+        };
+        let get = |key: &str| fields.iter().find(|(k, _)| k == key).map(|(_, v)| v);
+        let name = match get("name") {
+            Some(J::Str(n)) => n,
+            Some(other) => {
+                wrong_type(ck, &child(&here, "name"), "a string", other);
+                continue;
+            }
+            None => {
+                bad_parts(ck, &child(&here, "name"), "a part needs a name".into());
+                continue;
+            }
+        };
+        if name.trim().is_empty() {
+            bad_parts(
+                ck,
+                &child(&here, "name"),
+                "a part needs a non-empty name".into(),
+            );
+        }
+        let Some(offset) = get("offset") else {
+            bad_parts(ck, &here, format!("part {name:?} needs an offset"));
+            continue;
+        };
+        let Some(offset) = part_number(ck, &child(&here, "offset"), offset, 0, "offset") else {
+            continue;
+        };
+        let ty = match get("type") {
+            None => DataType::String,
+            Some(J::Str(t)) => {
+                match parse_type(t).filter(|ty| *ty != DataType::Bool && *t == t.to_lowercase()) {
+                    Some(ty) => ty,
+                    None => {
+                        bad_parts(
+                            ck,
+                            &child(&here, "type"),
+                            format!("unknown or unsupported part type {t:?}"),
+                        );
+                        continue;
+                    }
+                }
+            }
+            Some(other) => {
+                wrong_type(ck, &child(&here, "type"), "a string", other);
+                continue;
+            }
+        };
+        let length = if ty == DataType::String {
+            let Some(length) = get("length") else {
+                bad_parts(ck, &here, format!("string part {name:?} needs a length"));
+                continue;
+            };
+            let Some(length) = part_number(ck, &child(&here, "length"), length, 1, "length") else {
+                continue;
+            };
+            length
+        } else {
+            ty.register_count().unwrap_or(1)
+        };
+        let part = Part {
+            name: name.clone(),
+            offset,
+            ty,
+            length,
+            description: match get("description") {
+                Some(J::Str(d)) => d.clone(),
+                _ => String::new(),
+            },
+        };
+        if part.range().end as i64 > size {
+            bad_parts(
+                ck,
+                &here,
+                format!(
+                    "part {name:?} ends at register {}, beyond the {size} of the block",
+                    part.range().end
+                ),
+            );
+            continue;
+        }
+        if let Some(clash) = parts
+            .iter()
+            .find(|p| part.range().start < p.range().end && p.range().start < part.range().end)
+        {
+            bad_parts(
+                ck,
+                &here,
+                format!("part {name:?} overlaps part {:?}", clash.name),
+            );
+            continue;
+        }
+        parts.push(part);
+    }
+    parts
+}
 
 /// Reads a version 2 document into metadata and raw rows. Returns `None`
 /// when it is not a JSON object with a `registers` array.
@@ -813,6 +966,8 @@ fn read_register(
                 "read_group cannot be an empty string".into(),
             ),
             ("read_group", J::Str(s)) => set(&mut row, s.clone()),
+            // Checked after the keys of the register, once its type and length are known
+            ("parts", _) => {}
             ("enum", J::Obj(_)) => {
                 row.enum_table = Some(enum_table(ck, &here, value).unwrap_or_default())
             }
@@ -845,6 +1000,9 @@ fn read_register(
                 row.extra.push((key.clone(), other.to_text()));
             }
         }
+    }
+    if let Some((_, value)) = fields.iter().find(|(k, _)| k == "parts") {
+        row.parts = check_parts(ck, &child(at, "parts"), value, &row);
     }
     if order != (None, None) {
         let joined = join_order(

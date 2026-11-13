@@ -16,6 +16,7 @@ use crate::mbmap::{self, DeviceMap, Diagnostic, Parsed, Register};
 use crate::modbus::{self, ConnectionConfig, ModbusError, RawData, Session};
 use crate::monitor;
 use crate::online;
+use crate::parts;
 use crate::planner::Area;
 use crate::poller::{self, PollCycle, PollRequest};
 use crate::sequence;
@@ -429,6 +430,53 @@ pub async fn write_map_value(
     }
     let raw = codec::from_engineering(value, scale, register.offset);
     write_typed(session, &target, &raw).await
+}
+
+/// Writes a block register from its parts (spec 4.10): the whole block goes
+/// out in one request, and a part with no value is sent as zeros.
+#[tauri::command]
+pub async fn write_map_parts(
+    state: State<'_, AppState>,
+    register: Register,
+    values: Vec<Option<Value>>,
+    byte_order: ByteOrder,
+) -> Result<(), ModbusError> {
+    if state.read_only.load(std::sync::atomic::Ordering::Relaxed) {
+        return Err(ModbusError::ReadOnly);
+    }
+    if !register.access.writable() {
+        return Err(ModbusError::Invalid(format!(
+            "{} is read-only",
+            register.name
+        )));
+    }
+    if register.area != Area::Holding
+        || register.ty != DataType::String
+        || register.parts.is_empty()
+        || values.len() != register.parts.len()
+    {
+        return Err(ModbusError::Invalid(format!(
+            "{} has no parts to write",
+            register.name
+        )));
+    }
+    let block = parts::build_block(&register, &values, byte_order).map_err(codec_err)?;
+    let mut slot = state.session.lock().await;
+    let session = slot.as_mut().ok_or(ModbusError::NotConnected)?;
+    session.write_registers(register.address, &block).await
+}
+
+/// The value of each part of a block register, from the registers as read.
+#[tauri::command]
+pub fn split_map_parts(
+    register: Register,
+    words: Vec<u16>,
+    byte_order: ByteOrder,
+) -> Vec<Option<Value>> {
+    parts::split_block(&register, &words, byte_order)
+        .into_iter()
+        .map(Result::ok)
+        .collect()
 }
 
 /// Refuses a write outside the register's declared limits (spec 4.5). The

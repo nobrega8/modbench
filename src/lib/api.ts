@@ -120,6 +120,15 @@ export const api = {
       value,
       scaleRegister,
     }),
+  /** Writes a block register from its parts, whole and in one request (spec 4.10). */
+  writeMapParts: (
+    register: Register,
+    values: (Value | null)[],
+    byteOrder: ByteOrder,
+  ) => invoke<void>("write_map_parts", { register, values, byteOrder }),
+  /** The value of each part, from the registers of the block as read. */
+  splitMapParts: (register: Register, words: number[], byteOrder: ByteOrder) =>
+    invoke<(Value | null)[]>("split_map_parts", { register, words, byteOrder }),
   libraryFolder: () => invoke<string>("library_folder"),
   libraryList: () => invoke<LibraryEntry[]>("library_list"),
   /** Saves a builder map into the library: over the library file `path`, or

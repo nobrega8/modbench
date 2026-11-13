@@ -18,6 +18,7 @@ pub mod modbus;
 pub mod monitor;
 pub mod netscan;
 pub mod online;
+pub mod parts;
 pub mod planner;
 pub mod poller;
 pub mod sequence;
@@ -125,6 +126,8 @@ pub fn run() {
             commands::sequence_run,
             commands::sequence_html,
             commands::write_map_value,
+            commands::write_map_parts,
+            commands::split_map_parts,
             commands::save_text,
             commands::save_bytes,
             commands::append_text,

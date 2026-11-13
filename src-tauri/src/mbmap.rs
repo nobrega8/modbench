@@ -318,6 +318,30 @@ pub struct Register {
     /// The register is only read together with registers of this group.
     #[serde(default)]
     pub read_group: Option<String>,
+    /// Named values inside a block (`string`) register (spec section 4.10).
+    #[serde(default)]
+    pub parts: Vec<Part>,
+}
+
+/// A named value inside a block register (spec section 4.10).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Part {
+    pub name: String,
+    /// Position in the block, in registers from its first register.
+    pub offset: u16,
+    #[serde(rename = "type")]
+    pub ty: DataType,
+    /// Registers taken: the `length` of a string part, the type's size otherwise.
+    pub length: u16,
+    #[serde(default)]
+    pub description: String,
+}
+
+impl Part {
+    /// Registers of the block this part covers.
+    pub fn range(&self) -> std::ops::Range<usize> {
+        usize::from(self.offset)..usize::from(self.offset) + usize::from(self.length)
+    }
 }
 
 impl Register {
@@ -801,6 +825,7 @@ pub(crate) struct RawRow {
     pub extra: Vec<(String, String)>,
     pub enum_table: Option<Vec<(i64, String)>>,
     pub comment: String,
+    pub parts: Vec<Part>,
 }
 
 /// Checks a metadata value; returns false if it is out of range.
@@ -1141,6 +1166,7 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>, version: u8) -> Optio
             extra,
             enum_table,
             comment,
+            parts,
         } = raw;
         let line = &at;
         let cell = |col: &str| row.get(col).map(String::as_str).unwrap_or("");
@@ -1528,6 +1554,7 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>, version: u8) -> Optio
             role,
             read_alone: cell("read_alone") == "true",
             read_group: Some(cell("read_group").to_string()).filter(|g| !g.is_empty()),
+            parts,
         });
     }
 
@@ -1921,6 +1948,9 @@ pub fn to_string(map: &DeviceMap) -> String {
             if let Some(group) = &r.read_group {
                 f.push(("read_group", json_str(group)));
             }
+            if !r.parts.is_empty() {
+                f.push(("parts", parts_json(&r.parts)));
+            }
             if !r.description.is_empty() {
                 f.push(("description", json_str(&r.description)));
             }
@@ -1953,6 +1983,28 @@ pub fn to_string(map: &DeviceMap) -> String {
         .map(|(k, v)| format!("  {}: {v}", json_str(k)))
         .collect();
     format!("{{\n{}\n}}\n", body.join(",\n"))
+}
+
+fn parts_json(parts: &[Part]) -> String {
+    let items: Vec<String> = parts
+        .iter()
+        .map(|p| {
+            let mut f = vec![
+                format!("\"name\": {}", json_str(&p.name)),
+                format!("\"offset\": {}", p.offset),
+            ];
+            if p.ty == DataType::String {
+                f.push(format!("\"length\": {}", p.length));
+            } else {
+                f.push(format!("\"type\": \"{}\"", type_name(p.ty)));
+            }
+            if !p.description.is_empty() {
+                f.push(format!("\"description\": {}", json_str(&p.description)));
+            }
+            format!("{{{}}}", f.join(", "))
+        })
+        .collect();
+    format!("[{}]", items.join(", "))
 }
 
 fn identify_json(identify: &Identify) -> String {
