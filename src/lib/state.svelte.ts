@@ -1440,7 +1440,10 @@ class Bench {
           ident.function === 17
             ? `offset ${f.offset ?? "?"} ${f.type ?? ""}${f.length ? `[${f.length}]` : ""}`
             : `object 0x${(f.object ?? 0).toString(16).toUpperCase().padStart(2, "0")}`;
-        rows.push([`identify field ${f.name}`, `${where}${f.role ? ` (${f.role})` : ""}`]);
+        rows.push([
+          `identify field ${f.name}`,
+          `${where}${f.role ? ` (${f.role})` : ""}`,
+        ]);
       }
     }
     if (this.scanning || this.running) {
@@ -1468,7 +1471,10 @@ class Bench {
           }
         }
         if (id) {
-          rows.push(["FC43 conformity", `0x${id.conformity.toString(16).toUpperCase().padStart(2, "0")}`]);
+          rows.push([
+            "FC43 conformity",
+            `0x${id.conformity.toString(16).toUpperCase().padStart(2, "0")}`,
+          ]);
           for (const o of id.objects)
             rows.push([
               `FC43 object 0x${o.id.toString(16).toUpperCase().padStart(2, "0")} ${o.name}`,
