@@ -1452,5 +1452,7 @@
   "err.protocol": "प्रोटोकॉल त्रुटि: {detail}",
   "err.exception": "डिवाइस अपवाद 0x{code} ({name}){request}",
   "err.request": " FC{fc} ({name}) के लिए, यूनिट {unit}",
-  "err.request_range": " FC{fc} ({name}) के लिए, पता {address} से {count}, यूनिट {unit}"
+  "err.request_range": " FC{fc} ({name}) के लिए, पता {address} से {count}, यूनिट {unit}",
+  "parts.too_long": "{name}: अधिकतम {max} अक्षर",
+  "parts.empty_zeros": "खाली फ़ील्ड शून्य के रूप में भेजे जाते हैं"
 }

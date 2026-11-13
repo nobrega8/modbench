@@ -1452,5 +1452,7 @@
   "err.protocol": "erreur de protocole : {detail}",
   "err.exception": "exception de l'appareil 0x{code} ({name}){request}",
   "err.request": " à FC{fc} ({name}), unité {unit}",
-  "err.request_range": " à FC{fc} ({name}) pour {count} depuis l'adresse {address}, unité {unit}"
+  "err.request_range": " à FC{fc} ({name}) pour {count} depuis l'adresse {address}, unité {unit}",
+  "parts.too_long": "{name} : {max} caractères au plus",
+  "parts.empty_zeros": "Les champs vides sont envoyés comme des zéros"
 }

@@ -1452,5 +1452,7 @@
   "err.protocol": "Protokollfehler: {detail}",
   "err.exception": "Geräteausnahme 0x{code} ({name}){request}",
   "err.request": " auf FC{fc} ({name}), Gerät {unit}",
-  "err.request_range": " auf FC{fc} ({name}) für {count} ab Adresse {address}, Gerät {unit}"
+  "err.request_range": " auf FC{fc} ({name}) für {count} ab Adresse {address}, Gerät {unit}",
+  "parts.too_long": "{name}: höchstens {max} Zeichen",
+  "parts.empty_zeros": "Leere Felder werden als Nullen gesendet"
 }

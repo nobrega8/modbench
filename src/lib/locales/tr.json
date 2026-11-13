@@ -1452,5 +1452,7 @@
   "err.protocol": "protokol hatası: {detail}",
   "err.exception": "cihaz istisnası 0x{code} ({name}){request}",
   "err.request": " FC{fc} ({name}) isteğine, birim {unit}",
-  "err.request_range": " FC{fc} ({name}) isteğine, {address} adresinden {count} adet, birim {unit}"
+  "err.request_range": " FC{fc} ({name}) isteğine, {address} adresinden {count} adet, birim {unit}",
+  "parts.too_long": "{name}: en fazla {max} karakter",
+  "parts.empty_zeros": "Boş alanlar sıfır olarak gönderilir"
 }

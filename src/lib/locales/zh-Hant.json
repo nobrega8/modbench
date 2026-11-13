@@ -1447,5 +1447,7 @@
   "err.protocol": "通訊協定錯誤：{detail}",
   "err.exception": "裝置例外 0x{code}（{name}）{request}",
   "err.request": " 對 FC{fc}（{name}），單元 {unit}",
-  "err.request_range": " 對 FC{fc}（{name}），從位址 {address} 起 {count} 個，單元 {unit}"
+  "err.request_range": " 對 FC{fc}（{name}），從位址 {address} 起 {count} 個，單元 {unit}",
+  "parts.too_long": "{name}：最多 {max} 個字元",
+  "parts.empty_zeros": "空白欄位以零傳送"
 }

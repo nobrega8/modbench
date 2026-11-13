@@ -1452,5 +1452,7 @@
   "err.protocol": "erro de protocolo: {detail}",
   "err.exception": "exceção do dispositivo 0x{code} ({name}){request}",
   "err.request": " a FC{fc} ({name}), unidade {unit}",
-  "err.request_range": " a FC{fc} ({name}) para {count} a partir do endereço {address}, unidade {unit}"
+  "err.request_range": " a FC{fc} ({name}) para {count} a partir do endereço {address}, unidade {unit}",
+  "parts.too_long": "{name}: no máximo {max} caracteres",
+  "parts.empty_zeros": "Os campos vazios são enviados como zeros"
 }

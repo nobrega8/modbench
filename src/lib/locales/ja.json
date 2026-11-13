@@ -1447,5 +1447,7 @@
   "err.protocol": "プロトコルエラー: {detail}",
   "err.exception": "デバイス例外 0x{code} ({name}){request}",
   "err.request": " FC{fc} ({name}) に対して、ユニット {unit}",
-  "err.request_range": " FC{fc} ({name}) に対して、アドレス {address} から {count} 個、ユニット {unit}"
+  "err.request_range": " FC{fc} ({name}) に対して、アドレス {address} から {count} 個、ユニット {unit}",
+  "parts.too_long": "{name}: 最大 {max} 文字",
+  "parts.empty_zeros": "空の欄はゼロとして送信されます"
 }

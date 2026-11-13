@@ -1629,6 +1629,28 @@ class Bench {
     }
   }
 
+  /** Writes a block register from its parts, whole and in one request. */
+  async writeMapParts(
+    index: number,
+    values: (import("./types").Value | null)[],
+  ) {
+    const open = this.map;
+    if (!open) return;
+    if (!(await this.acceptMismatch()))
+      throw new Error("the device does not match the map");
+    const temporary = !this.connected;
+    if (temporary && !(await this.open())) throw new Error(this.status?.text);
+    try {
+      await api.writeMapParts(
+        $state.snapshot(open.map.registers[index]),
+        values,
+        open.map.meta.byte_order ?? "ABCD",
+      );
+    } finally {
+      if (temporary) await this.close();
+    }
+  }
+
   copyReadToWrite() {
     if (!this.read) return;
     const values =

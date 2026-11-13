@@ -1452,5 +1452,7 @@
   "err.protocol": "protocol error: {detail}",
   "err.exception": "device exception 0x{code} ({name}){request}",
   "err.request": " to FC{fc} ({name}), unit {unit}",
-  "err.request_range": " to FC{fc} ({name}) for {count} from address {address}, unit {unit}"
+  "err.request_range": " to FC{fc} ({name}) for {count} from address {address}, unit {unit}",
+  "parts.too_long": "{name}: at most {max} characters",
+  "parts.empty_zeros": "Empty fields are sent as zeros"
 }

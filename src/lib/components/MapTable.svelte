@@ -43,6 +43,13 @@
   import CustomRegisterForm from "./CustomRegisterForm.svelte";
   import ComputedForm from "./ComputedForm.svelte";
   import { formulaOf } from "#lib/computed.ts";
+  import {
+    hasParts,
+    parseParts,
+    partMax,
+    partsLine,
+    partText,
+  } from "#lib/parts.ts";
   import Select from "./Select.svelte";
   import { mapStatus } from "./MapStatus.svelte";
   import SnapshotBar from "./SnapshotBar.svelte";
@@ -54,6 +61,8 @@
   let group = $state("");
   let editing = $state<number | null>(null);
   let draft = $state("");
+  /** What is typed in each part of a block register. */
+  let partDraft = $state<string[]>([]);
   /** A value of one's own is typed instead of picking a label. */
   let custom = $state(false);
   /** Picked in a labelled list to type a value instead. */
@@ -320,6 +329,48 @@
     const reg = open.map.registers[index];
     const v = bench.mapResults.get(index)?.value;
     draft = v === null || v === undefined ? "" : formatValue(reg, v);
+    const read = bench.mapResults.get(index)?.parts;
+    partDraft = hasParts(reg)
+      ? reg.parts.map((_, i) => partText(read?.[i]))
+      : [];
+  }
+
+  async function writeParts(index: number) {
+    const reg = open.map.registers[index];
+    if (!hasParts(reg)) return;
+    const parsed = parseParts(reg.parts, partDraft);
+    if ("error" in parsed) {
+      note = { index, ok: false, text: parsed.error };
+      return;
+    }
+    const text = partsLine(reg.parts, parsed.values);
+    if (
+      !(await bench.confirmWrite(
+        t("maptable.write_value_to_name", { value: text, name: reg.name }),
+      ))
+    )
+      return;
+    busy = true;
+    try {
+      await bench.writeMapParts(index, parsed.values);
+      note = {
+        index,
+        ok: true,
+        text: t("maptable.wrote_value_to_name", {
+          value: text,
+          name: reg.name,
+        }),
+      };
+      editing = null;
+    } catch (e) {
+      note = {
+        index,
+        ok: false,
+        text: t("maptable.not_written_error", { error: errorText(e) }),
+      };
+    } finally {
+      busy = false;
+    }
   }
 
   /** Sets an alarm on a register (when it has none) and opens Alarms. */
@@ -805,7 +856,9 @@
         {@const shown =
           reg.access === "W" || r?.sentinel
             ? null
-            : formatValue(reg, r?.value ?? null)}
+            : hasParts(reg) && r?.parts
+              ? partsLine(reg.parts, r.parts)
+              : formatValue(reg, r?.value ?? null)}
         {@const shownTitle =
           shown === null ? undefined : valueTitle(reg, r?.value ?? null)}
         <tr
@@ -978,14 +1031,40 @@
               <form
                 onsubmit={(e) => {
                   e.preventDefault();
-                  write(index, draft);
+                  if (hasParts(reg)) writeParts(index);
+                  else write(index, draft);
                 }}
               >
                 <span
                   >{t("maptable.new_value_for")}
                   <strong>{reg.name}</strong></span
                 >
-                {#if reg.type === "bool"}
+                {#if hasParts(reg)}
+                  {#each reg.parts as part, i (i)}
+                    <label
+                      class="part-field"
+                      title={part.description || undefined}
+                    >
+                      <span class="dim">{part.name}</span>
+                      <!-- svelte-ignore a11y_autofocus -->
+                      <input
+                        class="input"
+                        bind:value={partDraft[i]}
+                        style:width="{Math.min(
+                          Math.max(partMax(part), 12),
+                          48,
+                        ) + 2}ch"
+                        autofocus={i === 0}
+                        maxlength={partMax(part) || undefined}
+                        spellcheck="false"
+                      />
+                    </label>
+                  {/each}
+                  <span class="dim">{t("parts.empty_zeros")}</span>
+                  <button class="btn accent" disabled={busy}
+                    >{t("maptable.write2")}</button
+                  >
+                {:else if reg.type === "bool"}
                   {#each [true, false] as on (on)}
                     {@const label =
                       reg.enum.find(([v]) => v === (on ? 1 : 0))?.[1] ??
@@ -1558,6 +1637,17 @@
 
   .editor .input {
     width: 160px;
+  }
+
+  .part-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+  }
+
+  .editor .part-field .input {
+    max-width: 100%;
   }
 
   .done td {

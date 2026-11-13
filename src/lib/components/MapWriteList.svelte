@@ -19,6 +19,13 @@
     type ParsedTemplate,
   } from "#lib/template.ts";
   import type { Register, Value } from "#lib/types.ts";
+  import {
+    hasParts,
+    parseParts,
+    partMax,
+    partsLine,
+    partText,
+  } from "#lib/parts.ts";
 
   let { open }: { open: OpenMap } = $props();
 
@@ -26,6 +33,8 @@
   let drafts = $state<Record<number, string>>({});
   let notes = $state<Record<number, { ok: boolean; text: string }>>({});
   let busy = $state<number | null>(null);
+  /** What is typed in each part of a block register. */
+  let partDrafts = $state<Record<number, string[]>>({});
   /** Rows with labelled values where a value of one's own is typed. */
   let custom = $state<Record<number, boolean>>({});
   /** Picked in a labelled list to type a value instead. */
@@ -208,6 +217,35 @@
     );
   }
 
+  async function writeParts(index: number) {
+    const reg = open.map.registers[index];
+    if (!hasParts(reg)) return;
+    const parsed = parseParts(reg.parts, partDrafts[index] ?? []);
+    if ("error" in parsed) {
+      notes[index] = { ok: false, text: parsed.error };
+      return;
+    }
+    const text = partsLine(reg.parts, parsed.values);
+    if (
+      !(await bench.confirmWrite(
+        t("mapwritelist.write_value_to_name", { value: text, name: reg.name }),
+      ))
+    )
+      return;
+    busy = index;
+    try {
+      await bench.writeMapParts(index, parsed.values);
+      notes[index] = {
+        ok: true,
+        text: t("mapwritelist.wrote_value", { value: text }),
+      };
+    } catch (e) {
+      notes[index] = { ok: false, text: errorText(e) };
+    } finally {
+      busy = null;
+    }
+  }
+
   async function write(index: number, text: string) {
     const reg = open.map.registers[index];
     const parsed = parseForRegister(reg, text);
@@ -379,7 +417,14 @@
             {#if reg.description}<div class="desc">{reg.description}</div>{/if}
           </td>
           <td class="cur mono">
-            {#if reg.access === "W"}<span class="dim"
+            {#if hasParts(reg) && reg.access !== "W"}
+              {#each reg.parts as part, i (i)}
+                <div class="part" title={part.description || undefined}>
+                  <span class="dim">{part.name}:</span>
+                  {partText(r?.parts?.[i]) || "—"}
+                </div>
+              {/each}
+            {:else if reg.access === "W"}<span class="dim"
                 >{t("maptable.write_only")}</span
               >{:else if r?.sentinel}<span class="dim">{r.sentinel}</span
               >{:else}{formatValue(reg, r?.value ?? null)}
@@ -392,10 +437,43 @@
               class="edit"
               onsubmit={(e) => {
                 e.preventDefault();
-                write(index, drafts[index] ?? "");
+                if (hasParts(reg)) writeParts(index);
+                else write(index, drafts[index] ?? "");
               }}
             >
-              {#if reg.type === "bool"}
+              {#if hasParts(reg)}
+                <div class="parts">
+                  {#each reg.parts as part, i (i)}
+                    <label
+                      class="part-field"
+                      title={part.description || undefined}
+                    >
+                      <span class="dim">{part.name}</span>
+                      <input
+                        class="input num"
+                        value={partDrafts[index]?.[i] ?? ""}
+                        oninput={(e) => {
+                          const list = [...(partDrafts[index] ?? [])];
+                          list[i] = e.currentTarget.value;
+                          partDrafts[index] = list;
+                        }}
+                        maxlength={partMax(part) || undefined}
+                        spellcheck="false"
+                        placeholder={part.type === "string"
+                          ? t("mapwritelist.text")
+                          : t("maptable.value")}
+                      />
+                    </label>
+                  {/each}
+                  <span class="dim hint">{t("parts.empty_zeros")}</span>
+                </div>
+                <button
+                  class="btn accent"
+                  disabled={busy !== null ||
+                    !(partDrafts[index] ?? []).some((v) => v)}
+                  >{t("maptable.write2")}</button
+                >
+              {:else if reg.type === "bool"}
                 {#each [true, false] as on (on)}
                   <button
                     type="button"
@@ -622,6 +700,29 @@
   }
 
   /* A fixed slot keeps every Write button in one column */
+  .parts {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+  .part-field {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+  .part-field .input {
+    width: 100%;
+  }
+  .part {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .hint {
+    font-size: 11px;
+  }
   .unit {
     width: 44px;
     margin-left: -2px;

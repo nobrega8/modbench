@@ -1462,5 +1462,7 @@
   "err.protocol": "ошибка протокола: {detail}",
   "err.exception": "исключение устройства 0x{code} ({name}){request}",
   "err.request": " на FC{fc} ({name}), устройство {unit}",
-  "err.request_range": " на FC{fc} ({name}), {count} с адреса {address}, устройство {unit}"
+  "err.request_range": " на FC{fc} ({name}), {count} с адреса {address}, устройство {unit}",
+  "parts.too_long": "{name}: не более {max} символов",
+  "parts.empty_zeros": "Пустые поля отправляются нулями"
 }

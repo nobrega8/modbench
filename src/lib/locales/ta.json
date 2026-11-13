@@ -1452,5 +1452,7 @@
   "err.protocol": "நெறிமுறைப் பிழை: {detail}",
   "err.exception": "சாதன விதிவிலக்கு 0x{code} ({name}){request}",
   "err.request": " FC{fc} ({name}) க்கு, அலகு {unit}",
-  "err.request_range": " FC{fc} ({name}) க்கு, முகவரி {address} இலிருந்து {count}, அலகு {unit}"
+  "err.request_range": " FC{fc} ({name}) க்கு, முகவரி {address} இலிருந்து {count}, அலகு {unit}",
+  "parts.too_long": "{name}: அதிகபட்சம் {max} எழுத்துகள்",
+  "parts.empty_zeros": "வெற்று புலங்கள் பூஜ்ஜியங்களாக அனுப்பப்படும்"
 }

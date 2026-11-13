@@ -237,6 +237,8 @@ export interface PointResult {
   error: string | null;
   /** Set when the raw value is a reserved one, e.g. "Unimplemented". */
   sentinel: string | null;
+  /** The value of each part of a block register (spec 4.10). */
+  parts?: (Value | null)[];
 }
 
 /** Change in the link while reading, sent by the backend. */

@@ -75,6 +75,10 @@ pub struct PointResult {
     /// "match" or "mismatch" when the register has a reference value and was
     /// read; `None` otherwise (a failed read has an `error` instead).
     pub reference: Option<&'static str>,
+    /// The value of each part of a block register (spec 4.10), in the order
+    /// of its parts; a part that cannot be decoded is `None`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parts: Option<Vec<Option<Value>>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -97,6 +101,15 @@ pub(crate) fn decode_point(
             codec::extract_field(words.first().copied().unwrap_or(0), bit, width).into(),
         )),
         (RawData::Registers(words), _, _) => codec::decode(words, reg.ty, order, reg.bit),
+    };
+    let parts = match &data {
+        RawData::Registers(words) if !reg.parts.is_empty() => Some(
+            crate::parts::split_block(reg, words, order)
+                .into_iter()
+                .map(Result::ok)
+                .collect(),
+        ),
+        _ => None,
     };
     match raw_value {
         Ok(v) => {
@@ -122,6 +135,7 @@ pub(crate) fn decode_point(
                 error: None,
                 sentinel,
                 reference,
+                parts,
             }
         }
         Err(e) => PointResult {
@@ -131,6 +145,7 @@ pub(crate) fn decode_point(
             error: Some(e.to_string()),
             sentinel: None,
             reference: None,
+            parts,
         },
     }
 }
@@ -249,6 +264,7 @@ fn failed(error: String) -> PointResult {
         error: Some(error),
         sentinel: None,
         reference: None,
+        parts: None,
     }
 }
 

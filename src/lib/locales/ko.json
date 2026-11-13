@@ -1447,5 +1447,7 @@
   "err.protocol": "프로토콜 오류: {detail}",
   "err.exception": "장치 예외 0x{code} ({name}){request}",
   "err.request": " FC{fc} ({name}) 요청, 유닛 {unit}",
-  "err.request_range": " FC{fc} ({name}) 요청, 주소 {address}부터 {count}개, 유닛 {unit}"
+  "err.request_range": " FC{fc} ({name}) 요청, 주소 {address}부터 {count}개, 유닛 {unit}",
+  "parts.too_long": "{name}: 최대 {max}자",
+  "parts.empty_zeros": "빈 칸은 0으로 전송됩니다"
 }

@@ -1462,5 +1462,7 @@
   "err.protocol": "błąd protokołu: {detail}",
   "err.exception": "wyjątek urządzenia 0x{code} ({name}){request}",
   "err.request": " na FC{fc} ({name}), jednostka {unit}",
-  "err.request_range": " na FC{fc} ({name}) dla {count} od adresu {address}, jednostka {unit}"
+  "err.request_range": " na FC{fc} ({name}) dla {count} od adresu {address}, jednostka {unit}",
+  "parts.too_long": "{name}: najwyżej {max} znaków",
+  "parts.empty_zeros": "Puste pola są wysyłane jako zera"
 }

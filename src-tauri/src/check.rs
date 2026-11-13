@@ -551,6 +551,7 @@ mod tests {
             error: None,
             sentinel: None,
             reference: None,
+            parts: None,
         }
     }
 

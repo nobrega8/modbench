@@ -1452,5 +1452,7 @@
   "err.protocol": "প্রোটোকল ত্রুটি: {detail}",
   "err.exception": "ডিভাইস ব্যতিক্রম 0x{code} ({name}){request}",
   "err.request": " FC{fc} ({name}) এর জন্য, ইউনিট {unit}",
-  "err.request_range": " FC{fc} ({name}) এর জন্য, ঠিকানা {address} থেকে {count}টি, ইউনিট {unit}"
+  "err.request_range": " FC{fc} ({name}) এর জন্য, ঠিকানা {address} থেকে {count}টি, ইউনিট {unit}",
+  "parts.too_long": "{name}: সর্বাধিক {max}টি অক্ষর",
+  "parts.empty_zeros": "খালি ঘরগুলি শূন্য হিসাবে পাঠানো হয়"
 }

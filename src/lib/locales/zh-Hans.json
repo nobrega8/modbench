@@ -1447,5 +1447,7 @@
   "err.protocol": "协议错误：{detail}",
   "err.exception": "设备异常 0x{code}（{name}）{request}",
   "err.request": " 对 FC{fc}（{name}），单元 {unit}",
-  "err.request_range": " 对 FC{fc}（{name}），从地址 {address} 起 {count} 个，单元 {unit}"
+  "err.request_range": " 对 FC{fc}（{name}），从地址 {address} 起 {count} 个，单元 {unit}",
+  "parts.too_long": "{name}：最多 {max} 个字符",
+  "parts.empty_zeros": "空字段以零发送"
 }
