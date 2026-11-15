@@ -27,7 +27,7 @@
     "@tauri-apps/plugin-updater": "^2.14.1"
   },
   "devDependencies": {
-    "@sveltejs/adapter-static": "^4.0.0",
+    "@sveltejs/adapter-static": "^4.0.1",
     "@sveltejs/kit": "^3.1.0",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tauri-apps/cli": "^2",
