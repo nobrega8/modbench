@@ -17,16 +17,12 @@ describe("highlight ordering", () => {
   ]);
 
   it("keeps the map order when showing everything", () => {
-    const sorted = [...rows].sort((a, b) =>
-      compareRows(a, b, marks, "all"),
-    );
+    const sorted = [...rows].sort((a, b) => compareRows(a, b, marks, "all"));
     expect(sorted.map((r) => r.index)).toEqual([0, 1, 2, 3, 4]);
   });
 
   it("lists the highlighted first, then the rest, in map order", () => {
-    const sorted = [...rows].sort((a, b) =>
-      compareRows(a, b, marks, "first"),
-    );
+    const sorted = [...rows].sort((a, b) => compareRows(a, b, marks, "first"));
     expect(sorted.map((r) => r.index)).toEqual([3, 4, 0, 1, 2]);
   });
 

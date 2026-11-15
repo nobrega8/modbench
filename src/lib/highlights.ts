@@ -32,8 +32,7 @@ export function compareRows(
   return (
     (view === "first"
       ? Number(marks.has(b.index)) - Number(marks.has(a.index))
-      : 0) ||
-    a.index - b.index
+      : 0) || a.index - b.index
   );
 }
 
