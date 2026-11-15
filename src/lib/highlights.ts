@@ -20,17 +20,16 @@ export function isMarksView(v: unknown): v is MarksView {
   return v === "all" || v === "first" || v === "only";
 }
 
-/** Registers that are read come before those that are not; in `first`
- * view the highlighted ones come first among each. */
+/** Map order; in `first` view the highlighted ones come first. Registers
+ * switched off keep their place: moving them would shift the rows under the
+ * pointer while switching several off in a row. */
 export function compareRows(
   a: { index: number },
   b: { index: number },
-  skipped: Set<number>,
   marks: Map<number, Mark>,
   view: MarksView,
 ): number {
   return (
-    Number(skipped.has(a.index)) - Number(skipped.has(b.index)) ||
     (view === "first"
       ? Number(marks.has(b.index)) - Number(marks.has(a.index))
       : 0) ||

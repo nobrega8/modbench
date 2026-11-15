@@ -18,23 +18,16 @@ describe("highlight ordering", () => {
 
   it("keeps the map order when showing everything", () => {
     const sorted = [...rows].sort((a, b) =>
-      compareRows(a, b, new Set(), marks, "all"),
+      compareRows(a, b, marks, "all"),
     );
     expect(sorted.map((r) => r.index)).toEqual([0, 1, 2, 3, 4]);
   });
 
   it("lists the highlighted first, then the rest, in map order", () => {
     const sorted = [...rows].sort((a, b) =>
-      compareRows(a, b, new Set(), marks, "first"),
+      compareRows(a, b, marks, "first"),
     );
     expect(sorted.map((r) => r.index)).toEqual([3, 4, 0, 1, 2]);
-  });
-
-  it("still puts registers that are not read at the end", () => {
-    const sorted = [...rows].sort((a, b) =>
-      compareRows(a, b, new Set([3, 1]), marks, "first"),
-    );
-    expect(sorted.map((r) => r.index)).toEqual([4, 0, 2, 3, 1]);
   });
 
   it("shows only the highlighted in the only view", () => {

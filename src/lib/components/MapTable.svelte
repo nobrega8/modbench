@@ -147,11 +147,8 @@
         );
       })
       .filter(({ index }) => shown(index, bench.marks, bench.marksView))
-      // Registers that are not read go to the end, in map order; the
-      // highlighted ones come first when asked.
-      .sort((a, b) =>
-        compareRows(a, b, bench.skipped, bench.marks, bench.marksView),
-      ),
+      // Map order; the highlighted ones come first when asked.
+      .sort((a, b) => compareRows(a, b, bench.marks, bench.marksView)),
   );
   // Long maps render only the rows in view (see virtual.ts).
   let wrap = $state<HTMLElement>();
