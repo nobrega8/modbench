@@ -153,6 +153,12 @@ pub struct Source {
     pub url: Option<String>,
     #[serde(default)]
     pub note: Option<String>,
+    /// When the document was downloaded or read (`YYYY-MM-DD`).
+    #[serde(default)]
+    pub accessed: Option<String>,
+    /// SHA-256 of the file that was used, as 64 hex digits.
+    #[serde(default)]
+    pub sha256: Option<String>,
 }
 
 /// File metadata. Optional values keep whether they were present, so a map
@@ -1733,6 +1739,8 @@ fn source_json(s: &Source) -> String {
         ("date", &s.date),
         ("url", &s.url),
         ("note", &s.note),
+        ("accessed", &s.accessed),
+        ("sha256", &s.sha256),
     ] {
         if let Some(v) = value {
             fields.push(format!("{}: {}", json_str(key), json_str(v)));

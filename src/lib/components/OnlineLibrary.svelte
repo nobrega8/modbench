@@ -460,6 +460,8 @@
                 {src.title}{src.version ? `, ${src.version}` : ""}{src.date
                   ? ` (${src.date})`
                   : ""}{#if src.url}<br /><span class="url">{src.url}</span
+                  >{/if}{#if src.accessed}<br /><span class="url"
+                    >{t("mapexplorer.accessed", { date: src.accessed })}</span
                   >{/if}
               </li>
             {/each}

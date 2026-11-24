@@ -365,7 +365,16 @@ pub(crate) fn read(text: &str, ck: &mut Checker) -> Option<(Meta, Vec<RawRow>)> 
                 format!("this reader supports mbmap 2, found {}", value.to_text()),
             ),
             ("vendor", J::Str(s)) => meta.vendor = s.clone(),
-            ("model", J::Str(s)) => meta.model = s.clone(),
+            ("model", J::Str(s)) => {
+                if s.contains(" / ") {
+                    ck.warn(
+                        Loc::pointer(at),
+                        "model-list",
+                        "model lists devices separated by \" / \"; give the family name and list the devices in models".into(),
+                    );
+                }
+                meta.model = s.clone();
+            }
             (
                 "vendor_website" | "description" | "firmware" | "source" | "protocol" | "parity",
                 J::Str(s),
@@ -859,6 +868,20 @@ fn read_source(ck: &mut Checker, at: &str, value: &J) -> Option<Source> {
                         field.to_text()
                     ),
                 ),
+            },
+            "accessed" => match text {
+                Some(s) if s.len() == 10 && valid_date(&s) => source.accessed = Some(s),
+                _ => fail(
+                    ck,
+                    key,
+                    format!("accessed must be YYYY-MM-DD, not {}", field.to_text()),
+                ),
+            },
+            "sha256" => match text {
+                Some(s) if s.len() == 64 && s.bytes().all(|b| b.is_ascii_hexdigit()) => {
+                    source.sha256 = Some(s)
+                }
+                _ => fail(ck, key, "sha256 must be 64 hexadecimal digits".into()),
             },
             "url" => match text {
                 Some(s)

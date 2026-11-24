@@ -119,6 +119,10 @@ export interface Source {
   date: string | null;
   url: string | null;
   note: string | null;
+  /** When the document was downloaded or read (`YYYY-MM-DD`). */
+  accessed?: string | null;
+  /** SHA-256 of the document that was used, 64 hex digits. */
+  sha256?: string | null;
 }
 
 export interface Register {
