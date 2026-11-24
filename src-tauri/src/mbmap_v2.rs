@@ -293,6 +293,7 @@ fn check_bit_fields(
             bits: Some(bits as u8),
             enum_labels: Vec::new(),
             enum_ref,
+            index: i,
         };
         let (lo, hi) = (i64::from(bit), i64::from(bit) + i64::from(bits));
         if let Some(clash) = parts.iter().find(|p| {
@@ -426,6 +427,7 @@ fn check_parts(ck: &mut Checker, at: &str, value: &J, row: &RawRow) -> Vec<Part>
             bits: None,
             enum_labels: Vec::new(),
             enum_ref: None,
+            index: i,
         };
         if part.range().end as i64 > size {
             bad_parts(

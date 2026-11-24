@@ -353,6 +353,9 @@ pub struct Part {
     /// Name of the table the labels come from.
     #[serde(default)]
     pub enum_ref: Option<String>,
+    /// Position of the part in the file, to point at it in a diagnostic.
+    #[serde(skip)]
+    pub index: usize,
 }
 
 impl Part {
@@ -1579,14 +1582,20 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>, version: u8) -> Optio
             read_group: Some(cell("read_group").to_string()).filter(|g| !g.is_empty()),
             parts: {
                 let mut parts = parts;
-                for part in &mut parts {
+                for part in parts.iter_mut() {
                     let Some(name) = part.enum_ref.clone() else {
                         continue;
                     };
                     match meta.enums.iter().find(|(n, _)| *n == name) {
                         Some((_, labels)) => part.enum_labels = labels.clone(),
                         None => ck.error(
-                            line,
+                            &Loc {
+                                line: line.line,
+                                pointer: line
+                                    .pointer
+                                    .as_ref()
+                                    .map(|p| format!("{p}/parts/{}/enum", part.index)),
+                            },
                             "unknown-enum",
                             format!("no enum table named {name:?}"),
                         ),

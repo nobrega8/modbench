@@ -119,7 +119,6 @@ struct Credentials {
 
 #[derive(Deserialize)]
 struct Request {
-    token: String,
     tool: String,
     #[serde(default)]
     args: Value,
