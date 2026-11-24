@@ -154,7 +154,7 @@ describe("quality in CSV files", () => {
       ",",
     );
     expect(log.trim().split("\n")[1]).toMatch(
-      /,,note,,,,V: read failed \(timed out\)$/,
+      /,,note,,,,V: read failed \(timed out\),,$/,
     );
   });
 });
