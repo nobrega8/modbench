@@ -17,13 +17,26 @@ export function partText(value: Value | null | undefined): string {
   return String(value);
 }
 
+/** The part is a bit field of a word, not a value in a block. */
+export function isBitField(part: Part): boolean {
+  return part.bit !== undefined && part.bit !== null;
+}
+
+/** A part's value with its label, when the bit field has one: `PLAY (2)`. */
+export function partLabel(part: Part, value: Value | null | undefined): string {
+  const text = partText(value);
+  if (text === "" || !part.enum?.length) return text;
+  const label = part.enum.find(([v]) => String(v) === text)?.[1];
+  return label ? `${label} (${text})` : text;
+}
+
 /** Every part on one line, `name: value`, for a cell or a confirmation. */
 export function partsLine(
   parts: Part[],
   values: (Value | null | undefined)[],
 ): string {
   return parts
-    .map((p, i) => `${p.name}: ${partText(values[i]) || "—"}`)
+    .map((p, i) => `${p.name}: ${partLabel(p, values[i]) || "—"}`)
     .join(" · ");
 }
 
@@ -47,7 +60,15 @@ export function parseParts(
       values.push(null);
       continue;
     }
-    if (part.type === "string") {
+    if (isBitField(part)) {
+      const n = parseInteger(text);
+      const width = part.bits ?? 1;
+      if (n === null || n < 0 || n >= 2 ** width)
+        return {
+          error: `${part.name}: ${t("fmt.number")} (0–${2 ** width - 1})`,
+        };
+      values.push(n);
+    } else if (part.type === "string") {
       const max = partMax(part);
       if (text.length > max)
         return { error: t("parts.too_long", { name: part.name, max }) };

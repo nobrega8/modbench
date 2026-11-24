@@ -324,7 +324,8 @@ pub struct Register {
     /// The register is only read together with registers of this group.
     #[serde(default)]
     pub read_group: Option<String>,
-    /// Named values inside a block (`string`) register (spec section 4.10).
+    /// Named values inside a block (`string`) register, or bit fields of a
+    /// `uint16`/`uint32`/`uint64` word (spec section 4.10).
     #[serde(default)]
     pub parts: Vec<Part>,
 }
@@ -341,9 +342,25 @@ pub struct Part {
     pub length: u16,
     #[serde(default)]
     pub description: String,
+    /// Bit fields of a word register: lowest bit and width (spec 4.10).
+    #[serde(default)]
+    pub bit: Option<u8>,
+    #[serde(default)]
+    pub bits: Option<u8>,
+    /// Labels for the value of a bit field.
+    #[serde(rename = "enum", default)]
+    pub enum_labels: Vec<(i64, String)>,
+    /// Name of the table the labels come from.
+    #[serde(default)]
+    pub enum_ref: Option<String>,
 }
 
 impl Part {
+    /// The part is a bit field of a word register, not a value in a block.
+    pub fn is_bit_field(&self) -> bool {
+        self.bit.is_some()
+    }
+
     /// Registers of the block this part covers.
     pub fn range(&self) -> std::ops::Range<usize> {
         usize::from(self.offset)..usize::from(self.offset) + usize::from(self.length)
@@ -1560,7 +1577,23 @@ fn finish(ck: &mut Checker, meta: Meta, rows: Vec<RawRow>, version: u8) -> Optio
             role,
             read_alone: cell("read_alone") == "true",
             read_group: Some(cell("read_group").to_string()).filter(|g| !g.is_empty()),
-            parts,
+            parts: {
+                let mut parts = parts;
+                for part in &mut parts {
+                    let Some(name) = part.enum_ref.clone() else {
+                        continue;
+                    };
+                    match meta.enums.iter().find(|(n, _)| *n == name) {
+                        Some((_, labels)) => part.enum_labels = labels.clone(),
+                        None => ck.error(
+                            line,
+                            "unknown-enum",
+                            format!("no enum table named {name:?}"),
+                        ),
+                    }
+                }
+                parts
+            },
         });
     }
 
@@ -2001,7 +2034,22 @@ fn parts_json(parts: &[Part]) -> String {
                 format!("\"name\": {}", json_str(&p.name)),
                 format!("\"offset\": {}", p.offset),
             ];
-            if p.ty == DataType::String {
+            if p.is_bit_field() {
+                f.clear();
+                f.push(format!("\"name\": {}", json_str(&p.name)));
+                f.push(format!("\"bit\": {}", p.bit.unwrap_or(0)));
+                if p.bits.unwrap_or(1) != 1 {
+                    f.push(format!("\"bits\": {}", p.bits.unwrap_or(1)));
+                }
+                match &p.enum_ref {
+                    Some(name) => f.push(format!("\"enum\": {}", json_str(name))),
+                    None if !p.enum_labels.is_empty() => f.push(format!(
+                        "\"enum\": {}",
+                        json_table(p.enum_labels.iter().cloned())
+                    )),
+                    None => {}
+                }
+            } else if p.ty == DataType::String {
                 f.push(format!("\"length\": {}", p.length));
             } else {
                 f.push(format!("\"type\": \"{}\"", type_name(p.ty)));

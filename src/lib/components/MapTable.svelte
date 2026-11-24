@@ -49,6 +49,8 @@
     partMax,
     partsLine,
     partText,
+    partLabel,
+    isBitField,
   } from "#lib/parts.ts";
   import Select from "./Select.svelte";
   import { mapStatus } from "./MapStatus.svelte";
@@ -1043,18 +1045,27 @@
                       title={part.description || undefined}
                     >
                       <span class="dim">{part.name}</span>
-                      <!-- svelte-ignore a11y_autofocus -->
-                      <input
-                        class="input"
-                        bind:value={partDraft[i]}
-                        style:width="{Math.min(
-                          Math.max(partMax(part), 12),
-                          48,
-                        ) + 2}ch"
-                        autofocus={i === 0}
-                        maxlength={partMax(part) || undefined}
-                        spellcheck="false"
-                      />
+                      {#if isBitField(part) && (part.enum?.length || (part.bits ?? 1) === 1)}
+                        <select class="input" bind:value={partDraft[i]}>
+                          <option value="">0</option>
+                          {#each part.enum?.length ? part.enum.filter(([v]) => v !== 0) : [[1, "1"]] as [v, label] (v)}
+                            <option value={String(v)}>{label} ({v})</option>
+                          {/each}
+                        </select>
+                      {:else}
+                        <!-- svelte-ignore a11y_autofocus -->
+                        <input
+                          class="input"
+                          bind:value={partDraft[i]}
+                          style:width="{Math.min(
+                            Math.max(partMax(part), 12),
+                            48,
+                          ) + 2}ch"
+                          autofocus={i === 0}
+                          maxlength={partMax(part) || undefined}
+                          spellcheck="false"
+                        />
+                      {/if}
                     </label>
                   {/each}
                   <span class="dim">{t("parts.empty_zeros")}</span>

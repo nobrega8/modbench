@@ -176,6 +176,11 @@ export interface Part {
   /** Registers taken. */
   length: number;
   description?: string;
+  /** Bit field of a word register: lowest bit and width (spec 4.10). */
+  bit?: number | null;
+  bits?: number | null;
+  /** Labels for the value of a bit field. */
+  enum?: [number, string][];
 }
 
 export interface DeviceMap {

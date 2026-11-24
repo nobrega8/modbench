@@ -451,7 +451,10 @@ pub async fn write_map_parts(
         )));
     }
     if register.area != Area::Holding
-        || register.ty != DataType::String
+        || !matches!(
+            register.ty,
+            DataType::String | DataType::Uint16 | DataType::Uint32 | DataType::Uint64
+        )
         || register.parts.is_empty()
         || values.len() != register.parts.len()
     {

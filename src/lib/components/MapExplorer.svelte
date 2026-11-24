@@ -330,16 +330,28 @@
                         <h4>{t("mapexplorer.parts")}</h4>
                         <table class="data inner">
                           <tbody>
-                            {#each r.parts as p (p.offset + p.name)}
+                            {#each r.parts as p (p.offset + p.name + (p.bit ?? ""))}
                               {@const first = r.address + p.offset}
+                              {@const bitField =
+                                p.bit !== undefined && p.bit !== null}
                               <tr>
                                 <td>{p.name}</td>
                                 <td class="mono"
-                                  >{p.length > 1
-                                    ? `${first}–${first + p.length - 1}`
-                                    : first}</td
+                                  >{bitField
+                                    ? (p.bits ?? 1) > 1
+                                      ? `bits ${p.bit}–${(p.bit ?? 0) + (p.bits ?? 1) - 1}`
+                                      : `bit ${p.bit}`
+                                    : p.length > 1
+                                      ? `${first}–${first + p.length - 1}`
+                                      : first}</td
                                 >
-                                <td class="mono">{p.type}</td>
+                                <td class="mono"
+                                  >{bitField
+                                    ? (p.enum ?? [])
+                                        .map(([v, l]) => `${v}=${l}`)
+                                        .join(", ")
+                                    : p.type}</td
+                                >
                                 <td>{p.description ?? ""}</td>
                               </tr>
                             {/each}

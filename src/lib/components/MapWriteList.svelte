@@ -25,6 +25,8 @@
     partMax,
     partsLine,
     partText,
+    partLabel,
+    isBitField,
   } from "#lib/parts.ts";
 
   let { open }: { open: OpenMap } = $props();
@@ -421,7 +423,7 @@
               {#each reg.parts as part, i (i)}
                 <div class="part" title={part.description || undefined}>
                   <span class="dim">{part.name}:</span>
-                  {partText(r?.parts?.[i]) || "—"}
+                  {partLabel(part, r?.parts?.[i]) || "—"}
                 </div>
               {/each}
             {:else if reg.access === "W"}<span class="dim"
@@ -449,20 +451,37 @@
                       title={part.description || undefined}
                     >
                       <span class="dim">{part.name}</span>
-                      <input
-                        class="input num"
-                        value={partDrafts[index]?.[i] ?? ""}
-                        oninput={(e) => {
-                          const list = [...(partDrafts[index] ?? [])];
-                          list[i] = e.currentTarget.value;
-                          partDrafts[index] = list;
-                        }}
-                        maxlength={partMax(part) || undefined}
-                        spellcheck="false"
-                        placeholder={part.type === "string"
-                          ? t("mapwritelist.text")
-                          : t("maptable.value")}
-                      />
+                      {#if isBitField(part) && (part.enum?.length || (part.bits ?? 1) === 1)}
+                        <select
+                          class="input"
+                          value={partDrafts[index]?.[i] ?? ""}
+                          onchange={(e) => {
+                            const list = [...(partDrafts[index] ?? [])];
+                            list[i] = e.currentTarget.value;
+                            partDrafts[index] = list;
+                          }}
+                        >
+                          <option value="">0</option>
+                          {#each part.enum?.length ? part.enum.filter(([v]) => v !== 0) : [[1, "1"]] as [v, label] (v)}
+                            <option value={String(v)}>{label} ({v})</option>
+                          {/each}
+                        </select>
+                      {:else}
+                        <input
+                          class="input num"
+                          value={partDrafts[index]?.[i] ?? ""}
+                          oninput={(e) => {
+                            const list = [...(partDrafts[index] ?? [])];
+                            list[i] = e.currentTarget.value;
+                            partDrafts[index] = list;
+                          }}
+                          maxlength={partMax(part) || undefined}
+                          spellcheck="false"
+                          placeholder={part.type === "string"
+                            ? t("mapwritelist.text")
+                            : t("maptable.value")}
+                        />
+                      {/if}
                     </label>
                   {/each}
                   <span class="dim hint">{t("parts.empty_zeros")}</span>

@@ -201,6 +201,119 @@ fn part_number(ck: &mut Checker, at: &str, value: &J, min: i64, what: &str) -> O
     }
 }
 
+/// The bit fields of a word register (spec 4.10): each has a `bit`, an optional
+/// `bits` and an optional `enum`, and none has an `offset`, `length` or `type`.
+fn check_bit_fields(
+    ck: &mut Checker,
+    at: &str,
+    items: &[J],
+    width: i64,
+    mut parts: Vec<Part>,
+) -> Vec<Part> {
+    let registers = (width / 16) as u16;
+    for (i, item) in items.iter().enumerate() {
+        let here = child(at, &i.to_string());
+        let J::Obj(fields) = item else {
+            wrong_type(ck, &here, "an object", item);
+            continue;
+        };
+        let get = |key: &str| fields.iter().find(|(k, _)| k == key).map(|(_, v)| v);
+        let name = match get("name") {
+            Some(J::Str(n)) => n,
+            Some(other) => {
+                wrong_type(ck, &child(&here, "name"), "a string", other);
+                continue;
+            }
+            None => {
+                bad_parts(ck, &child(&here, "name"), "a part needs a name".into());
+                continue;
+            }
+        };
+        if name.trim().is_empty() {
+            bad_parts(
+                ck,
+                &child(&here, "name"),
+                "a part needs a non-empty name".into(),
+            );
+        }
+        if let Some(key) = ["offset", "length", "type"]
+            .iter()
+            .find(|k| get(k).is_some())
+        {
+            bad_parts(
+                ck,
+                &child(&here, key),
+                format!("a bit field of a word has no {key}"),
+            );
+            continue;
+        }
+        let Some(bit) = get("bit") else {
+            bad_parts(ck, &here, format!("bit field {name:?} needs a bit"));
+            continue;
+        };
+        let Some(bit) = part_number(ck, &child(&here, "bit"), bit, 0, "bit") else {
+            continue;
+        };
+        let bits = match get("bits") {
+            None => 1,
+            Some(v) => match part_number(ck, &child(&here, "bits"), v, 1, "bits") {
+                Some(b) => b,
+                None => continue,
+            },
+        };
+        if i64::from(bit) + i64::from(bits) > width {
+            bad_parts(
+                ck,
+                &here,
+                format!(
+                    "bit field {name:?} ends at bit {}, beyond the {width} bits of the register",
+                    i64::from(bit) + i64::from(bits)
+                ),
+            );
+            continue;
+        }
+        let enum_ref = match get("enum") {
+            None => None,
+            Some(J::Str(t)) => Some(t.clone()),
+            Some(other) => {
+                wrong_type(ck, &child(&here, "enum"), "a table name", other);
+                continue;
+            }
+        };
+        let part = Part {
+            name: name.clone(),
+            offset: 0,
+            ty: DataType::Uint16,
+            length: registers,
+            description: match get("description") {
+                Some(J::Str(d)) => d.clone(),
+                _ => String::new(),
+            },
+            bit: Some(bit as u8),
+            bits: Some(bits as u8),
+            enum_labels: Vec::new(),
+            enum_ref,
+        };
+        let (lo, hi) = (i64::from(bit), i64::from(bit) + i64::from(bits));
+        if let Some(clash) = parts.iter().find(|p| {
+            let (plo, phi) = (
+                i64::from(p.bit.unwrap_or(0)),
+                i64::from(p.bit.unwrap_or(0)) + i64::from(p.bits.unwrap_or(1)),
+            );
+            lo < phi && plo < hi
+        }) {
+            bad_parts(
+                ck,
+                &here,
+                format!("bit field {name:?} overlaps {:?}", clash.name),
+            );
+            continue;
+        }
+        parts.push(part);
+    }
+    parts
+}
+
 /// The parts of a string register (spec 4.10): named values inside one block.
 fn check_parts(ck: &mut Checker, at: &str, value: &J, row: &RawRow) -> Vec<Part> {
     let mut parts: Vec<Part> = Vec::new();
@@ -212,10 +325,17 @@ fn check_parts(ck: &mut Checker, at: &str, value: &J, row: &RawRow) -> Vec<Part>
         bad_parts(ck, at, "parts cannot be empty".into());
         return parts;
     }
-    let is_string = row
-        .cells
-        .get("type")
-        .is_some_and(|t| t.eq_ignore_ascii_case("string"));
+    let ty_cell = row.cells.get("type").map(|t| t.to_ascii_lowercase());
+    let word_bits: Option<i64> = match ty_cell.as_deref() {
+        Some("uint16") => Some(16),
+        Some("uint32") => Some(32),
+        Some("uint64") => Some(64),
+        _ => None,
+    };
+    if let Some(width) = word_bits {
+        return check_bit_fields(ck, at, items, width, parts);
+    }
+    let is_string = ty_cell.as_deref() == Some("string");
     let size = row
         .cells
         .get("length")
@@ -225,7 +345,7 @@ fn check_parts(ck: &mut Checker, at: &str, value: &J, row: &RawRow) -> Vec<Part>
         bad_parts(
             ck,
             at,
-            "parts are only for a string register with a valid length".into(),
+            "parts are only for a string register with a valid length, or a uint16, uint32 or uint64 register".into(),
         );
         return parts;
     };
@@ -302,6 +422,10 @@ fn check_parts(ck: &mut Checker, at: &str, value: &J, row: &RawRow) -> Vec<Part>
                 Some(J::Str(d)) => d.clone(),
                 _ => String::new(),
             },
+            bit: None,
+            bits: None,
+            enum_labels: Vec::new(),
+            enum_ref: None,
         };
         if part.range().end as i64 > size {
             bad_parts(
