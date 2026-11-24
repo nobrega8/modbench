@@ -1469,5 +1469,7 @@
   "settingsview.ignore_firmware_range": "Ignorar a faixa de firmware dos mapas",
   "settingsview.ignore_firmware_range2": "Lê todos os registradores de um mapa, seja qual for o firmware do dispositivo. Os registradores fora da faixa ficam marcados na tabela.",
   "maptable.outside_firmware": "fora do fw",
-  "maptable.outside_firmware_hint": "O mapa não atribui este registrador ao firmware do dispositivo (só em {range}). Ele é lido porque a faixa de firmware é ignorada."
+  "maptable.outside_firmware_hint": "O mapa não atribui este registrador ao firmware do dispositivo (só em {range}). Ele é lido porque a faixa de firmware é ignorada.",
+  "logview.hide_site": "Omitir ID da unidade e conexão",
+  "logview.hide_site_hint": "Em um log CSV salvo, omite o ID da unidade e os dados da conexão, para logs que serão compartilhados."
 }

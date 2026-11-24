@@ -62,8 +62,33 @@ describe("csv", () => {
       ",",
     );
     const [head, row] = text.trim().split("\n");
-    expect(head).toBe("time,function,name,address,count,duration_ms,result");
-    expect(row).toMatch(/,3,Read holding registers,10,2,4\.3,OK$/);
+    expect(head).toBe(
+      "time,function,name,address,count,duration_ms,result,unit_id,value",
+    );
+    expect(row).toMatch(/,3,Read holding registers,10,2,4\.3,OK,,$/);
+  });
+
+  it("logs the unit and value, in time order, after a header", () => {
+    const entry = (time_ms: number, extra: object) => ({
+      time_ms,
+      function: 6,
+      address: 50,
+      count: 1,
+      duration_ms: 1,
+      error: null,
+      ...extra,
+    });
+    const entries = [
+      entry(2000, { unit: 5, value: "1" }),
+      entry(1000, { function: 0, note: "88 more: read failed" }),
+    ];
+    const lines = logCsv(entries, ",", [["map", "Acme X"]])
+      .trim()
+      .split("\n");
+    expect(lines[0]).toBe("# map,Acme X");
+    expect(lines[2]).toContain(",note,");
+    expect(lines[3]).toMatch(/,6,.+,50,1,1\.0,OK,5,1$/);
+    expect(logCsv(entries, ",", [], true)).not.toMatch(/OK,5,1/);
   });
 
   it("writes map values, leaving failed reads empty", () => {

@@ -1774,6 +1774,38 @@ class Bench {
     return { ...cycle, results: [...cycle.results, ...extra] };
   }
 
+  /** The `#` lines at the top of a saved log: when, which map, how the device
+   * was reached. With `hideSite` the connection and unit ID are left out. */
+  async logHeader(hideSite = false): Promise<[string, string | number][]> {
+    const connection =
+      this.transport === "rtu"
+        ? `${this.framing === "ascii" ? "ASCII" : "RTU"} ${this.serialPort} ${this.baudrate} ${this.dataBits}${this.parity}${this.stopBits}`
+        : `${this.transport.toUpperCase()} ${this.host.trim()}:${this.tcpPort}`;
+    const version = await api.appVersion().catch(() => "");
+    const rows: [string, string | number][] = [
+      [
+        "exported",
+        new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
+      ],
+      ["modbench version", version],
+    ];
+    const meta = this.map?.map.meta;
+    if (meta) {
+      rows.push(
+        ["map", `${meta.vendor} ${meta.model}`],
+        [
+          "map revision",
+          meta.revision == null
+            ? ""
+            : `${meta.revision}${meta.revised ? `, ${meta.revised}` : ""}`,
+        ],
+      );
+    }
+    if (!hideSite)
+      rows.push(["connection", connection], ["unit id", this.unitId]);
+    return rows;
+  }
+
   /** Adds the app's own lines to the log (not requests: no statistics). */
   private addNotes(notes: string[]) {
     const time_ms = Date.now();

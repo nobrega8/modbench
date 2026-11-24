@@ -1469,5 +1469,7 @@
   "settingsview.ignore_firmware_range": "Ignorar o intervalo de firmware dos mapas",
   "settingsview.ignore_firmware_range2": "Lê todos os registos de um mapa, seja qual for o firmware do dispositivo. Os registos fora do intervalo ficam assinalados na tabela.",
   "maptable.outside_firmware": "fora do fw",
-  "maptable.outside_firmware_hint": "O mapa não atribui este registo ao firmware do dispositivo (só em {range}). É lido porque o intervalo de firmware é ignorado."
+  "maptable.outside_firmware_hint": "O mapa não atribui este registo ao firmware do dispositivo (só em {range}). É lido porque o intervalo de firmware é ignorado.",
+  "logview.hide_site": "Omitir ID da unidade e ligação",
+  "logview.hide_site_hint": "Num registo CSV guardado, omite o ID da unidade e os dados da ligação, para registos que vão ser partilhados."
 }

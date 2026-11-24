@@ -424,6 +424,23 @@ async fn open(config: &ConnectionConfig, raw: Option<RawSink>) -> Result<Context
     Ok(ctx)
 }
 
+/// Registers as decimal numbers, for the traffic log.
+fn words_text(words: &[u16]) -> String {
+    words
+        .iter()
+        .map(u16::to_string)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Bits as 0 and 1, for the traffic log.
+fn bits_text(bits: &[bool]) -> String {
+    bits.iter()
+        .map(|b| if *b { "1" } else { "0" })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// One request as seen on the bus, for the traffic log.
 #[derive(Debug, Clone, Serialize)]
 pub struct TrafficEntry {
@@ -434,6 +451,12 @@ pub struct TrafficEntry {
     pub count: u16,
     pub duration_ms: f64,
     pub error: Option<String>,
+    /// The unit ID the request was sent to.
+    pub unit: u8,
+    /// What was written, or what the device answered to a read: registers as
+    /// numbers and bits as 0/1, separated by spaces.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
     /// Set on lines that are not Modbus requests (raw bytes sent by hand).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
@@ -1031,6 +1054,7 @@ impl Session {
         address: u16,
         count: u16,
         started: (SystemTime, Instant),
+        value: Option<String>,
         result: &mut Result<T, ModbusError>,
     ) {
         if let Some(logger) = &self.logger {
@@ -1044,6 +1068,8 @@ impl Session {
                 count,
                 duration_ms: started.1.elapsed().as_secs_f64() * 1000.0,
                 error: result.as_ref().err().map(ToString::to_string),
+                unit: self.unit,
+                value,
                 note: None,
             });
         }
@@ -1083,7 +1109,11 @@ impl Session {
             Area::Holding => 3,
             Area::Input => 4,
         };
-        self.log(function, address, count, started, &mut result);
+        let value = result.as_ref().ok().map(|data| match data {
+            RawData::Registers(words) => words_text(words),
+            RawData::Bits(bits) => bits_text(bits),
+        });
+        self.log(function, address, count, started, value, &mut result);
         self.track(&result);
         let mut data = result?;
         // Coil responses are padded to a whole byte; keep only what was asked.
@@ -1154,7 +1184,14 @@ impl Session {
                 with_timeout(wait, ctx.write_multiple_registers(address, words)).await,
             ),
         };
-        self.log(function, address, words.len() as u16, started, &mut result);
+        self.log(
+            function,
+            address,
+            words.len() as u16,
+            started,
+            Some(words_text(words)),
+            &mut result,
+        );
         self.track(&result);
         result
     }
@@ -1175,7 +1212,14 @@ impl Session {
                 with_timeout(wait, ctx.write_multiple_coils(address, bits)).await,
             ),
         };
-        self.log(function, address, bits.len() as u16, started, &mut result);
+        self.log(
+            function,
+            address,
+            bits.len() as u16,
+            started,
+            Some(bits_text(bits)),
+            &mut result,
+        );
         self.track(&result);
         result
     }
@@ -1215,6 +1259,7 @@ impl Session {
     pub async fn probe(&mut self, unit: u8, area: Area, address: u16) -> Option<String> {
         let own = self.unit;
         self.ctx.set_slave(Slave(unit));
+        self.unit = unit;
         let answer = match self.read(area, address, 1).await {
             Ok(_) => Some("responds".into()),
             Err(ModbusError::Exception { code, name, .. }) => {
@@ -1223,6 +1268,7 @@ impl Session {
             Err(_) => None,
         };
         self.ctx.set_slave(Slave(own));
+        self.unit = own;
         answer
     }
 
@@ -1246,7 +1292,7 @@ impl Session {
                 self.ctx.call(Request::ReadDeviceIdentification(code, next)),
             )
             .await;
-            self.log(43, next.into(), 1, started, &mut result);
+            self.log(43, next.into(), 1, started, None, &mut result);
             self.track(&result);
             let Response::ReadDeviceIdentification(part) = result? else {
                 return Err(ModbusError::Protocol(
@@ -1400,9 +1446,11 @@ impl Session {
         }
         let own = self.unit;
         self.ctx.set_slave(Slave(unit));
+        self.unit = unit;
         let function = request.function_code().value();
         let result = self.send_probe(function, request).await;
         self.ctx.set_slave(Slave(own));
+        self.unit = own;
         match result {
             Ok(response) => Ok(Some(response)),
             Err(ModbusError::Timeout(_)) if unit == 0 => Ok(None),
@@ -1417,7 +1465,7 @@ impl Session {
     ) -> Result<Response, ModbusError> {
         let started = (SystemTime::now(), Instant::now());
         let mut result = with_timeout(self.timeout, same_function(self.ctx.call(request))).await;
-        self.log(function, 0, 1, started, &mut result);
+        self.log(function, 0, 1, started, None, &mut result);
         self.track(&result);
         result
     }

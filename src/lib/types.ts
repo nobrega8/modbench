@@ -277,6 +277,10 @@ export interface TrafficEntry {
   count: number;
   duration_ms: number;
   error: string | null;
+  /** The unit ID the request was sent to (absent on the app's own lines). */
+  unit?: number;
+  /** What was written, or what a read answered: numbers separated by spaces. */
+  value?: string | null;
   /** Set on the app's own lines (e.g. a register that starts failing),
    * which are not requests: function, address and count are 0. */
   note?: string;

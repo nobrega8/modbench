@@ -693,6 +693,8 @@ pub async fn send_raw(
             count: 0,
             duration_ms: started.elapsed().as_secs_f64() * 1000.0,
             error: None,
+            unit: 0,
+            value: None,
             note: Some(note),
         },
     );

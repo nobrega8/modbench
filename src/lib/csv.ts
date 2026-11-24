@@ -1,6 +1,7 @@
 // CSV text for the log, map values and recordings.
 
-import { FUNCTION_NAME, formatRaw, formatValue } from "./format";
+import { formatRaw, formatValue } from "./format";
+import { functionName } from "./frames";
 import type { PointResult, Register, TrafficEntry } from "./types";
 
 export type Separator = "," | ";";
@@ -27,24 +28,50 @@ export function stamp(ms: number): string {
   );
 }
 
-export function logCsv(entries: TrafficEntry[], sep: Separator): string {
+/**
+ * The traffic log as CSV. Rows are in time order; `header` lines start with
+ * "#" like the ones of a values export. Columns added later (`unit_id`,
+ * `value`) come last, so readers of the first seven keep working. With
+ * `hideSite` the unit ID is left out of the rows, for logs that are shared.
+ */
+export function logCsv(
+  entries: TrafficEntry[],
+  sep: Separator,
+  header: [string, string | number][] = [],
+  hideSite = false,
+): string {
+  // The sort is stable: lines with the same time keep the order they came in.
+  const ordered = [...entries].sort((a, b) => a.time_ms - b.time_ms);
   const lines = [
+    ...header.map(([k, v]) => csvRow([`# ${k}`, v], sep)),
     csvRow(
-      ["time", "function", "name", "address", "count", "duration_ms", "result"],
+      [
+        "time",
+        "function",
+        "name",
+        "address",
+        "count",
+        "duration_ms",
+        "result",
+        "unit_id",
+        "value",
+      ],
       sep,
     ),
-    ...entries.map((t) =>
+    ...ordered.map((t) =>
       csvRow(
         t.note
-          ? [stamp(t.time_ms), "", "note", "", "", "", t.note]
+          ? [stamp(t.time_ms), "", "note", "", "", "", t.note, "", ""]
           : [
               stamp(t.time_ms),
               t.function,
-              FUNCTION_NAME[t.function] ?? "",
+              functionName(t.function),
               t.address,
               t.count,
               t.duration_ms.toFixed(1),
               t.error ?? "OK",
+              hideSite ? "" : (t.unit ?? ""),
+              t.value ?? "",
             ],
         sep,
       ),

@@ -1469,5 +1469,7 @@
   "settingsview.ignore_firmware_range": "Ignore the firmware range of maps",
   "settingsview.ignore_firmware_range2": "Read every register of a map, whatever firmware the device reports. Registers outside the range are marked in the table.",
   "maptable.outside_firmware": "outside fw",
-  "maptable.outside_firmware_hint": "The map does not claim this register for the device's firmware (only on {range}). It is read because the firmware range is ignored."
+  "maptable.outside_firmware_hint": "The map does not claim this register for the device's firmware (only on {range}). It is read because the firmware range is ignored.",
+  "logview.hide_site": "Leave out unit ID and connection",
+  "logview.hide_site_hint": "In a saved CSV log, leave out the unit ID and the connection details, for logs that are shared."
 }

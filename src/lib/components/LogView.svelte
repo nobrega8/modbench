@@ -3,14 +3,10 @@
   import { localizeError } from "#lib/errors.ts";
   import { save } from "@tauri-apps/plugin-dialog";
   import { api, errorText } from "#lib/api.ts";
-  import {
-    FUNCTION_NAME,
-    areaOfFunction,
-    clock,
-    formatAddress,
-  } from "#lib/format.ts";
+  import { areaOfFunction, clock, formatAddress } from "#lib/format.ts";
   import AddressFormat from "./AddressFormat.svelte";
   import { logCsv } from "#lib/csv.ts";
+  import { functionName } from "#lib/frames.ts";
   import { settings } from "#lib/settings.svelte.ts";
   import { bench } from "#lib/state.svelte.ts";
   import type { TrafficEntry } from "#lib/types.ts";
@@ -31,6 +27,9 @@
       : bench.log,
   );
 
+  /** Leave the unit ID and the connection out of a saved log. */
+  let hideSite = $state(false);
+
   function addr(e: TrafficEntry) {
     return formatAddress(
       e.address,
@@ -40,9 +39,9 @@
   }
 
   function line(e: TrafficEntry): string {
-    if (e.note) return `${clock(e.time_ms)}\e${e.note}`;
+    if (e.note) return `${clock(e.time_ms)}	${e.note}`;
     const fc = String(e.function).padStart(2, "0");
-    return `${clock(e.time_ms)}\tFC${fc}\e${FUNCTION_NAME[e.function] ?? ""}\e${addr(e)}\e${e.count}\e${e.duration_ms.toFixed(1)} ms\e${e.error ?? "OK"}`;
+    return `${clock(e.time_ms)}\tFC${fc}	${functionName(e.function)}	${addr(e)}	${e.count}	${e.duration_ms.toFixed(1)} ms	${e.error ?? "OK"}`;
   }
 
   /** What a right-click on a request offers. */
@@ -87,7 +86,12 @@
     });
     if (!path) return;
     const text = path.toLowerCase().endsWith(".csv")
-      ? logCsv(bench.log, settings.csvSeparator)
+      ? logCsv(
+          bench.log,
+          settings.csvSeparator,
+          await bench.logHeader(hideSite),
+          hideSite,
+        )
       : bench.log.map(line).join("\n") + "\n";
     try {
       await api.saveText(path, text);
@@ -107,6 +111,10 @@
   {#if saveError}<span class="bad"
       >{t("logview.could_not_save_error", { error: saveError })}</span
     >{/if}
+  <label class="check" title={t("logview.hide_site_hint")}
+    ><input type="checkbox" bind:checked={hideSite} />
+    {t("logview.hide_site")}</label
+  >
   <button
     class="btn"
     disabled={!bench.log.length}
@@ -150,7 +158,7 @@
             <td class="mono dim">{clock(row.time_ms)}</td>
             <td
               ><span class="mono">{String(row.function).padStart(2, "0")}</span>
-              {FUNCTION_NAME[row.function] ?? ""}</td
+              {functionName(row.function)}</td
             >
             <td class="mono">{addr(row)}</td>
             <td class="mono">{row.count}</td>
