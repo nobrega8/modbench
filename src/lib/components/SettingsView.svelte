@@ -551,6 +551,22 @@
           </label>
           <label class="setting">
             <div class="text">
+              <span class="name">{t("settingsview.ignore_firmware_range")}</span
+              >
+              <span class="hint"
+                >{t("settingsview.ignore_firmware_range2")}</span
+              >
+            </div>
+            <input
+              type="checkbox"
+              class="switch"
+              role="switch"
+              bind:checked={settings.ignoreFirmwareRange}
+              onchange={changed}
+            />
+          </label>
+          <label class="setting">
+            <div class="text">
               <span class="name">{t("settingsview.csv_separator")}</span>
               <span class="hint"
                 >{t("settingsview.semicolon_for_spreadsheets_with")}</span

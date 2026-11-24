@@ -1460,5 +1460,9 @@
   "err.request": " FC{fc} ({name}) に対して、ユニット {unit}",
   "err.request_range": " FC{fc} ({name}) に対して、アドレス {address} から {count} 個、ユニット {unit}",
   "parts.too_long": "{name}: 最大 {max} 文字",
-  "parts.empty_zeros": "空の欄はゼロとして送信されます"
+  "parts.empty_zeros": "空の欄はゼロとして送信されます",
+  "settingsview.ignore_firmware_range": "Ignore the firmware range of maps",
+  "settingsview.ignore_firmware_range2": "Read every register of a map, whatever firmware the device reports. Registers outside the range are marked in the table.",
+  "maptable.outside_firmware": "outside fw",
+  "maptable.outside_firmware_hint": "The map does not claim this register for the device's firmware (only on {range}). It is read because the firmware range is ignored."
 }

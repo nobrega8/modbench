@@ -1056,7 +1056,7 @@ class Bench {
         (i) =>
           (ignoreSkipped || !this.skipped.has(i)) &&
           !isComputed(all[i]) &&
-          appliesTo(all[i], version),
+          (settings.ignoreFirmwareRange || appliesTo(all[i], version)),
       );
     const registers = indexes.map((i) => {
       const area = this.readAs.get(i);

@@ -1465,5 +1465,9 @@
   "err.request": " à FC{fc} ({name}), unité {unit}",
   "err.request_range": " à FC{fc} ({name}) pour {count} depuis l'adresse {address}, unité {unit}",
   "parts.too_long": "{name} : {max} caractères au plus",
-  "parts.empty_zeros": "Les champs vides sont envoyés comme des zéros"
+  "parts.empty_zeros": "Les champs vides sont envoyés comme des zéros",
+  "settingsview.ignore_firmware_range": "Ignore the firmware range of maps",
+  "settingsview.ignore_firmware_range2": "Read every register of a map, whatever firmware the device reports. Registers outside the range are marked in the table.",
+  "maptable.outside_firmware": "outside fw",
+  "maptable.outside_firmware_hint": "The map does not claim this register for the device's firmware (only on {range}). It is read because the firmware range is ignored."
 }

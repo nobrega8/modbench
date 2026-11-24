@@ -1465,5 +1465,9 @@
   "err.request": " a FC{fc} ({name}), unidade {unit}",
   "err.request_range": " a FC{fc} ({name}) para {count} a partir do endereço {address}, unidade {unit}",
   "parts.too_long": "{name}: no máximo {max} caracteres",
-  "parts.empty_zeros": "Campos vazios são enviados como zeros"
+  "parts.empty_zeros": "Campos vazios são enviados como zeros",
+  "settingsview.ignore_firmware_range": "Ignorar a faixa de firmware dos mapas",
+  "settingsview.ignore_firmware_range2": "Lê todos os registradores de um mapa, seja qual for o firmware do dispositivo. Os registradores fora da faixa ficam marcados na tabela.",
+  "maptable.outside_firmware": "fora do fw",
+  "maptable.outside_firmware_hint": "O mapa não atribui este registrador ao firmware do dispositivo (só em {range}). Ele é lido porque a faixa de firmware é ignorada."
 }

@@ -1460,5 +1460,9 @@
   "err.request": " FC{fc} ({name}) 요청, 유닛 {unit}",
   "err.request_range": " FC{fc} ({name}) 요청, 주소 {address}부터 {count}개, 유닛 {unit}",
   "parts.too_long": "{name}: 최대 {max}자",
-  "parts.empty_zeros": "빈 칸은 0으로 전송됩니다"
+  "parts.empty_zeros": "빈 칸은 0으로 전송됩니다",
+  "settingsview.ignore_firmware_range": "Ignore the firmware range of maps",
+  "settingsview.ignore_firmware_range2": "Read every register of a map, whatever firmware the device reports. Registers outside the range are marked in the table.",
+  "maptable.outside_firmware": "outside fw",
+  "maptable.outside_firmware_hint": "The map does not claim this register for the device's firmware (only on {range}). It is read because the firmware range is ignored."
 }

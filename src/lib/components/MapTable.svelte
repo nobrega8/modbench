@@ -135,7 +135,8 @@
       )
       .filter(({ reg }) => {
         // Registers the device's firmware does not have are left out.
-        if (!appliesTo(reg, fwVersion)) return false;
+        if (!settings.ignoreFirmwareRange && !appliesTo(reg, fwVersion))
+          return false;
         if (group && reg.group !== group) return false;
         const q = search.trim().toLowerCase();
         return (
@@ -942,6 +943,11 @@
                   reg.firmware_max,
                 )}. The device's firmware is not known, so it is read anyway."
                 >fw {rangeText(reg.firmware_min, reg.firmware_max)}</span
+              >{/if}{#if fwVersion && settings.ignoreFirmwareRange && !appliesTo(reg, fwVersion)}<span
+                class="grp"
+                title={t("maptable.outside_firmware_hint", {
+                  range: rangeText(reg.firmware_min, reg.firmware_max) ?? "",
+                })}>{t("maptable.outside_firmware")}</span
               >{/if}{#if isCustom(reg)}<span
                 class="grp custom"
                 title={t("maptable.added_on_this_computer")}

@@ -18,6 +18,7 @@ interface Stored {
   confirmWrites: boolean;
   readOnly: boolean;
   singleWriteFc16: boolean;
+  ignoreFirmwareRange: boolean;
   autoReconnect: boolean;
   logLimit: number;
   csvSeparator: CsvSeparator;
@@ -40,6 +41,7 @@ const DEFAULTS: Stored = {
   confirmWrites: false,
   readOnly: false,
   singleWriteFc16: false,
+  ignoreFirmwareRange: false,
   autoReconnect: true,
   logLimit: 1000,
   csvSeparator: ",",
@@ -83,6 +85,8 @@ class Settings {
   /** Writes a single holding register with FC16 instead of FC06. */
   singleWriteFc16 = $state(false);
   /** Opens a lost connection again while a test runs. */
+  /** Reads every register of a map, whatever its firmware_min/firmware_max. */
+  ignoreFirmwareRange = $state(false);
   autoReconnect = $state(true);
   logLimit = $state(1000);
   /** Comma, or semicolon for spreadsheets set up for a decimal comma. */
@@ -115,6 +119,7 @@ class Settings {
       confirmWrites: this.confirmWrites,
       readOnly: this.readOnly,
       singleWriteFc16: this.singleWriteFc16,
+      ignoreFirmwareRange: this.ignoreFirmwareRange,
       autoReconnect: this.autoReconnect,
       logLimit: this.logLimit,
       csvSeparator: this.csvSeparator,

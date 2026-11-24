@@ -1465,5 +1465,9 @@
   "err.request": " FC{fc} ({name}) के लिए, यूनिट {unit}",
   "err.request_range": " FC{fc} ({name}) के लिए, पता {address} से {count}, यूनिट {unit}",
   "parts.too_long": "{name}: अधिकतम {max} अक्षर",
-  "parts.empty_zeros": "खाली फ़ील्ड शून्य के रूप में भेजे जाते हैं"
+  "parts.empty_zeros": "खाली फ़ील्ड शून्य के रूप में भेजे जाते हैं",
+  "settingsview.ignore_firmware_range": "Ignore the firmware range of maps",
+  "settingsview.ignore_firmware_range2": "Read every register of a map, whatever firmware the device reports. Registers outside the range are marked in the table.",
+  "maptable.outside_firmware": "outside fw",
+  "maptable.outside_firmware_hint": "The map does not claim this register for the device's firmware (only on {range}). It is read because the firmware range is ignored."
 }

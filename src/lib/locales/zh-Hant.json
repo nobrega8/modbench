@@ -1460,5 +1460,9 @@
   "err.request": " 對 FC{fc}（{name}），單元 {unit}",
   "err.request_range": " 對 FC{fc}（{name}），從位址 {address} 起 {count} 個，單元 {unit}",
   "parts.too_long": "{name}：最多 {max} 個字元",
-  "parts.empty_zeros": "空白欄位以零傳送"
+  "parts.empty_zeros": "空白欄位以零傳送",
+  "settingsview.ignore_firmware_range": "Ignore the firmware range of maps",
+  "settingsview.ignore_firmware_range2": "Read every register of a map, whatever firmware the device reports. Registers outside the range are marked in the table.",
+  "maptable.outside_firmware": "outside fw",
+  "maptable.outside_firmware_hint": "The map does not claim this register for the device's firmware (only on {range}). It is read because the firmware range is ignored."
 }
