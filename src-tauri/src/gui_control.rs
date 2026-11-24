@@ -28,12 +28,19 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter, State};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
 
 /// The window must answer within this time.
 const ANSWER_TIMEOUT: Duration = Duration::from_secs(30);
+/// A request line longer than this is refused: any program on the machine can
+/// connect, and nothing has proved who it is until the token is read.
+const MAX_LINE: u64 = 1024 * 1024;
+/// A connection that has not sent a valid token by then is closed.
+/// The largest answer the MCP server reads back from the window.
+const MAX_ANSWER: u64 = 64 * 1024 * 1024;
+const AUTH_TIMEOUT: Duration = Duration::from_secs(10);
 const IDENTIFIER: &str = "io.github.nobrega8.modbench";
 
 /// Where the endpoint is written for the MCP server to find.
@@ -104,6 +111,12 @@ pub type Handler = Arc<dyn Fn(String, Value) -> Answer + Send + Sync>;
 /// Told how many clients are connected, whenever it changes.
 pub type OnClients = Arc<dyn Fn(usize) + Send + Sync>;
 
+/// Only the token of a request, read before anything else of it is parsed.
+#[derive(Deserialize)]
+struct Credentials {
+    token: String,
+}
+
 #[derive(Deserialize)]
 struct Request {
     token: String,
@@ -131,12 +144,44 @@ async fn serve_connection(
     let mut line = String::new();
     loop {
         line.clear();
-        match stream.read_line(&mut line).await {
+        // Until the token is right, a connection gets a short time and a
+        // bounded line; afterwards it may stay idle, as an assistant does.
+        let mut limited = (&mut stream).take(MAX_LINE);
+        let read = limited.read_line(&mut line);
+        let read = if counted {
+            read.await
+        } else {
+            match tokio::time::timeout(AUTH_TIMEOUT, read).await {
+                Ok(r) => r,
+                Err(_) => break,
+            }
+        };
+        match read {
             Ok(0) | Err(_) => break,
             Ok(_) => {}
         }
+        if !line.ends_with('\n') && line.len() as u64 >= MAX_LINE {
+            reply(
+                &mut stream,
+                json!({"ok": false, "error": "request too long"}),
+            )
+            .await;
+            break;
+        }
         if line.trim().is_empty() {
             continue;
+        }
+        // The token is checked before the arguments are parsed.
+        let Ok(credentials) = serde_json::from_str::<Credentials>(&line) else {
+            reply(&mut stream, json!({"ok": false, "error": "bad request"})).await;
+            if counted {
+                continue;
+            }
+            break;
+        };
+        if !same_token(&credentials.token, &token) {
+            reply(&mut stream, json!({"ok": false, "error": "wrong token"})).await;
+            break;
         }
         let request: Request = match serde_json::from_str(&line) {
             Ok(r) => r,
@@ -146,10 +191,6 @@ async fn serve_connection(
                 continue;
             }
         };
-        if !same_token(&request.token, &token) {
-            reply(&mut stream, json!({"ok": false, "error": "wrong token"})).await;
-            break;
-        }
         if !counted {
             counted = true;
             on_clients(clients.fetch_add(1, Ordering::SeqCst) + 1);
@@ -390,7 +431,7 @@ pub async fn call(tool: &str, args: &Value) -> Result<Value, String> {
     let mut line = String::new();
     tokio::time::timeout(
         ANSWER_TIMEOUT + Duration::from_secs(5),
-        stream.read_line(&mut line),
+        (&mut stream).take(MAX_ANSWER).read_line(&mut line),
     )
     .await
     .map_err(|_| "Modbench did not answer in time".to_string())?
@@ -471,6 +512,33 @@ mod tests {
         assert_eq!(err["ok"], false);
         let wrong = send(&mut connect(port).await, "guess", "echo").await;
         assert_eq!(wrong, json!({"ok": false, "error": "wrong token"}));
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn refuses_an_oversized_line_and_closes() {
+        let (port, task, _) = server().await;
+        let mut s = connect(port).await;
+        let big = vec![b'a'; MAX_LINE as usize + 10];
+        let _ = s.get_mut().write_all(&big).await;
+        let mut line = String::new();
+        s.read_line(&mut line).await.unwrap();
+        assert!(line.contains("request too long"));
+        line.clear();
+        assert_eq!(s.read_line(&mut line).await.unwrap_or(0), 0);
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn an_unauthenticated_connection_is_closed_on_garbage() {
+        let (port, task, _) = server().await;
+        let mut s = connect(port).await;
+        s.get_mut().write_all(b"not json\n").await.unwrap();
+        let mut line = String::new();
+        s.read_line(&mut line).await.unwrap();
+        assert!(line.contains("bad request"));
+        line.clear();
+        assert_eq!(s.read_line(&mut line).await.unwrap_or(0), 0);
         task.abort();
     }
 
